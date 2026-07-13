@@ -296,7 +296,14 @@ def build_target_capability_set(
     matched_observation_keys: set[tuple[str, str]] = set()
 
     for kind, entity_id, selector, owner, mapping_refs in sorted(raw_origins):
-        definitions = semantic_by_selector.get((kind, selector), ())
+        # Production registries bind a semantic record to the exact Catalog
+        # entity with ``entity:<id>``.  The selector-level lookup remains as a
+        # compatibility path for hand-authored/synthetic registries.  Never
+        # combine both: doing so would attach every same-kind entity template
+        # to one origin and corrupt the frozen denominator.
+        definitions = semantic_by_selector.get((kind, f"entity:{entity_id}"), ())
+        if not definitions:
+            definitions = semantic_by_selector.get((kind, selector), ())
         if not definitions:
             _add_unresolved(
                 unresolved,

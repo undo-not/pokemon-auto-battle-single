@@ -23,20 +23,21 @@ Statusは次を使う。
 | `REQ-SIM-007` | Replayからexact bundleで遷移を再実行して改変を検知する | Replay v2 Schema | `ReplayRecord`、strict JSON decoder、`verify_replay` | 全階層unknown/duplicate key拒否、roundtrip、bundle/init/action/transition drift、別process CLI test | verified_local |
 | `REQ-SIM02-001` | 人気度thresholdを使わずtarget poolを固定する | SIM-02 Target-pool選定契約、Regulation/TargetPool Schema | M-B公式eligible listを235 unique dex/form/variant keyへ固定 | loader/schema tests、source manifest record count | verified_local |
 | `REQ-SIM02-002` | 固定分母に対する実行coverageを測る | SIM-02 objective variables、CoverageGap Schema | `build_coverage_gap_report` | 235 denominator、explicit mapped/covered 0、unmapped 235、mega unsupportedをblocker化。`n<dex>`暗黙mappingを廃止 | implemented, blocked_external |
-| `REQ-SIM02-008` | explicit mappingから合法到達capabilityを固定分母として閉包する | Target Mapping / Target Pool Manifest / Target Capability Schemas | `src/champions_sim/capabilities` | exact pool一致、same-signature dedupe＋origin refs、unresolved denominator fail-closed、公式235 missing拒否 | verified_local synthetic pipeline; M-B integration pending |
-| `REQ-SIM02-009` | 6実行次元、grounding、silent fallback、holdoutをcaller入力なしで再計算する | Execution/Grounding/MechanicCoverage/Holdout Schemas | capability coverage/probes/grounding/holdout builders | 6次元各欠落、`rng:none`、explicit unsupported、silent mutation、resolver rejection、holdout overlap/new/unknown | verified_local synthetic pipeline; production registries/actual evidence pending |
+| `REQ-SIM02-008` | explicit mappingから合法到達capabilityを固定分母として閉包する | Target Mapping / Target Pool Manifest / Target Capability Schemas | `src/champions_sim/capabilities`、`src/champions_sim/compiler` | exact pool一致、same-signature dedupe＋origin refs、unresolved denominator fail-closed、公式235 missing拒否。実M-Bは0 resolved、219 unresolved、16 conflict、118 target rows、count/rate null | verified_local compiler integration; evidence promotion pending |
+| `REQ-SIM02-009` | 6実行次元、grounding、silent fallback、holdoutをcaller入力なしで再計算する | Execution/Grounding/MechanicCoverage/Holdout Schemas | compiler semantic/execution/probe registry、capability coverage/grounding/holdout builders | 6次元各欠落、`rng:none`、explicit unsupported、silent mutation、resolver rejection、holdout overlap/new/unknown。実M-Bはexecution gap 118、個別executor未取得118、silent fallback 0 | verified_local compiler integration; positive executors/actual evidence pending |
+| `REQ-SIM02-010` | sealed source lockからcandidateまたは理由付きNO-GOを一コマンド・content-addressed生成する | Source-to-Capability Report / Production Catalog Input Schemas | `scripts/build_source_to_capability_bundle.py`、`src/champions_sim/compiler` | 同入力のreport/doc byte一致、report/artifact改変拒否、candidate schema branch、`--require-candidate`、Gitignored output制限。現M-Bは理由付きNO-GO | verified_local operational compiler; candidate blocked_external |
 | `REQ-SIM02-003` | 全TargetCapabilityを外部groundingへtraceする | GroundingTrace/Capture Schema、SIM-02 grounding contract | capture models/store、GroundingTrace、EnvObservation | local contract/schema tests。actual実機traceとcapability completenessは未取得 | verified_local contracts, blocked_external |
 | `REQ-SIM02-004` | unknown・unsupported・unverifiedのsilent fallbackを0にする | SIM-02 silent fallback contract | coverage blocker、unknown legal mask、engine fail-closed、simultaneous mega fail-closed | regulation/grounding/mega mutation tests、synthetic report `silent_fallback_count: 0` | verified_local for implemented paths; full pool blocked |
 | `REQ-SIM02-005` | sealed inputから48時間以内にcandidateまたは正しいNO-GOを出す | SIM-02、PD-008、RehearsalReport Schema v1 | v1はsynthetic_internal NO-GO専用。coverage/diffをsealed入力から再計算 | forgery/参照不一致/candidate/live拒否、operational success、deployable false。actual/sealed historical v2未定義 | provisional, verified_local NO-GO plumbing, blocked_external |
 | `REQ-SIM02-006` | local evidenceとChampions外部最終gateを分離する | SIM-02 current evidence/final gate | reportの`rehearsal_kind`、outcome、operational/deployable flags | synthetic candidate昇格拒否tests、AUD-SIM02-001/002/005/006 | verified_local, blocked_external |
 | `REQ-SIM02-007` | M-Bのメガシンカをmandatory capabilityとして扱う | 公式M-B page 776、Season M-4 page 795、SIM-02、Catalog/RuleSet/Replay Schema | generic単側mega state/action/event、1戦1回、永続、Replay、versioned standard stat formulaでbase/mega双方を照合 | formula tamper、schema、state、Replay tests。同時mega順、Champions formula一致、16形態groundingはfail-closed/未達 | implemented generic contract, blocked_external for M-B |
 | `REQ-DATA-001` | RuleSetをversion/hash付きで固定する | RuleSet Schema | `RuleSetSnapshot/load_ruleset`、fixture | recursive Schema＋semantic bundle validation | provisional, verified_local |
-| `REQ-DATA-002` | Catalogをversion/hash/source付きで固定する | Catalog Schema | `CatalogSnapshot/load_catalog`、fixture | reference validation、manifest artifact hash | restricted_local, blocked_external |
+| `REQ-DATA-002` | Catalogをversion/hash/source付きで固定する | Catalog / Production Catalog Input Schemas | `CatalogSnapshot/load_catalog`、source-bound runtime candidate | reference validation、manifest/evidence/artifact hash、未知priority/effect/ability/itemをfail-closed。現候補はspecies 213、moves 490、abilities 180、items 117 | restricted_local, blocked_external |
 | `REQ-DATA-003` | Battle fixtureのID・team・stats・movesを固定する | Battle fixture Schema | `load_battle_fixture` | recursive Schema＋cross-reference validation | verified_local |
 | `REQ-DATA-004` | Replayにbundle hash、RNG、初期化、全decision、結果を保存する | Replay v2 Schema | core replay、runner | generated Replay recursive Schema、roundtrip、verify | verified_local; bundle-bound |
 | `REQ-DATA-005` | 外部sourceの出典、license、size、hashを追跡する | Source manifest Schema、Git policy | legacy manifestに6参照元＋Catalog fixtureを記録 | bundle validator | restricted_local, blocked_external |
-| `REQ-DATA-006` | 旧PJをコピーせずM-B 235件のCatalog mapping候補とentity unionを再生成する | Catalog Intake / Source Lock Schema | `src/champions_sim/intake`、`scripts/build_catalog_intake.py`、M-B source lock | 213 usage crosswalk、22 exact-name candidate、16 detail conflict隔離、9 artifact hash/count完全一致、88 blockers、intake attack tests | verified_local intake, restricted_local, promotion blocked |
-| `REQ-GIT-001` | 大容量artifactをGitから除外する | Git Artifact Policy | `.gitignore` | `git ls-files --cached --others --exclude-standard` | verified_local |
+| `REQ-DATA-006` | 旧PJをコピーせずM-B 235件のCatalog mapping候補とentity unionを再生成する | Catalog Intake / Source Lock / Mapping Evidence Schemas | `src/champions_sim/intake`、`src/champions_sim/compiler`、M-B source lock | 213 usage crosswalk、22 exact-name candidate、16 detail conflict隔離、9 artifact hash/count完全一致、88 intake blockers。昇格判定は0 resolved、219 unresolved、16 conflict | verified_local intake/bridge, restricted_local, promotion blocked |
+| `REQ-GIT-001` | 大容量artifactをGitから除外する | Git Artifact Policy | `.gitignore`、compiler output-root guard | `git ls-files --cached --others --exclude-standard`、full compiler artifactを`data/processed`外へ書く要求を拒否 | verified_local |
 | `REQ-GIT-002` | 2 MiB / 256 KiBの暫定上限を検査する | PD-001/002 | `scripts/check_repo_size.py` | governance size tests | provisional, verified_local |
 | `REQ-TECH-001` | Python 3.10以上、原則stdlib＋pytestを使う | `pyproject.toml` | `src/champions_sim`、scripts | full pytest suite | verified_local |
 | `REQ-GROUND-001` | 公開済みChampionsダメージ参照を再現する | SIM-01、PD-003/004 | damage calculator | `tests/test_golden_grounding.py` | verified_local reference, blocked_external for full conformance |
@@ -80,6 +81,22 @@ regulation_snapshot_hash
 + rehearsal_report_hash
 ```
 
+`source-to-capability-bundle-v1`はcandidate前段のidentityとして次を同じreport hashへ束ねる。
+
+```text
+catalog_intake_hash
++ mapping_evidence_hash
++ production_catalog_input_hash
++ runtime_catalog_hash
++ semantic_compilation_hash
++ target_pool_manifest_hash
++ target_capability_set_hash
++ execution_compilation_hash
++ probe_plan_hash + probe_report_hash
++ grounding_resolution_hash
++ mechanic_coverage_matrix_hash
+```
+
 target poolのversionが変わった場合、旧coverage reportを新しい分母へ流用しない。
 
 現M-B snapshotのreadinessは次のように分離して報告する。
@@ -87,7 +104,12 @@ target poolのversionが変わった場合、旧coverage reportを新しい分�
 ```text
 eligible target members: 235
 Catalog explicitly mapped / covered members: 0
-unmapped target members: 235
+mapping resolved / unresolved / conflict: 0 / 219 / 16
+Catalog-wide semantic selectors: 788
+target capability rows / execution gaps: 118 / 118
+capability-specific executors: 0 (unexpected/not executed: 118)
+published capability coverage counts/rates: null (denominator non-final)
+silent fallback count: 0
 required mega_evolution in current M-B RuleSet: unsupported
 actual BlueStacks GroundingTrace: 0
 ```

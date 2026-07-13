@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from champions_sim.catalog import SnapshotValidationError, load_catalog
+from scripts.validate_sim01_bundle import BundleValidationError, validate_document_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,4 +51,23 @@ def test_sparse_type_chart_requires_an_explicit_neutral_default(tmp_path: Path) 
     path.write_text(json.dumps(catalog), encoding="utf-8")
 
     with pytest.raises(SnapshotValidationError, match="explicitly default"):
+        load_catalog(path)
+
+
+def test_known_item_cannot_hide_unknown_consumable_semantics(tmp_path: Path) -> None:
+    catalog = _catalog()
+    items = catalog["items"]
+    assert isinstance(items, list)
+    sitrus = next(item for item in items if item["item_id"] == "sitrus_berry")
+    sitrus["consumable"] = None
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(catalog), encoding="utf-8")
+
+    schema = json.loads(
+        (ROOT / "data/schemas/catalog.schema.json").read_text(encoding="utf-8")
+    )
+    with pytest.raises(BundleValidationError):
+        validate_document_contract(catalog, schema, "Catalog")
+
+    with pytest.raises(SnapshotValidationError, match="unknown consumable semantics"):
         load_catalog(path)

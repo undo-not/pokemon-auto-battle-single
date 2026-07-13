@@ -125,9 +125,9 @@
 - `problem`: 公式eligible list全235フォームをTargetPoolSnapshotへ固定したが、source record evidenceへ結合したexplicit mappingは0件で、235件すべてがunmappedである。以前の6件は`n<全国図鑑番号>`と表示名suffixによる暗黙推定だったためmapping実績から除外した。全TargetCapabilityの実機grounding assertionと、開発から分離した外部holdoutも未取得である。
 - `expected`: source IDs、取得時点、期間、artifact hash、全件包含、dedupe、除外reasonを持つTargetPoolManifestと、全TargetCapabilityへtraceできるverified grounding/holdoutがある。
 - `impact`: 恣意的に狭い対象集合、記事の印象、使用率thresholdをcoverage分母として採用し、未知interactionを見落とす。
-- `mitigation`: popularity thresholdを使わず235件を分母に残し、235件を個別`unmapped_target` blockerとして機械出力する。外部Catalog IDを全国図鑑番号から推定せず、source-bound mapping evidenceが検証されるまで候補昇格をfail-closedする。TargetCapability pipelineはexplicit mapping、fixed-point closure、6実行次元、probe-derived fallback、resolver-backed grounding、holdoutをsynthetic Catalogで検証済みである。
-- `suggested_action`: Catalog intakeの213 crosswalk候補＋22 name candidateを追加証拠で正式mappingへ昇格し、production semantic/execution registryとprobe factoryへ接続してM-B capability bundleを生成する。mapping不能項目を分母から除外しない。
-- `evidence`: TargetPool/Coverage/Mapping/Capability/MechanicCoverage/Holdout Schema、`build_coverage_gap_report`、`src/champions_sim/intake`、`src/champions_sim/capabilities`、regulation/intake/capability pipeline tests、`specs/sim-02-phase-contract.md`
+- `mitigation`: popularity thresholdを使わず235件を分母に残し、source-to-capability compilerで0 resolved/verified、219 unresolved/unverified、16 conflict/unverifiedをsource record hash付きで機械出力する。外部Catalog IDを全国図鑑番号から推定せず、source-bound mapping evidenceが検証されるまで候補昇格をfail-closedする。実M-B intakeからもfixed-point closure、6実行次元、probe-derived fallback、resolver-backed grounding、holdout matrixまで接続済みで、denominator non-final時はcoverage count/rateを`null`にする。
+- `suggested_action`: 235件の候補をauthoritative evidenceで正式mappingへ昇格し、技priority/structured effect、特性・道具handler、base stats、Mega relation、capability別positive executorを追加する。mapping不能項目を分母から除外しない。
+- `evidence`: TargetPool/Coverage/Mapping/Capability/MechanicCoverage/Holdout/Compiler Report Schema、`build_coverage_gap_report`、`src/champions_sim/intake`、`src/champions_sim/compiler`、`src/champions_sim/capabilities`、regulation/intake/compiler/capability pipeline tests、`specs/sim-02-phase-contract.md`
 - `status`: open
 - `resolution`:
 
@@ -210,10 +210,24 @@
 - `status`: resolved
 - `resolution`: M-B preflightをexplicit mapped/covered 0、unmapped 235へ修正し、synthetic rehearsal goldenとartifact manifestを再生成した。
 
+### AUD-SIM02-009
+
+- `severity`: high
+- `phase`: SIM-02-LOCAL-PREPARATION / SIM-02-M-B
+- `category`: contract_gap
+- `problem`: Catalog intake、mapping、semantic/execution registry、probe、MechanicCoverageMatrixが別々に存在し、実M-B source lockからcandidateまたは理由付き`NO-GO`までを同じidentityで再現する一コマンド経路がなかった。
+- `expected`: source artifact hash、235件のmapping状態、Catalog candidate、semantic selector、6実行次元、probe、grounding、holdout、coverage matrixをcontent-addressed bundleへ固定し、全gateを満たす時だけcandidate、それ以外は決定論的`NO-GO`を返す。未知値の暗黙defaultとcaller supplied summaryを許さない。
+- `impact`: synthetic pipelineの成功を実M-B readinessへ読み替える、または工程間で分母・証拠・blockerがdriftする。
+- `suggested_action`: 完了。次はcompilerが固定したevidence backlogをauthoritative source/actual traceで昇格する。
+- `evidence`: `scripts/build_source_to_capability_bundle.py`、`src/champions_sim/compiler`、production Catalog/compiler report Schema、compiler tests、content-addressed local bundle
+- `status`: resolved
+- `resolution`: Source lockから13文書を生成する`source-to-capability-bundle-v1`を実装した。現M-Bは0 resolved、219 unresolved、16 conflict、788 semantic selector、118 target capability/execution gap、capability別executor未取得118、silent fallback 0、理由付き`NO-GO`となる。全artifact digestとreport hashをwriter直前に再検証し、生成先をGitignored `data/processed`配下へ制限する。candidate schema分岐は空blocker/zero countと整合するが、現legacy intakeはunverified/local-onlyのためcandidateへ昇格しない。
+
 ## SIM-02 Gate判定
 
 - Phase Contract・目的変数・scope分離: **GO / SPECIFIED**
 - SIM-02ローカル基盤: **GO / IMPLEMENTED / VERIFIED LOCALLY** — regulation、target、coverage、diff、synthetic rehearsal、grounding/AI Env、generic mega
+- SIM-02 source-to-capability compile: **OPERATIONAL SUCCESS / REASONED NO-GO** — `AUD-SIM02-009`は解決、evidence不足は`AUD-SIM02-002`で継続
 - SIM-02 target coverage完了: **NO-GO** — `AUD-SIM02-002`
 - SIM-02 M-B candidate: **NO-GO** — `AUD-SIM02-005`
 - BlueStacks read-only actual grounding: **NO-GO** — `AUD-SIM02-006`

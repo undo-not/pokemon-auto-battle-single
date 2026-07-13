@@ -1,14 +1,14 @@
 # champions_sim
 
-`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装に加え、SIM-02のRegulation/TargetPool/Coverage/Diff、synthetic 48時間rehearsal、read-only BlueStacks capture基盤、GroundingTrace、AI Env、generic mega contractまでローカル実装済みです。現行M-B全体のCatalog/メカニクスcoverage、actual実機grounding、AI方策、BlueStacks入力操作は未完成です。
+`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装に加え、SIM-02のRegulation/TargetPool/Coverage/Diff、source-to-capability compiler、synthetic 48時間rehearsal、read-only BlueStacks capture基盤、GroundingTrace、AI Env、generic mega contractまでローカル実装済みです。現行M-B全体の検証済みCatalog/メカニクスcoverage、actual実機grounding、AI方策、BlueStacks入力操作は未完成です。
 
 ## 現在のスコープ
 
 - 最初の実装フェーズは`SIM-01`の決定論的な対戦状態遷移です。
 - 次の`SIM-02`は、version固定されたRegulation/TargetPoolManifestから対応範囲を拡張するフェーズです。使用率thresholdやtop-Nで対象を選ばず、固定manifestに対するexecution coverage、外部grounding conformance、silent fallback 0、48時間rehearsalを別々に測ります。
-- M-Bの公式eligible listは235 unique dex/form/variant keyで固定済みです。旧IDを全国図鑑番号から暗黙推定する処理を廃止したため、現preflightで明示mapping済みなのは0件、235件すべてを個別blockerとして残しています。旧PJから得た候補はsource-bound intakeで検証してから昇格し、この値をcapability coverageや環境採用率へ読み替えません。
+- M-Bの公式eligible listは235 unique dex/form/variant keyで固定済みです。旧IDを全国図鑑番号から暗黙推定する処理を廃止し、現在のsource-to-capability compileでは0件をresolved/verified、219件をunresolved/unverified、16件をconflict/unverifiedとして保持します。候補件数をcapability coverageや環境採用率へ読み替えません。
 - Source-bound Catalog intakeは旧PJをコピーせず、235 targetに対して213 usage crosswalk候補、22 exact-name candidate、16 detail-ID conflict、22 detail不足を再生成します。生成bundleはGit管理外で、license未確認・ローカル研究限定・再配布禁止を強制します。
-- TargetCapability pipelineは、explicit mapping、合法move/ability/item、mandatory mechanicからfixed-point closureを作り、6実行次元、grounding assertion、silent-fallback probe、external holdoutを再計算型matrixで判定します。小さなsynthetic Catalogでは検証済みですが、実M-B intakeとの接続前なのでM-B coverage値はまだ未測定です。
+- TargetCapability pipelineは実M-B intakeまで接続済みです。Catalog-wide semantic inventory 788、現時点のtarget capability row 118を生成し、6実行次元と実行probeを再計算します。全候補の意味・優先度・効果順が未検証で235件のmapping分母も確定していないため、coverage count/rateは`null`、execution gap 118、capability別executor未取得118、silent fallback 0、理由718件の決定論的`NO-GO`になります。`silent fallback 0`はpositive execution証拠とは扱いません。
 - 現在のエンジンは`sim01_catalog.json`と`sim01_ruleset.json`に列挙された対応効果だけを扱い、未知効果はfail-closedにします。
 - Generic mega fixtureでは単側の1戦1回、pre-move変身、永続状態、観測、Replayを実装しました。現M-B RuleSetでは`mega_evolution`を引き続きunsupportedとし、16形態と同時メガシンカ順のgrounding完了までM-B対応を主張しません。
 - 10,000戦seeded smokeは完走済みですが、これはローカル参照実装の安定性であり、公式Champions準拠の証明ではありません。
@@ -42,7 +42,7 @@
 - [Git・成果物容量方針](docs/git-artifact-policy.md)
 - [SIM-01検証レポート](docs/validation-report-sim01.md)
 - [SIM-02検証レポート](docs/validation-report-sim02.md)
-- `data/schemas/`: RuleSet、Catalog、Battle fixture、Replay v2、source manifestのJSON Schema
+- `data/schemas/`: RuleSet、Catalog、Battle fixture、Replay v2、source manifest、production Catalog input、source-to-capability reportのJSON Schema
 - `data/manifests/`: 小さな出典manifest例。元データ本体は含めない
 - `scripts/validate_sim01_bundle.py`: Schema、loader、Replay、manifest hash、license scopeの統合検査
 - `scripts/check_repo_size.py`: `PD-001/002`のGit候補ファイル容量検査
@@ -69,6 +69,7 @@ python scripts/check_repo_size.py
 python scripts/build_regulation_diff.py
 python scripts/diagnose_bluestacks.py
 python scripts/build_catalog_intake.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --source-lock data/manifests/catalog-intake-m-b-source-lock.json --dry-run
+python scripts/build_source_to_capability_bundle.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --dry-run
 $env:PYTHONPATH="src"
 python -m champions_sim battle --seed 20260713
 python -m champions_sim verify-replay --replay replays/example.json
@@ -76,7 +77,7 @@ python -m champions_sim smoke --battles 10000 --seed-start 0
 python -m pytest -q
 ```
 
-`--usage-scope distribution`は、旧PJ由来データのlicenseが未確認な間は意図的に失敗します。
+`build_source_to_capability_bundle.py`は同じsealed sourceから同じreport hashを生成します。成果物はcontent-addressedな`data/processed/sim02/source-to-capability/<report_hash>/`へだけ書き出し、Git管理外に置きます。`--require-candidate`は現証拠で理由付き`NO-GO`となるため終了コード3を返します。`--usage-scope distribution`も、旧PJ由来データのlicenseが未確認な間は意図的に失敗します。
 
 ## データ管理
 
@@ -86,8 +87,8 @@ python -m pytest -q
 
 - P0統治: 完了
 - SIM-01ローカル参照bundle: 工学ゲート完了。ローカル研究に限り`GO`
-- SIM-02ローカル基盤: regulation/target/coverage/diff/rehearsal/grounding/AI Env/generic mega、Catalog intake、TargetCapability pipelineを実装済み
-- SIM-02 target coverage: pipeline契約は検証済み。実M-Bではexplicit mapping 0/235、intake未接続、production semantic/execution registry未完成のため`NO-GO`
+- SIM-02ローカル基盤: regulation/target/coverage/diff/rehearsal/grounding/AI Env/generic mega、Catalog intake、source-to-capability compilerを実装・ローカル検証済み
+- SIM-02 target coverage: 実M-Bを一コマンドでcompile済み。resolved/verified mapping 0、unresolved 219、conflict 16、execution gap/未実証probe 118、分母未確定のためcoverage値`null`、silent fallback 0の理由付き`NO-GO`
 - SIM-02 synthetic rehearsal: operational success、deployable successではない
 - SIM-02 BlueStacks actual grounding: player/HD-Adb停止、ADB ownership未検証、actual traceなしのため`NO-GO`
 - SIM-02 M-B candidate: メガ16形態、同時順、Catalog coverage、groundingが未完了のため`NO-GO`

@@ -98,6 +98,10 @@
       "maxLength": 160,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
     },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
     "uniqueStableIds": {
       "type": "array",
       "items": {
@@ -144,8 +148,21 @@
         },
         "effect_id": {
           "$ref": "#/$defs/stableId"
+        },
+        "source_record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "unsupported_reason": {
+          "type": "string",
+          "minLength": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"effect_id": {"pattern": "^unsupported:"}}},
+          "then": {"required": ["source_record_sha256", "unsupported_reason"]}
+        }
+      ]
     },
     "itemDefinition": {
       "type": "object",
@@ -166,9 +183,31 @@
           "$ref": "#/$defs/stableId"
         },
         "consumable": {
-          "type": "boolean"
+          "type": ["boolean", "null"]
+        },
+        "source_record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "unsupported_reason": {
+          "type": "string",
+          "minLength": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["consumable"],
+            "properties": {"consumable": {"type": "null"}}
+          },
+          "then": {
+            "properties": {"effect_id": {"pattern": "^unsupported:"}}
+          }
+        },
+        {
+          "if": {"properties": {"effect_id": {"pattern": "^unsupported:"}}},
+          "then": {"required": ["source_record_sha256", "unsupported_reason"]}
+        }
+      ]
     },
     "moveDefinition": {
       "type": "object",
@@ -217,7 +256,7 @@
           "minimum": 1
         },
         "priority": {
-          "type": "integer",
+          "type": ["integer", "null"],
           "minimum": -7,
           "maximum": 7
         },
@@ -227,7 +266,17 @@
         "effect": {
           "$ref": "#/$defs/moveEffect"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"priority": {"type": "null"}}},
+          "then": {
+            "properties": {
+              "effect": {"properties": {"kind": {"const": "unsupported"}}}
+            }
+          }
+        }
+      ]
     },
     "moveEffect": {
       "type": "object",
@@ -243,7 +292,8 @@
             "damage_secondary_flinch",
             "heal_self",
             "damage_drain",
-            "inflict_status"
+            "inflict_status",
+            "unsupported"
           ]
         },
         "status": {
@@ -299,8 +349,21 @@
         "denominator": {
           "type": "integer",
           "minimum": 1
+        },
+        "source_record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "unsupported"}}},
+          "then": {"required": ["source_record_sha256", "reason"]}
+        }
+      ]
     },
     "baseStats": {
       "type": "object",

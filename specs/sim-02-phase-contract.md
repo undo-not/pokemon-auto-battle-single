@@ -6,11 +6,12 @@
 - ローカル準備基盤: **IMPLEMENTED / VERIFIED LOCALLY**
 - 現行M-B target pool: **235フォームで固定**
 - 現行SIM-01 Catalog readiness: **explicit mapping/covered 0、unmapped 235**
+- Source-to-Capability compile: **OPERATIONAL SUCCESS / REASONED NO-GO** — resolved/verified 0、unresolved 219、conflict 16、execution gap/個別executor未取得 118、silent fallback 0、理由718件
 - Synthetic 48h rehearsal: **OPERATIONAL SUCCESS / DEPLOYABLE SUCCESSではない**
 - BlueStacks grounding基盤: **read-only診断・capture store・GroundingTrace・AI Envを実装。actual traceは未取得**
 - P1 hardening: **IMPLEMENTED / VERIFIED LOCALLY** — rehearsal再計算、capture/evidence binding、ADB ownership gate、standard mega stat検証、strict Replay decode
 - Champions実機準拠の最終ゲート: **NO-GO**
-- 主なblocker: 235フォームのsource-bound Catalog mapping昇格と実M-B capability bundle、production semantic/execution registry、外部holdout、実機grounding corpusが未取得
+- 主なblocker: 235フォームのauthoritative mapping evidence、技・特性・道具・base stats・Mega relationの構造化意味とpositive executor、外部holdout、実機grounding corpusが未取得
 - 現行M-B mandatory gap: generic mega contractは実装済みだが、現M-B RuleSetでは`mega_evolution`がunsupported。同時メガシンカの解決順もgrounding不足でfail-closed
 
 ## Phase Contract
@@ -45,7 +46,8 @@ target_pool_execution_coverage_rate
 - `fully_supported`は、合法性、状態遷移、RNG消費、event、観測、Replayがすべて契約化され、unknown/no-op fallbackを通らない場合だけ数える。
 - 分母は実装開始前にhash固定する。未対応capabilityを除外して分母を減らしてはならない。
 - ローカルcandidate gateは`1.0`。ただしこれは宣言済みtarget pool内の実行coverageであり、全合法ポケモンや実環境全体のcoverageを意味しない。
-- 現実装の`CoverageGapReport`はeligible member mapping、Catalog収録、required mechanic supportの前段readinessを測る。旧IDの暗黙推定を廃止したため、M-Bでは235フォーム中explicit mapping/covered 0件、unmapped 235件で、`mega_evolution`もunsupportedである。この値をcapability-levelの`target_pool_execution_coverage_rate`へ読み替えない。
+- `CoverageGapReport`はeligible member mapping、Catalog収録、required mechanic supportの前段readinessを測る。旧IDの暗黙推定を廃止したため、M-Bでは235フォーム中explicit mapping/covered 0件、unmapped 235件で、`mega_evolution`もunsupportedである。
+- 現`source-to-capability-bundle-v1`はsource lockを再検証し、全235 memberを0 resolved/verified、219 unresolved/unverified、16 conflict/unverifiedとして明示する。Catalog-wide semantic selector 788とtarget capability row 118を生成するが、分母未確定のためdeclared/fully-supported countとcoverage rateを`null`にする。この値も実環境採用率へ読み替えない。
 
 ### 2. Verified grounding conformance
 
@@ -92,9 +94,9 @@ regulation_rehearsal_decision_lead_time_hours = t_decision - t0
 1. `RegulationSnapshot`を先に固定し、合法pool、期間、RuleSet差分の正本を決める。
 2. 公式eligible listの全dex/form/variant recordを順序付きで取得し、source manifestにartifact hashと件数を固定する。使用率、記事数、勝率は選定条件にしない。
 3. 同一`national_dex_no + form_code + variant_code`の完全重複だけを決定論的に拒否し、公式list全件を分母へ含める。現M-B snapshotは235 unique target keyを持つ。
-4. 各memberの`pokemon_id` mappingはnullableとし、未mappingを除外せず`unmapped_target` blockerとして残す。全国図鑑番号から外部Catalog IDを推定せず、明示的なsource record evidenceがない限りresolvedにしない。現preflightは0 mapped、235 unmappedである。
+4. 各memberの`pokemon_id` mappingはnullableとし、未mappingを除外せず`unmapped_target` blockerとして残す。全国図鑑番号から外部Catalog IDを推定せず、namespace付きsource record hashとverification evidenceがない限りresolvedにしない。現compileは0 resolved/verified、219 unresolved/unverified、16 conflict/unverifiedである。
 5. 公式`required_mechanics`をmandatory setに加える。現M-Bの`mega_evolution`は、人気度に関係なく分母から除外しない。
-6. mapped entityからspecies、move、ability、item、effect、trigger、RuleSet branchを辿る到達可能closureを将来の`TargetCapabilitySet`とする。現`CoverageGapReport`はこのclosureをまだ代替しない。
+6. mapped entityからspecies、move、ability、item、effect、trigger、RuleSet branchを辿る到達可能closureを`TargetCapabilitySet`とする。mapping未確定時もmandatory mechanicを落とさず、分母をnon-finalとしてcount/rateを報告しない。
 7. regulation hash、target-pool hash、Catalog/RuleSet hash、source IDs、restricted source IDs、member/mapping/coverage数、全blockerをreportへ固定する。
 8. 公式listまたはmappingが変わればsnapshotをversion-upし、旧coverage reportを新しい分母へ流用しない。
 9. 環境構築・選出データはtarget legality分母を狭める用途に使わず、後続のmeta分析と外部holdoutへ分離する。holdoutで新capabilityが見つかった場合はcandidateを昇格させない。
@@ -105,7 +107,7 @@ regulation_rehearsal_decision_lead_time_hours = t_decision - t0
 
 1. Regulation/TargetPool/Coverage/Diff/Rehearsal/Capture/Grounding/AI Envのversion、hash、source、PD契約を定義する。**実装済み**
 2. SIM-01 bundleをfrozen baselineとして検査し、regulation/target/diff/reportを決定論的に生成する。**実装済み**
-3. 宣言target poolについてcapability-level execution coverage `1.0`、silent fallback `0`を再現可能に測定する。**pipeline実装済み / M-B未達** — synthetic Catalogでfixed-point、6次元、RNG-none、probe-derived fallback、grounding、holdout、matrix再計算を検証した。実M-Bはexplicit member readiness 0/235でintake未接続
+3. 宣言target poolについてcapability-level execution coverage `1.0`、silent fallback `0`を再現可能に測定する。**compiler実装済み / M-B未達** — synthetic Catalogでpositive pathを検証し、実M-B intakeからもmapping、Catalog candidate、semantic/execution registry、probe、matrix、理由付き`NO-GO`を一コマンド生成した。現実測はdenominator non-final、execution gap 118、silent fallback 0であり、coverage count/rateを`null`としてfail-closedする
 4. Replay v2互換性、完全状態/観測分離、global RNG禁止、unknown fail-closedを維持する。Replay JSONは全階層でduplicate keyとunknown keyを拒否する。**ローカル検証済み**
 5. synthetic sealed inputで48時間工程をrehearseし、再計算済みcoverage/diffから正しい`NO-GO`を出す。**operational success** — v1はsynthetic NO-GO専用で、fixture上の時間・資源は実測wall-clockまたはdeployable successではない
 6. read-only BlueStacks診断、strict content-addressed capture store、manifest-bound GroundingTrace、allowlist/evidence-bound partial-observation AI Envを用意する。**実装済み** — actual emulator capture/traceは未取得
@@ -128,7 +130,7 @@ regulation_rehearsal_decision_lead_time_hours = t_decision - t0
 
 ## 現在の証拠と未達項目
 
-現時点で利用できる証拠は、限定Catalog/RuleSet、公開damage参照1例、local unit/integration tests、Replay v2、10,000戦seeded smokeに加え、公式source-bound M-B snapshot、235フォームtarget pool、coverage/diff pipeline、synthetic rehearsal report、read-only BlueStacks/capture/GroundingTrace/AI Env契約、generic mega contractである。これはSIM-02ローカル基盤を示すが、次を証明しない。
+現時点で利用できる証拠は、限定Catalog/RuleSet、公開damage参照1例、local unit/integration tests、Replay v2、10,000戦seeded smokeに加え、公式source-bound M-B snapshot、235フォームtarget pool、coverage/diff pipeline、source-to-capability compilerとcontent-addressed NO-GO bundle、synthetic rehearsal report、read-only BlueStacks/capture/GroundingTrace/AI Env契約、generic mega contractである。これはSIM-02ローカル基盤と証拠不足を決定論的に列挙する能力を示すが、次を証明しない。
 
 一方、公式[Regulation Set M-B](https://champions-news.pokemon-home.com/en/page/776.html)は2026-06-17 02:00 UTCから2026-09-02 01:59 UTCまで有効で、メガシンカを1戦に1回許可し、新たに16のメガシンカを列挙する。公式[Season M-4](https://champions-news.pokemon-home.com/en/page/795.html)はM-Bを使用する。SIM-01 RuleSetは`mega_evolution`をunsupportedとしているため、メガシンカは人気度に関係なくSIM-02のmandatory TargetCapabilityである。
 

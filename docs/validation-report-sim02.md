@@ -2,15 +2,16 @@
 
 ## 判定
 
-SIM-02のローカル準備基盤は実装済みであり、規制snapshot、公式eligible target pool、coverage gap、regulation diff、synthetic rehearsal、read-only grounding、AI観測、generic mega contractを機械検査できる。
+SIM-02のローカル準備基盤は実装済みであり、規制snapshot、公式eligible target pool、coverage gap、regulation diff、source-to-capability compiler、synthetic rehearsal、read-only grounding、AI観測、generic mega contractを機械検査できる。
 
 ただし、現行M-Bを実行可能なcandidateとして昇格する条件は満たしていない。
 
 | Scope | Result | Meaning |
 |---|---|---|
 | SIM-02 local infrastructure | `GO / VERIFIED LOCALLY` | Schema、models、pipeline、fail-closed contractをローカルfixtureで検証できる |
-| M-B member readiness | `NO-GO` | explicit mappingは235フォーム中0。旧intakeから213 crosswalk＋22 name candidateを生成したが、正式昇格前 |
-| Capability-level execution coverage | `NO-GO` | Pipelineはsynthetic検証済み。実M-B intake、production registry/probe、actual grounding/holdout未接続 |
+| M-B member readiness | `NO-GO` | 235フォーム中resolved/verified 0、unresolved 219、conflict 16。候補を正式mappingへ昇格しない |
+| Source-to-capability compile | `OPERATIONAL SUCCESS / REASONED NO-GO` | 実M-B source lockから13文書を同一hashへ生成し、理由718件を再現する |
+| Capability-level execution coverage | `NO-GO` | 実M-Bでsemantic selector 788、target row/execution gap 118。分母未確定のためcoverage count/rateは`null` |
 | Synthetic 48h rehearsal | `OPERATIONAL SUCCESS` | 理由付き`NO-GO`をSLA内に出す配線を検証した |
 | Deployable 48h rehearsal | `NO-GO` | Synthetic fixtureは実測wall-clock、sealed historical、live regulationの証拠ではない |
 | BlueStacks read-only grounding | `NO-GO` | 診断/capture/store契約は実装済みだがactual capture/traceは0件 |
@@ -35,6 +36,15 @@ SIM-02のローカル準備基盤は実装済みであり、規制snapshot、公
 - 9 artifactすべてにbyte size、SHA-256、record count、`unverified / local_only / redistribution prohibited`を固定し、tracked source lockの完全一致なしでは再生成を拒否できる。
 - 生成bundleは`data/processed/sim02/`へ置きGit管理外とする。実データ結果は235 target、213 detail available、22 detail missing、88 blocker、promotion ready falseである。
 
+### Source-to-Capability compiler
+
+- `build_source_to_capability_bundle.py`はsource lockを再検証してから、intake、mapping evidence、production Catalog input、runtime Catalog candidate、semantic/execution compilation、TargetPool/TargetCapability、probe、grounding、MechanicCoverageMatrix、decision reportを一工程で生成する。
+- Mappingは0 resolved/verified、219 unresolved/unverified、16 conflict/unverifiedである。名前、全国図鑑番号、LLM推論で自動解決しない。
+- Runtime candidateはspecies 213、moves 490、abilities 180、items 117、types 18を持つ。未検証のpriority/effect/ability/itemはdefault値へ落とさず、Engine境界で`UnsupportedMechanic`となる。
+- Catalog-wide semantic selectorは788、現target capability rowは118、execution gapも118である。個別の到達シナリオをまだ持たない118 probeは同じ先行例外で合格させず、`unexpected_error`として未実証を明示する。`silent_fallback_count`は0だが、positive execution証拠を意味しない。
+- 全入力が同じならreport/documentsはbyte-identicalである。writerはreport hash、document set、全artifact SHA-256/byte countを再検証し、改変されたcompile結果を書かない。
+- CLIの生成先はGitignored `data/processed`配下に限定する。現legacy sourceは`unverified / local_only / redistribution prohibited`で、candidate gateを通らない。
+
 ### Coverage and regulation diff
 
 - Regulation、TargetPool、Catalog、RuleSetのidentity/hash不一致を拒否する。
@@ -49,7 +59,7 @@ SIM-02のローカル準備基盤は実装済みであり、規制snapshot、公
 - 未mapping・unknown effectがあれば`denominator_final: false`とし、coverage count/rateを`null`にする。
 - legality、transition、RNG、event、observation、Replayの6次元を要求し、乱数非使用も`rng:none`として省略しない。
 - `silent_fallback_count`は実行probeから、grounding分子はresolver-backed assertionから、holdout差分はdevelopmentと分離したrecord hashから再計算する。caller supplied rate/countを受け取らない。
-- Small synthetic Catalogではexecution/grounding 1,000,000 ppm、silent fallback 0、clean holdoutでcandidate-readyになるpositive pathと、各fail-closed mutationを検証した。実M-B candidate bundleは未生成である。
+- Small synthetic Catalogではexecution/grounding 1,000,000 ppm、silent fallback 0、clean holdoutでcandidate-readyになるpositive pathと、各fail-closed mutationを検証した。実M-Bでは同じmatrixまで生成済みだが、denominator non-final、execution/grounding/holdout未達なのでcandidateではない。
 
 ### Regulation rehearsal
 
@@ -93,7 +103,7 @@ SIM-02のローカル準備基盤は実装済みであり、規制snapshot、公
 ## 現在の外部blocker
 
 1. `AUD-SIM02-001`: M-B snapshotは`partially_verified`であり、実機rule screenを含むfully verified evidenceではない。
-2. `AUD-SIM02-002`: 235フォームすべての正式なsource-bound Catalog mappingが未昇格で、production TargetCapability bundle、外部grounding、holdoutがない。
+2. `AUD-SIM02-002`: 235フォームすべての正式なsource-bound Catalog mappingが未昇格で、構造化semantic/positive executor、外部grounding、holdoutがない。
 3. `AUD-SIM02-005`: M-B 16メガ形態、同時メガシンカ順、実機event順が未groundingである。
 4. `AUD-SIM02-006`: BlueStacks actual capture/GroundingTraceが0件である。
 5. `AUD-P0-001`: Champions固有の急所、端数、複合効果順等の実機conformanceが未完了である。
@@ -108,6 +118,7 @@ python -m pytest -q
 python scripts/validate_sim01_bundle.py --usage-scope local_research
 python scripts/validate_sim01_frozen.py
 python scripts/build_regulation_diff.py
+python scripts/build_source_to_capability_bundle.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --dry-run
 python scripts/diagnose_bluestacks.py
 python scripts/check_repo_size.py
 ```
@@ -116,16 +127,17 @@ python scripts/check_repo_size.py
 
 ## Final verification
 
-- generated at: `2026-07-13T11:31:14+09:00`
+- generated at: `2026-07-14T07:00:17+09:00`
 - git revision / tree identity: local baseline commit on `codex/sim02-regulation-ready`（公開・pushなし。exact revisionはcurrent `HEAD`で解決）
-- pytest result: `140 passed in 9.49s`
+- pytest result: `163 passed in 10.62s`
 - SIM-01 bundle validator: `ok=true`、local research only、redistribution false
 - frozen baseline validator: `ok=true`、turn 15、P2 win、19 decision windows
 - 10,000 battle smoke (`seed-start 0`): P1 3,240、P2 6,760、draw 0、195,319 decision windows、2,462,659 events、10,000 unique final hashes
 - regulation rehearsal: 235 eligible、explicit mapped 0、235 unmapped、`mega_evolution` gap、synthetic `NO-GO` in 21,600 seconds、operational true、deployable false、silent fallback 0、239 reason codes、9 sealed inputs
 - Catalog intake: 235 target、213 usage crosswalk、22 exact-name candidate、16 diagnostic ID conflicts、22 detail missing、88 blockers、bundle hash `2943ab4b3f716427bff5d5ed379a102f95cc19f0200c8dbbe2ea326950f4b14f`、262,726 bytes、Gitignored
+- Source-to-Capability compiler: operational true、candidate false、0 resolved/verified、219 unresolved、16 conflict、788 semantic selector、118 target rows/execution gaps、118 capability-specific probe未実証、silent fallback 0、718 reasons、13 documents、report hash `a2437fb9c9142b395b1583374ccd0796e81650bfaff0ad94582a1591373340b9`。二重dry-run、real report Schema、report hash、全artifact digestを検証済み
 - BlueStacks diagnostics: `adb_invoked=false`、version `5.22.51.1038`、4 instances、player/HD-Adb停止、ownership未検証、side-effect risk blockerあり
-- repository size guard: 144 candidate files、single-file/fixture limit違反0
+- repository size guard: 159 candidate files、single-file/fixture limit違反0
 - SIM-01 Catalog SHA-256: `764a75146a017aca77453110fc8e19903ddc11e64e1df03c92791aa367703141`
 - SIM-01 RuleSet SHA-256: `f87b077b1ba598865a9e21ef84decbf273ca73806a9412fd5d2520589ff34215`
 - SIM-01 Replay SHA-256: `26af0e4d16f742892ca90c97bc7621380b97fe624c6ec784943ce25f8ad07546`
@@ -138,4 +150,4 @@ python scripts/check_repo_size.py
 
 ## 次の大きな目的
 
-`SIM-02 / Regulation-ready Champions Environment`を一つの成果として完成させる。Catalog candidateをsource-bound mappingへ昇格し、235件から合法到達する全capabilityの固定分母、execution/grounding matrix、silent fallback probe、BlueStacks actual trace、policy-free AI Env、Replay/smoke、sealed-historical 48時間rehearsalを同じversion identityへ束ねる。途中成果の件数だけでは完了とせず、validated candidateまたは不足根拠を列挙した`NO-GO` bundleを最終出力とする。
+`SIM-02 Evidence Promotion and Grounding Corpus`を一つの成果として完成させる。今回固定した235 mapping、788 semantic selector、118 target capabilityのevidence backlogに対し、authoritative sourceまたはactual trace、構造化semantic、capability別positive executor、外部holdoutを追加する。途中成果の件数だけでは完了とせず、同じcompilerがvalidated candidateを出すか、残る不足根拠を列挙した`NO-GO`を再生成することを完了条件とする。

@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
+import re
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -55,7 +56,7 @@ class MoveDefinition:
     power: int | None
     accuracy: int | None
     pp: int
-    priority: int
+    priority: int | None
     contact: bool
     effect: Mapping[str, Any]
     legacy_move_id: int | None = None
@@ -67,6 +68,8 @@ class AbilityDefinition:
     name: str
     effect_id: str
     legacy_ability_id: int | None = None
+    source_record_sha256: str | None = None
+    unsupported_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,8 +77,10 @@ class ItemDefinition:
     item_id: ItemId
     name: str
     effect_id: str
-    consumable: bool = False
+    consumable: bool | None = False
     legacy_item_id: int | None = None
+    source_record_sha256: str | None = None
+    unsupported_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -365,7 +370,11 @@ def load_catalog(path: Path | str) -> CatalogSnapshot:
             power=item.get("power"),
             accuracy=item.get("accuracy"),
             pp=int(item["pp"]),
-            priority=int(item.get("priority", 0)),
+            priority=(
+                None
+                if item.get("priority", 0) is None
+                else int(item.get("priority", 0))
+            ),
             contact=bool(item.get("contact", False)),
             effect=_freeze(item.get("effect", {"kind": "damage"})),
         )
@@ -377,6 +386,8 @@ def load_catalog(path: Path | str) -> CatalogSnapshot:
             legacy_ability_id=item.get("legacy_ability_id"),
             name=str(item["name"]),
             effect_id=str(item["effect_id"]),
+            source_record_sha256=item.get("source_record_sha256"),
+            unsupported_reason=item.get("unsupported_reason"),
         )
         for item in raw.get("abilities", ())
     )
@@ -386,7 +397,13 @@ def load_catalog(path: Path | str) -> CatalogSnapshot:
             legacy_item_id=item.get("legacy_item_id"),
             name=str(item["name"]),
             effect_id=str(item["effect_id"]),
-            consumable=bool(item.get("consumable", False)),
+            consumable=(
+                None
+                if item.get("consumable", False) is None
+                else bool(item.get("consumable", False))
+            ),
+            source_record_sha256=item.get("source_record_sha256"),
+            unsupported_reason=item.get("unsupported_reason"),
         )
         for item in raw.get("items", ())
     )
@@ -522,11 +539,29 @@ def _validate_catalog_references(catalog: CatalogSnapshot) -> None:
             raise SnapshotValidationError(f"move {move.move_id} has unknown type {move.type_id}")
         if move.category not in {"physical", "special", "status"}:
             raise SnapshotValidationError(f"move {move.move_id} has unsupported category")
-        if move.pp <= 0 or move.priority < -7 or move.priority > 7:
+        unsupported = move.effect.get("kind") == "unsupported"
+        if move.pp <= 0 or (
+            move.priority is None and not unsupported
+        ) or (
+            move.priority is not None
+            and (move.priority < -7 or move.priority > 7)
+        ):
             raise SnapshotValidationError(f"move {move.move_id} has invalid PP or priority")
         if move.accuracy is not None and not 1 <= move.accuracy <= 100:
             raise SnapshotValidationError(f"move {move.move_id} has invalid accuracy")
         _validate_move_effect(move)
+    for ability in catalog.abilities:
+        _validate_unsupported_entity_source(
+            "ability", ability.effect_id, ability.source_record_sha256, ability.unsupported_reason
+        )
+    for item in catalog.items:
+        if item.consumable is None and not item.effect_id.startswith("unsupported:"):
+            raise SnapshotValidationError(
+                f"item {item.item_id} has unknown consumable semantics"
+            )
+        _validate_unsupported_entity_source(
+            "item", item.effect_id, item.source_record_sha256, item.unsupported_reason
+        )
     for species in catalog.species:
         if not set(species.types) <= set(catalog.type_ids):
             raise SnapshotValidationError(f"species {species.pokemon_id} has unknown types")
@@ -582,6 +617,19 @@ def _validate_catalog_references(catalog: CatalogSnapshot) -> None:
 def _validate_move_effect(move: MoveDefinition) -> None:
     effect = move.effect
     kind = effect.get("kind")
+    if kind == "unsupported":
+        source_hash = effect.get("source_record_sha256")
+        reason = effect.get("reason")
+        if (
+            not isinstance(source_hash, str)
+            or re.fullmatch(r"[0-9a-f]{64}", source_hash) is None
+            or not isinstance(reason, str)
+            or not reason
+        ):
+            raise SnapshotValidationError(
+                f"unsupported move {move.move_id} requires source hash and reason"
+            )
+        return
     damage_kinds = {
         "damage",
         "damage_drain",
@@ -657,3 +705,21 @@ def _validate_move_effect(move: MoveDefinition) -> None:
             or numerator > denominator
         ):
             raise SnapshotValidationError(f"move {move.move_id} has invalid effect fraction")
+
+
+def _validate_unsupported_entity_source(
+    kind: str,
+    effect_id: str,
+    source_record_sha256: str | None,
+    unsupported_reason: str | None,
+) -> None:
+    if not effect_id.startswith("unsupported:"):
+        return
+    if (
+        source_record_sha256 is None
+        or re.fullmatch(r"[0-9a-f]{64}", source_record_sha256) is None
+        or not unsupported_reason
+    ):
+        raise SnapshotValidationError(
+            f"unsupported {kind} effect requires source hash and reason"
+        )
