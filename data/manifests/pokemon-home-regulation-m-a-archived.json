@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "pokemon-home-regulation-m-a-archived",
+  "source_kind": "official_rule",
+  "title": "Pokémon HOME regulation M-A archived notice",
+  "publisher": "The Pokémon Company",
+  "locator": {
+    "kind": "url",
+    "value": "https://news.pokemon-home.com/ja/page/751.html"
+  },
+  "retrieved_on": "2026-07-13",
+  "license_status": "unverified",
+  "license": {
+    "identifier": null,
+    "url": null,
+    "redistribution_allowed": false,
+    "commercial_use_allowed": false,
+    "notes": "Official factual rule reference; page-content licensing was not reviewed. Local normalized facts only."
+  },
+  "usage_policy": {
+    "local_research_only": true,
+    "redistribution": "prohibited",
+    "derivative_distribution": "review_required"
+  },
+  "artifacts": [
+    {
+      "artifact_id": "sim02-regulation-m-a-archived",
+      "logical_path": "data/fixtures/regulations/m-a-archived.json",
+      "media_type": "application/json",
+      "byte_size": 824,
+      "sha256": "sha256:321899da817ed0b17d2e519306abc6d15bc9737d0a038e11b897534b7421c5fa",
+      "record_count": 1
+    }
+  ],
+  "scope": {
+    "regulation_ids": ["M-A"],
+    "entity_types": ["ruleset"],
+    "language": "ja"
+  },
+  "processing": {
+    "retrieval_method": "manual_reference",
+    "parser_version": "clean-room-regulation-snapshot-v1",
+    "normalized_artifact_ids": ["sim02-regulation-m-a-archived"]
+  },
+  "trust": {
+    "authority": "official",
+    "verification_status": "partially_verified"
+  },
+  "derivation_status": "normalized",
+  "parent_manifest_ids": [],
+  "notes": "Archived source route retained for delta rehearsal. It is not the current regulation."
+}

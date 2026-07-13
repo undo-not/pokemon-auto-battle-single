@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "sim02-regulation-rehearsal-report",
+  "source_kind": "dataset",
+  "title": "SIM-02 sealed synthetic regulation rehearsal report",
+  "publisher": "champions_sim local project",
+  "locator": {
+    "kind": "logical",
+    "value": "sim02://regulation-rehearsal-report"
+  },
+  "retrieved_on": "2026-07-13",
+  "license_status": "unverified",
+  "license": {
+    "identifier": null,
+    "url": null,
+    "redistribution_allowed": false,
+    "commercial_use_allowed": false,
+    "notes": "Report contains hashes and target keys derived from local-only official-source fixtures, so it inherits their restriction."
+  },
+  "usage_policy": {
+    "local_research_only": true,
+    "redistribution": "prohibited",
+    "derivative_distribution": "review_required"
+  },
+  "artifacts": [
+    {
+      "artifact_id": "sim02-regulation-rehearsal-input",
+      "logical_path": "data/fixtures/regulations/synthetic-rehearsal-input.json",
+      "media_type": "application/json",
+      "byte_size": 1010,
+      "sha256": "sha256:4d4593cd40b9f440695d5e9baeef8a465b64fe6a48e047af8553576c25ac1a8a",
+      "record_count": 1
+    },
+    {
+      "artifact_id": "sim02-regulation-rehearsal-no-go-report",
+      "logical_path": "data/golden/sim02-regulation-rehearsal-no-go.json",
+      "media_type": "application/json",
+      "byte_size": 13222,
+      "sha256": "sha256:5ff663f6e50868f1281259fe2ce08d8331cbc54bf60709a4ae8d87a215a2e90e",
+      "record_count": 1
+    }
+  ],
+  "scope": {
+    "regulation_ids": ["M-B", "M-C-REHEARSAL"],
+    "entity_types": ["ruleset", "pokemon"],
+    "language": "ja"
+  },
+  "processing": {
+    "retrieval_method": "generated",
+    "parser_version": "sim02-regulation-rehearsal-report-v1",
+    "normalized_artifact_ids": [
+      "sim02-regulation-rehearsal-input",
+      "sim02-regulation-rehearsal-no-go-report"
+    ]
+  },
+  "trust": {
+    "authority": "local_unknown",
+    "verification_status": "example_only"
+  },
+  "derivation_status": "summary",
+  "parent_manifest_ids": [
+    "pokemon-home-regulation-m-b-current",
+    "sim02-regulation-delta-rehearsal"
+  ],
+  "notes": "The six-hour lead time and resource figures are sealed synthetic fixture inputs. This proves deterministic NO-GO plumbing only; it is not elapsed wall-clock evidence and not a deployable candidate success."
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:construction-selection-corpus:1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "corpus_id", "corpus_role", "regulation_id", "regulation_revision", "regulation_hash", "capture_window_start", "capture_window_end", "records", "evidence_refs", "source_manifest_ids"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "corpus_id": {"$ref": "#/$defs/id"},
+    "corpus_role": {"enum": ["development", "external_holdout"]},
+    "regulation_id": {"$ref": "#/$defs/id"},
+    "regulation_revision": {"$ref": "#/$defs/id"},
+    "regulation_hash": {"$ref": "#/$defs/sha"},
+    "capture_window_start": {"type": "string", "minLength": 1},
+    "capture_window_end": {"type": "string", "minLength": 1},
+    "records": {"type": "array", "items": {"$ref": "#/$defs/record"}},
+    "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+    "source_manifest_ids": {"$ref": "#/$defs/ids"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"},
+    "ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_ref_id", "source_manifest_id", "artifact_id", "json_pointer", "record_sha256"],
+      "properties": {
+        "evidence_ref_id": {"$ref": "#/$defs/id"}, "source_manifest_id": {"$ref": "#/$defs/id"},
+        "artifact_id": {"$ref": "#/$defs/id"}, "json_pointer": {"type": "string", "pattern": "^/"},
+        "record_sha256": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "context": {
+      "type": "object", "additionalProperties": false, "required": ["key", "value"],
+      "properties": {"key": {"$ref": "#/$defs/id"}, "value": {"type": ["string", "integer", "boolean", "null"]}}
+    },
+    "signature": {
+      "type": "object", "additionalProperties": false,
+      "required": ["effect_id", "trigger", "target", "resolution_context", "ruleset_branch"],
+      "properties": {
+        "effect_id": {"$ref": "#/$defs/id"}, "trigger": {"$ref": "#/$defs/id"}, "target": {"$ref": "#/$defs/id"},
+        "resolution_context": {"type": "array", "items": {"$ref": "#/$defs/context"}},
+        "ruleset_branch": {"$ref": "#/$defs/id"}
+      }
+    },
+    "entity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["field", "entity_id", "status", "rate_ppm", "rank", "evidence_ref_ids"],
+      "properties": {
+        "field": {"enum": ["pokemon", "move", "ability", "item", "mega_target"]},
+        "entity_id": {"$ref": "#/$defs/nullableId"},
+        "status": {"enum": ["confirmed", "inferred", "unknown", "conflict"]},
+        "rate_ppm": {"type": ["integer", "null"], "minimum": 0, "maximum": 1000000},
+        "rank": {"type": ["integer", "null"], "minimum": 1},
+        "evidence_ref_ids": {"$ref": "#/$defs/ids"}
+      }
+    },
+    "record": {
+      "type": "object", "additionalProperties": false,
+      "required": ["record_id", "record_kind", "observed_at", "regulation_id", "joint_group_id", "target_key", "entities", "observed_capabilities", "source_complete", "evidence_ref_ids", "blockers", "record_hash"],
+      "properties": {
+        "record_id": {"$ref": "#/$defs/id"},
+        "record_kind": {"enum": ["roster", "selection", "usage_marginal", "battle_reveal"]},
+        "observed_at": {"type": ["string", "null"]}, "regulation_id": {"$ref": "#/$defs/id"},
+        "joint_group_id": {"$ref": "#/$defs/nullableId"}, "target_key": {"$ref": "#/$defs/nullableId"},
+        "entities": {"type": "array", "items": {"$ref": "#/$defs/entity"}},
+        "observed_capabilities": {"type": "array", "items": {"$ref": "#/$defs/signature"}},
+        "source_complete": {"type": "boolean"}, "evidence_ref_ids": {"$ref": "#/$defs/ids"},
+        "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "record_hash": {"$ref": "#/$defs/sha"}
+      }
+    }
+  }
+}

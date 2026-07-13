@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "pokemon-home-regulation-m-b-current",
+  "source_kind": "official_rule",
+  "title": "Pokémon HOME regulation M-B notice and eligible Pokémon pool",
+  "publisher": "The Pokémon Company",
+  "locator": {
+    "kind": "url",
+    "value": "https://news.pokemon-home.com/ja/page/776.html"
+  },
+  "retrieved_on": "2026-07-13",
+  "license_status": "unverified",
+  "license": {
+    "identifier": null,
+    "url": null,
+    "redistribution_allowed": false,
+    "commercial_use_allowed": false,
+    "notes": "Official factual rule reference; page-content licensing was not reviewed. Local normalized facts only."
+  },
+  "usage_policy": {
+    "local_research_only": true,
+    "redistribution": "prohibited",
+    "derivative_distribution": "review_required"
+  },
+  "artifacts": [
+    {
+      "artifact_id": "sim02-regulation-m-b-current",
+      "logical_path": "data/fixtures/regulations/m-b-current.json",
+      "media_type": "application/json",
+      "byte_size": 794,
+      "sha256": "sha256:1115616762205e5de7536d8e264d299ab89c80cbbe0bbcf8d59146551a7a3c8d",
+      "record_count": 1
+    },
+    {
+      "artifact_id": "sim02-regulation-m-b-eligible-pokemon",
+      "logical_path": "data/fixtures/regulations/m-b-eligible-pokemon.json",
+      "media_type": "application/json",
+      "byte_size": 39040,
+      "sha256": "sha256:205e1772031ba78e6f790ef4bad0782ed85364618f2c007aa3a9996b171ce92d",
+      "record_count": 235
+    }
+  ],
+  "scope": {
+    "regulation_ids": ["M-B"],
+    "entity_types": ["ruleset", "pokemon"],
+    "language": "ja"
+  },
+  "processing": {
+    "retrieval_method": "manual_reference",
+    "parser_version": "browser-dom-canonical-v1",
+    "normalized_artifact_ids": [
+      "sim02-regulation-m-b-current",
+      "sim02-regulation-m-b-eligible-pokemon"
+    ]
+  },
+  "trust": {
+    "authority": "official",
+    "verification_status": "partially_verified"
+  },
+  "derivation_status": "normalized",
+  "parent_manifest_ids": [],
+  "notes": "Current as checked 2026-07-13 JST, not timeless. Eligible pool source: https://web-view.app.pokemonchampions.jp/battle/pages/events/rs178066986988lmoqpm/ja/pokemon.html. Ordered DOM population is 235 unique dex/form/variant keys. Canonical compact four-field payload SHA-256: 8110141f34c226c9dcff8ff58e83b30ae9f4a8efdd3e51cf0eace1853590f6c1. Season M-4 notice route: https://news.pokemon-home.com/ja/page/795.html."
+}

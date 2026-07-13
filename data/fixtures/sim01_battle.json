@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0.0",
+  "battle_id": "sim01-garchomp-vs-gyarados",
+  "ruleset_id": "sim01-fixture-rules-v1",
+  "catalog_id": "sim01-catalog-v1",
+  "seed": 20260713,
+  "sides": {
+    "p1": {
+      "active": "p1-garchomp",
+      "team": [
+        {
+          "instance_id": "p1-garchomp",
+          "pokemon_id": "garchomp",
+          "ability_id": "rough_skin",
+          "item_id": "leftovers",
+          "stats": {"hp": 183, "atk": 182, "def": 115, "spa": 100, "spd": 105, "spe": 154},
+          "moves": ["earthquake", "dragon_claw", "swords_dance", "flamethrower"]
+        },
+        {
+          "instance_id": "p1-starmie",
+          "pokemon_id": "starmie",
+          "ability_id": "natural_cure",
+          "item_id": "sitrus_berry",
+          "stats": {"hp": 135, "atk": 95, "def": 105, "spa": 152, "spd": 105, "spe": 167},
+          "moves": ["surf", "psychic", "hydro_pump", "recover"]
+        },
+        {
+          "instance_id": "p1-scizor",
+          "pokemon_id": "scizor",
+          "ability_id": "technician",
+          "item_id": "focus_sash",
+          "stats": {"hp": 145, "atk": 182, "def": 120, "spa": 75, "spd": 100, "spe": 85},
+          "moves": ["bullet_punch", "aerial_ace", "swords_dance", "x_scissor"]
+        }
+      ]
+    },
+    "p2": {
+      "active": "p2-gyarados",
+      "team": [
+        {
+          "instance_id": "p2-gyarados",
+          "pokemon_id": "gyarados",
+          "ability_id": "intimidate",
+          "item_id": "leftovers",
+          "stats": {"hp": 170, "atk": 177, "def": 99, "spa": 80, "spd": 120, "spe": 133},
+          "moves": ["waterfall", "aqua_tail", "dragon_dance", "earthquake"]
+        },
+        {
+          "instance_id": "p2-venusaur",
+          "pokemon_id": "venusaur",
+          "ability_id": "overgrow",
+          "item_id": "sitrus_berry",
+          "stats": {"hp": 155, "atk": 102, "def": 103, "spa": 152, "spd": 120, "spe": 100},
+          "moves": ["sludge_bomb", "giga_drain", "growth", "energy_ball"]
+        },
+        {
+          "instance_id": "p2-charizard",
+          "pokemon_id": "charizard",
+          "ability_id": "blaze",
+          "item_id": "focus_sash",
+          "stats": {"hp": 153, "atk": 104, "def": 98, "spa": 161, "spd": 105, "spe": 152},
+          "moves": ["flamethrower", "air_slash", "will_o_wisp", "dragon_pulse"]
+        }
+      ]
+    }
+  }
+}

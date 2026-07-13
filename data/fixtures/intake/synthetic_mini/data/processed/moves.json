@@ -1,0 +1,9 @@
+{
+  "source": "synthetic_moves",
+  "dataset": "moves",
+  "move_ids": [1, 2],
+  "items": [
+    {"move_id": 1, "name": "わざA"},
+    {"move_id": 2, "name": "わざB"}
+  ]
+}

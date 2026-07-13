@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:holdout-gap:1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "report_id", "target_capability_set_id", "target_capability_set_hash", "holdout_corpus_id", "holdout_corpus_hash", "overlapping_record_hashes", "new_entity_refs", "new_capability_ids", "unknown_observation_refs", "quality_blockers", "holdout_clean", "blocking_reasons"],
+  "properties": {"schema_version": {"const": "1.0.0"}, "report_id": {"$ref": "#/$defs/id"}, "target_capability_set_id": {"$ref": "#/$defs/id"}, "target_capability_set_hash": {"$ref": "#/$defs/sha"}, "holdout_corpus_id": {"$ref": "#/$defs/id"}, "holdout_corpus_hash": {"$ref": "#/$defs/sha"}, "overlapping_record_hashes": {"type": "array", "items": {"$ref": "#/$defs/sha"}, "uniqueItems": true}, "new_entity_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}, "new_capability_ids": {"$ref": "#/$defs/ids"}, "unknown_observation_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}, "quality_blockers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}, "holdout_clean": {"type": "boolean"}, "blocking_reasons": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}},
+  "$defs": {"id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"}, "ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}, "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

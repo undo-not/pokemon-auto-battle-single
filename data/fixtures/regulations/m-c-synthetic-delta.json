@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "regulation_id": "M-C-REHEARSAL",
+  "revision": "synthetic-2026-07-13",
+  "title": "SIM-02 synthetic regulation delta rehearsal",
+  "status": "synthetic",
+  "verification_status": "synthetic_rehearsal",
+  "published_at": null,
+  "period": {
+    "start_date": "2026-09-02",
+    "end_at": "2026-09-23T10:59:00+09:00",
+    "timezone": "Asia/Tokyo"
+  },
+  "battle_format": "singles_3v3",
+  "team_size": 3,
+  "level": 50,
+  "item_clause": {
+    "held_items_enabled": true,
+    "duplicate_held_items_allowed": false
+  },
+  "battle_timer": {
+    "total_minutes": 20,
+    "player_minutes": 7,
+    "turn_seconds": 40,
+    "selection_seconds": 90
+  },
+  "required_mechanics": [
+    "terrain"
+  ],
+  "source_manifest_ids": [
+    "sim02-regulation-delta-rehearsal"
+  ]
+}

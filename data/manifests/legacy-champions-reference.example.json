@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "legacy-champions-reference-example-v1",
+  "source_kind": "legacy_project",
+  "title": "Legacy champions project reference (example manifest only)",
+  "publisher": "unknown",
+  "locator": {
+    "kind": "local_path",
+    "value": "C:/Users/hogeh/Desktop/Git/Pokemon/champions"
+  },
+  "retrieved_on": "2026-07-13",
+  "license_status": "unverified",
+  "license": {
+    "identifier": null,
+    "url": null,
+    "redistribution_allowed": false,
+    "commercial_use_allowed": false,
+    "notes": "Operational restriction: licensing must be verified source by source before any legacy-derived data is copied or redistributed."
+  },
+  "usage_policy": {
+    "local_research_only": true,
+    "redistribution": "prohibited",
+    "derivative_distribution": "review_required"
+  },
+  "artifacts": [],
+  "scope": {
+    "regulation_ids": [],
+    "entity_types": [
+      "pokemon",
+      "move",
+      "ability",
+      "item",
+      "type_chart",
+      "mechanics",
+      "usage",
+      "article",
+      "code"
+    ],
+    "language": "ja"
+  },
+  "processing": {
+    "retrieval_method": "manual_reference",
+    "parser_version": null,
+    "normalized_artifact_ids": []
+  },
+  "trust": {
+    "authority": "local_unknown",
+    "verification_status": "unverified"
+  },
+  "derivation_status": "reference_only",
+  "parent_manifest_ids": [],
+  "notes": "This manifest records lineage only. No raw, processed, generated, or model artifact from the legacy project is included in this repository."
+}

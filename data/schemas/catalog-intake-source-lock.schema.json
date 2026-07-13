@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:catalog-intake-source-lock:1",
+  "title": "SIM-02 Catalog Intake Source Lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "manifest_id", "license_status", "access_scope", "redistribution", "artifacts"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "manifest_id": {"type": "string", "minLength": 1},
+    "license_status": {"const": "unverified"},
+    "access_scope": {"const": "local_only"},
+    "redistribution": {"const": "prohibited"},
+    "artifacts": {
+      "type": "array", "minItems": 8,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["artifact_id", "root_kind", "relative_path", "sha256", "byte_count", "record_count"],
+        "properties": {
+          "artifact_id": {"type": "string", "minLength": 1},
+          "root_kind": {"enum": ["repository", "legacy"]},
+          "relative_path": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "byte_count": {"type": "integer", "minimum": 1},
+          "record_count": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  }
+}

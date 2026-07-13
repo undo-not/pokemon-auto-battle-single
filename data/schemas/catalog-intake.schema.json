@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:catalog-intake:1",
+  "title": "SIM-02 Local Catalog Intake Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "pipeline_version", "bundle_id", "profile_id",
+    "regulation_id", "regulation_revision", "target_pool_sha256",
+    "target_key_sha256", "target_member_count", "source_policy",
+    "artifacts", "members", "entity_unions", "usage_detail_diagnostics",
+    "blockers", "ready_for_capability_promotion", "summary", "bundle_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "pipeline_version": {"const": "1.0.0"},
+    "bundle_id": {"type": "string", "minLength": 1},
+    "profile_id": {"type": "string", "minLength": 1},
+    "regulation_id": {"type": "string", "minLength": 1},
+    "regulation_revision": {"type": "string", "minLength": 1},
+    "target_pool_sha256": {"$ref": "#/$defs/sha256"},
+    "target_key_sha256": {"$ref": "#/$defs/sha256"},
+    "target_member_count": {"type": "integer", "minimum": 1},
+    "source_policy": {"$ref": "#/$defs/sourcePolicy"},
+    "artifacts": {
+      "type": "array", "minItems": 8,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "members": {
+      "type": "array", "minItems": 1,
+      "items": {"$ref": "#/$defs/member"}
+    },
+    "entity_unions": {
+      "type": "array", "minItems": 6, "maxItems": 6,
+      "items": {"$ref": "#/$defs/entityUnion"}
+    },
+    "usage_detail_diagnostics": {"$ref": "#/$defs/diagnostics"},
+    "blockers": {"type": "array", "items": {"$ref": "#/$defs/blocker"}},
+    "ready_for_capability_promotion": {"type": "boolean"},
+    "summary": {"$ref": "#/$defs/summary"},
+    "bundle_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sourcePolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["license_status", "access_scope", "redistribution", "usage_detail_authority"],
+      "properties": {
+        "license_status": {"const": "unverified"},
+        "access_scope": {"const": "local_only"},
+        "redistribution": {"const": "prohibited"},
+        "usage_detail_authority": {"const": "diagnostic_only"}
+      }
+    },
+    "artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "artifact_id", "root_kind", "relative_path", "sha256", "byte_count",
+        "record_count", "license_status", "access_scope", "redistribution"
+      ],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "root_kind": {"enum": ["repository", "legacy"]},
+        "relative_path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byte_count": {"type": "integer", "minimum": 1},
+        "record_count": {"type": "integer", "minimum": 0},
+        "license_status": {"const": "unverified"},
+        "access_scope": {"const": "local_only"},
+        "redistribution": {"const": "prohibited"}
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_artifact_id", "source_record_key", "matched_by", "normalized_official_name", "candidate_pokemon_ids"],
+      "properties": {
+        "source_artifact_id": {"enum": ["pokemon_usage", "pokemon_catalog"]},
+        "source_record_key": {"type": "string", "minLength": 1},
+        "matched_by": {"type": "string", "minLength": 1},
+        "normalized_official_name": {"type": "string", "minLength": 1},
+        "candidate_pokemon_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      }
+    },
+    "member": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "target_key", "national_dex_no", "form_code", "variant_code", "label",
+        "mapping_status", "selected_pokemon_id", "evidence", "detail_status",
+        "detail_record_sha256"
+      ],
+      "properties": {
+        "target_key": {"type": "string", "pattern": "^dex:[0-9]{4,}:form:[^:]+:variant:[^:]+$"},
+        "national_dex_no": {"type": "integer", "minimum": 1},
+        "form_code": {"type": "string", "minLength": 1},
+        "variant_code": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "mapping_status": {"enum": ["usage_crosswalk", "exact_name_candidate", "unmapped", "ambiguous_name"]},
+        "selected_pokemon_id": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "evidence": {"$ref": "#/$defs/evidence"},
+        "detail_status": {"enum": ["available", "missing"]},
+        "detail_record_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}
+      }
+    },
+    "recordHash": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_id", "canonical_sha256"],
+      "properties": {
+        "entity_id": {"type": "string", "minLength": 1},
+        "canonical_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "entityUnion": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_kind", "selection_basis", "id_count", "ids", "hashed_record_count", "record_hashes", "missing_record_ids"],
+      "properties": {
+        "entity_kind": {"enum": ["pokemon", "mega_pokemon", "move", "ability", "item", "type"]},
+        "selection_basis": {"type": "string", "minLength": 1},
+        "id_count": {"type": "integer", "minimum": 0},
+        "ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "hashed_record_count": {"type": "integer", "minimum": 0},
+        "record_hashes": {"type": "array", "items": {"$ref": "#/$defs/recordHash"}},
+        "missing_record_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      }
+    },
+    "conflict": {
+      "type": "object", "additionalProperties": false,
+      "required": ["pokedb_pokemon_id", "target_key", "pokemon_name", "selected_pokemon_id", "diagnostic_pokemon_id", "selected_matched_by", "diagnostic_matched_by"],
+      "properties": {
+        "pokedb_pokemon_id": {"type": "string", "minLength": 1},
+        "target_key": {"type": "string", "minLength": 1},
+        "pokemon_name": {"type": "string", "minLength": 1},
+        "selected_pokemon_id": {"type": "string", "minLength": 1},
+        "diagnostic_pokemon_id": {"type": "string", "minLength": 1},
+        "selected_matched_by": {"type": "string", "minLength": 1},
+        "diagnostic_matched_by": {"type": "string", "minLength": 1}
+      }
+    },
+    "diagnostics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["present", "authoritative", "conflict_count", "conflicts"],
+      "properties": {
+        "present": {"type": "boolean"},
+        "authoritative": {"const": false},
+        "conflict_count": {"type": "integer", "minimum": 0},
+        "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}}
+      }
+    },
+    "blocker": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "scope", "subject", "detail"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "subject": {"type": "string", "minLength": 1},
+        "detail": {"type": "string", "minLength": 1}
+      }
+    },
+    "countMap": {
+      "type": "object", "additionalProperties": {"type": "integer", "minimum": 0}
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_count", "mapping_counts", "usage_matched_by_counts", "detail_counts", "usage_detail_conflict_count", "entity_id_counts", "entity_missing_record_counts", "blocker_count"],
+      "properties": {
+        "artifact_count": {"type": "integer", "minimum": 8},
+        "mapping_counts": {"$ref": "#/$defs/countMap"},
+        "usage_matched_by_counts": {"$ref": "#/$defs/countMap"},
+        "detail_counts": {"$ref": "#/$defs/countMap"},
+        "usage_detail_conflict_count": {"type": "integer", "minimum": 0},
+        "entity_id_counts": {"$ref": "#/$defs/countMap"},
+        "entity_missing_record_counts": {"$ref": "#/$defs/countMap"},
+        "blocker_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

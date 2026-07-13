@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0.0",
+  "ruleset_id": "sim01-fixture-rules-v1",
+  "engine_semantics_version": "sim-core-0.1",
+  "name": "SIM-01 deterministic singles fixture",
+  "battle_format": "singles_3v3",
+  "team_size": 3,
+  "level": 50,
+  "item_clause": true,
+  "max_turns": 500,
+  "damage_rolls": [85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100],
+  "critical": {
+    "chance_numerator": 1,
+    "chance_denominator": 24,
+    "multiplier_numerator": 3,
+    "multiplier_denominator": 2
+  },
+  "residuals": {
+    "burn": {"numerator": 1, "denominator": 16},
+    "poison": {"numerator": 1, "denominator": 8},
+    "leftovers": {"numerator": 1, "denominator": 16}
+  },
+  "item_rules": {
+    "sitrus_berry": {
+      "activation_hp_numerator": 1,
+      "activation_hp_denominator": 2,
+      "heal_numerator": 1,
+      "heal_denominator": 4
+    },
+    "focus_sash": {"surviving_hp": 1}
+  },
+  "ability_rules": {
+    "rough_skin": {"numerator": 1, "denominator": 8},
+    "technician": {"power_limit": 60, "multiplier_numerator": 3, "multiplier_denominator": 2},
+    "overgrow": {"hp_numerator": 1, "hp_denominator": 3, "multiplier_numerator": 3, "multiplier_denominator": 2},
+    "blaze": {"hp_numerator": 1, "hp_denominator": 3, "multiplier_numerator": 3, "multiplier_denominator": 2}
+  },
+  "supported_mechanics": [
+    "fixed_power_damage",
+    "accuracy",
+    "critical_hit",
+    "damage_roll",
+    "type_effectiveness",
+    "stab",
+    "stat_stages",
+    "priority",
+    "speed_order",
+    "speed_tie",
+    "manual_switch",
+    "faint_replacement",
+    "always_hit_move",
+    "burn",
+    "poison",
+    "flinch",
+    "drain",
+    "recovery",
+    "intimidate",
+    "rough_skin",
+    "natural_cure",
+    "technician",
+    "overgrow",
+    "blaze",
+    "leftovers",
+    "sitrus_berry",
+    "focus_sash"
+  ],
+  "unsupported_mechanics": [
+    "mega_evolution",
+    "weather",
+    "terrain",
+    "screens",
+    "substitute",
+    "multi_hit",
+    "protect_chain",
+    "one_hit_ko",
+    "fixed_damage",
+    "counter_damage",
+    "struggle",
+    "confusion",
+    "sleep",
+    "freeze",
+    "trapping",
+    "choice_lock",
+    "hazards"
+  ],
+  "provisional_rules": [
+    "critical.chance_denominator",
+    "critical.multiplier",
+    "residual_rounding",
+    "secondary_effect_order"
+  ],
+  "provisional_decision_ids": [
+    "PD-003",
+    "PD-004",
+    "PD-007"
+  ],
+  "source_manifest_ids": [
+    "champions-wiki-damage-reference"
+  ]
+}

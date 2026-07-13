@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "baseline_id": "sim01-frozen-v1",
+  "frozen_on": "2026-07-13",
+  "simulator_version": "0.1.0",
+  "engine_semantics_version": "sim-core-0.1",
+  "catalog_path": "data/fixtures/sim01_catalog.json",
+  "catalog_sha256": "764a75146a017aca77453110fc8e19903ddc11e64e1df03c92791aa367703141",
+  "ruleset_path": "data/fixtures/sim01_ruleset.json",
+  "ruleset_sha256": "f87b077b1ba598865a9e21ef84decbf273ca73806a9412fd5d2520589ff34215",
+  "battle_path": "data/fixtures/sim01_battle.json",
+  "representative_seed": 20260713,
+  "replay_schema_version": "2.0.0",
+  "replay_sha256": "26af0e4d16f742892ca90c97bc7621380b97fe624c6ec784943ce25f8ad07546",
+  "final_state_sha256": "4f59a78f7bb5b8e771d6dd4a4dffd8ed69c5dfead55b7f96ac6c924fea6b4267",
+  "winner": "p2",
+  "turn": 15,
+  "decision_windows": 19,
+  "provisional_decision_ids": ["PD-003", "PD-004", "PD-007"],
+  "source_manifest_ids": [
+    "champions-wiki-damage-reference",
+    "legacy-champions-59bf57c-sim01"
+  ],
+  "validation_report": "docs/validation-report-sim01.md"
+}

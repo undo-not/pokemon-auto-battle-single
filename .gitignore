@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and packaging
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local secrets and machine-specific settings
+.env
+.env.*
+!.env.example
+
+# Source and experiment artifacts: keep these outside Git.
+data/raw/
+data/processed/
+replays/
+runs/
+checkpoints/
+embeddings/
+llm_cache/
+videos/
+screenshots/
+
+# Raw emulator captures are local-only and may contain sensitive screen data.
+**/artifacts/bluestacks/

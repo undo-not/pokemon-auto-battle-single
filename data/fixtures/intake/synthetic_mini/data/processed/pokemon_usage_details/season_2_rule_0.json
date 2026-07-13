@@ -1,0 +1,8 @@
+{
+  "source": "synthetic_usage_details",
+  "dataset": "pokemon_usage_details",
+  "items": [
+    {"pokedb_pokemon_id": "0001-00", "name": "アルファ", "pokemon_id": "p1", "matched_by": "poketetsu_url"},
+    {"pokedb_pokemon_id": "0002-00", "name": "ベータ", "pokemon_id": "wrong-p2", "matched_by": "poketetsu_url"}
+  ]
+}

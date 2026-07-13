@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:regulation-diff:1",
+  "title": "SIM-02 Regulation Diff Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "diff_id", "before", "after", "changed_fields",
+    "added_mechanics", "removed_mechanics", "added_target_keys",
+    "removed_target_keys", "added_blocking_reasons",
+    "resolved_blocking_reasons", "requires_simulator_update", "source_manifest_ids"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "diff_id": {"$ref": "#/$defs/stableId"},
+    "before": {"$ref": "#/$defs/snapshotReference"},
+    "after": {"$ref": "#/$defs/snapshotReference"},
+    "changed_fields": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["field", "before", "after"],
+        "properties": {
+          "field": {"$ref": "#/$defs/stableId"},
+          "before": {"type": ["string", "integer", "boolean", "null"]},
+          "after": {"type": ["string", "integer", "boolean", "null"]}
+        }
+      }
+    },
+    "added_mechanics": {"$ref": "#/$defs/stableIds"},
+    "removed_mechanics": {"$ref": "#/$defs/stableIds"},
+    "added_target_keys": {"$ref": "#/$defs/stableIds"},
+    "removed_target_keys": {"$ref": "#/$defs/stableIds"},
+    "added_blocking_reasons": {"$ref": "#/$defs/stableIds"},
+    "resolved_blocking_reasons": {"$ref": "#/$defs/stableIds"},
+    "requires_simulator_update": {"type": "boolean"},
+    "source_manifest_ids": {"$ref": "#/$defs/stableIds"}
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string", "minLength": 1, "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "stableIds": {
+      "type": "array", "items": {"$ref": "#/$defs/stableId"}, "uniqueItems": true
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshotReference": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "regulation_id", "regulation_revision", "regulation_hash",
+        "target_pool_id", "target_pool_hash", "coverage_report_hash"
+      ],
+      "properties": {
+        "regulation_id": {"$ref": "#/$defs/stableId"},
+        "regulation_revision": {"$ref": "#/$defs/stableId"},
+        "regulation_hash": {"$ref": "#/$defs/sha256"},
+        "target_pool_id": {"$ref": "#/$defs/stableId"},
+        "target_pool_hash": {"$ref": "#/$defs/sha256"},
+        "coverage_report_hash": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:frozen-baseline:1",
+  "title": "Frozen simulator regression baseline",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "baseline_id",
+    "frozen_on",
+    "simulator_version",
+    "engine_semantics_version",
+    "catalog_path",
+    "catalog_sha256",
+    "ruleset_path",
+    "ruleset_sha256",
+    "battle_path",
+    "representative_seed",
+    "replay_schema_version",
+    "replay_sha256",
+    "final_state_sha256",
+    "winner",
+    "turn",
+    "decision_windows",
+    "provisional_decision_ids",
+    "source_manifest_ids",
+    "validation_report"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "baseline_id": {"const": "sim01-frozen-v1"},
+    "frozen_on": {"type": "string", "format": "date"},
+    "simulator_version": {"const": "0.1.0"},
+    "engine_semantics_version": {"const": "sim-core-0.1"},
+    "catalog_path": {"type": "string", "minLength": 1},
+    "catalog_sha256": {"$ref": "#/$defs/sha256"},
+    "ruleset_path": {"type": "string", "minLength": 1},
+    "ruleset_sha256": {"$ref": "#/$defs/sha256"},
+    "battle_path": {"type": "string", "minLength": 1},
+    "representative_seed": {"type": "integer", "minimum": 0},
+    "replay_schema_version": {"const": "2.0.0"},
+    "replay_sha256": {"$ref": "#/$defs/sha256"},
+    "final_state_sha256": {"$ref": "#/$defs/sha256"},
+    "winner": {"enum": ["p1", "p2", null]},
+    "turn": {"type": "integer", "minimum": 0},
+    "decision_windows": {"type": "integer", "minimum": 1},
+    "provisional_decision_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^PD-[0-9]{3}$"},
+      "uniqueItems": true
+    },
+    "source_manifest_ids": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "validation_report": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

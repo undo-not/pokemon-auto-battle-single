@@ -1,0 +1,9 @@
+{
+  "source": "synthetic_catalog",
+  "dataset": "pokemon_catalog",
+  "items": [
+    {"pokemon_id": "p1", "name": "アルファ"},
+    {"pokemon_id": "p2", "name": "ベータ"},
+    {"pokemon_id": "p3", "name": "ガンマ"}
+  ]
+}

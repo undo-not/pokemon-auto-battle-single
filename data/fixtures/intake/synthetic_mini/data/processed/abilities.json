@@ -1,0 +1,8 @@
+{
+  "source": "synthetic_abilities",
+  "dataset": "abilities",
+  "items": [
+    {"ability_id": 10, "name": "とくせいA"},
+    {"ability_id": 11, "name": "とくせいB"}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "source": "synthetic_items",
+  "dataset": "items",
+  "item_ids": [20],
+  "items": [
+    {"item_id": 20, "name": "どうぐA"}
+  ]
+}

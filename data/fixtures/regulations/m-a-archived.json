@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "regulation_id": "M-A",
+  "revision": "official-2026-04-08",
+  "title": "レギュレーションM-A（アーカイブ参照）",
+  "status": "archived",
+  "verification_status": "partially_verified",
+  "published_at": "2026-04-08T11:00:00+09:00",
+  "period": {
+    "start_date": "2026-04-08",
+    "end_at": "2026-06-17T10:59:00+09:00",
+    "timezone": "Asia/Tokyo"
+  },
+  "battle_format": "singles_3v3",
+  "team_size": 3,
+  "level": 50,
+  "item_clause": {
+    "held_items_enabled": true,
+    "duplicate_held_items_allowed": false
+  },
+  "battle_timer": {
+    "total_minutes": 20,
+    "player_minutes": 7,
+    "turn_seconds": 45,
+    "selection_seconds": 90
+  },
+  "required_mechanics": [
+    "mega_evolution"
+  ],
+  "source_manifest_ids": [
+    "pokemon-home-regulation-m-a-archived"
+  ]
+}

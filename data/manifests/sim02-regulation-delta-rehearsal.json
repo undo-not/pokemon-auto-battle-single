@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "sim02-regulation-delta-rehearsal",
+  "source_kind": "dataset",
+  "title": "SIM-02 synthetic regulation delta rehearsal",
+  "publisher": "champions_sim local project",
+  "locator": {
+    "kind": "logical",
+    "value": "sim02://regulation-delta-rehearsal"
+  },
+  "retrieved_on": "2026-07-13",
+  "license_status": "unverified",
+  "license": {
+    "identifier": null,
+    "url": null,
+    "redistribution_allowed": false,
+    "commercial_use_allowed": false,
+    "notes": "Synthetic regulation fields are local, but the pool retains official-source labels. Inherit the unverified local-only restriction."
+  },
+  "usage_policy": {
+    "local_research_only": true,
+    "redistribution": "prohibited",
+    "derivative_distribution": "review_required"
+  },
+  "artifacts": [
+    {
+      "artifact_id": "sim02-regulation-m-c-synthetic",
+      "logical_path": "data/fixtures/regulations/m-c-synthetic-delta.json",
+      "media_type": "application/json",
+      "byte_size": 792,
+      "sha256": "sha256:2980113226b61199874debb60207e95cc310c71bdce0b865e0791d7502bad5b7",
+      "record_count": 1
+    },
+    {
+      "artifact_id": "sim02-regulation-m-c-eligible-pokemon-synthetic",
+      "logical_path": "data/fixtures/regulations/m-c-eligible-pokemon-synthetic.json",
+      "media_type": "application/json",
+      "byte_size": 39095,
+      "sha256": "sha256:498f494daf41a426ea10677ebaa8dadea4bef714a15721c67a4dd3a72ad21989",
+      "record_count": 235
+    },
+    {
+      "artifact_id": "sim02-regulation-rehearsal-input",
+      "logical_path": "data/fixtures/regulations/synthetic-rehearsal-input.json",
+      "media_type": "application/json",
+      "byte_size": 1010,
+      "sha256": "sha256:4d4593cd40b9f440695d5e9baeef8a465b64fe6a48e047af8553576c25ac1a8a",
+      "record_count": 1
+    }
+  ],
+  "scope": {
+    "regulation_ids": ["M-C-REHEARSAL"],
+    "entity_types": ["ruleset", "pokemon"],
+    "language": "ja"
+  },
+  "processing": {
+    "retrieval_method": "generated",
+    "parser_version": "sim02-delta-rehearsal-v1",
+    "normalized_artifact_ids": [
+      "sim02-regulation-m-c-synthetic",
+      "sim02-regulation-m-c-eligible-pokemon-synthetic",
+      "sim02-regulation-rehearsal-input"
+    ]
+  },
+  "trust": {
+    "authority": "local_unknown",
+    "verification_status": "example_only"
+  },
+  "derivation_status": "derived",
+  "parent_manifest_ids": ["pokemon-home-regulation-m-b-current"],
+  "notes": "Only tests one-week adaptation plumbing. Do not interpret M-C-REHEARSAL, terrain, dates, or timer changes as announced facts."
+}

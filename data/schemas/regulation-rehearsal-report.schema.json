@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:regulation-rehearsal-report:1",
+  "title": "SIM-02 Regulation Rehearsal Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "report_id", "rehearsal_kind", "outcome", "t0",
+    "t_decision", "decision_lead_time_seconds", "within_48_hours",
+    "provisional_decision_ids", "sealed_input_hashes", "source_manifest_ids",
+    "resources", "coverage_report_hash", "regulation_diff_hash",
+    "target_pool_execution_coverage_rate_ppm",
+    "verified_grounding_conformance_rate_ppm", "silent_fallback_count",
+    "candidate_bundle_hash", "no_go_reason_codes",
+    "operational_rehearsal_success", "deployable_candidate_success", "notes"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "report_id": {"$ref": "#/$defs/stableId"},
+    "rehearsal_kind": {"const": "synthetic_internal"},
+    "outcome": {"const": "no_go"},
+    "t0": {"type": "string", "minLength": 1},
+    "t_decision": {"type": "string", "minLength": 1},
+    "decision_lead_time_seconds": {"type": "integer", "minimum": 0},
+    "within_48_hours": {"type": "boolean"},
+    "provisional_decision_ids": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^PD-[0-9]{3}$"}
+    },
+    "sealed_input_hashes": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["artifact_id", "sha256"],
+        "properties": {
+          "artifact_id": {"$ref": "#/$defs/stableId"},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "source_manifest_ids": {"$ref": "#/$defs/stableIds"},
+    "resources": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "measurement_status", "compute_environment", "process_count",
+        "max_parallel_workers", "network_fetch_count", "execution_minutes",
+        "manual_work_minutes", "external_wait_minutes"
+      ],
+      "properties": {
+        "measurement_status": {"enum": ["measured", "synthetic_fixture"]},
+        "compute_environment": {"type": "string", "minLength": 1},
+        "process_count": {"type": "integer", "minimum": 1},
+        "max_parallel_workers": {"type": "integer", "minimum": 1},
+        "network_fetch_count": {"type": "integer", "minimum": 0},
+        "execution_minutes": {"type": "integer", "minimum": 0},
+        "manual_work_minutes": {"type": "integer", "minimum": 0},
+        "external_wait_minutes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "coverage_report_hash": {"$ref": "#/$defs/sha256"},
+    "regulation_diff_hash": {"$ref": "#/$defs/sha256"},
+    "target_pool_execution_coverage_rate_ppm": {"$ref": "#/$defs/nullableRate"},
+    "verified_grounding_conformance_rate_ppm": {"$ref": "#/$defs/nullableRate"},
+    "silent_fallback_count": {"type": "integer", "minimum": 0},
+    "candidate_bundle_hash": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "no_go_reason_codes": {"$ref": "#/$defs/stableIds"},
+    "operational_rehearsal_success": {"type": "boolean"},
+    "deployable_candidate_success": {"type": "boolean"},
+    "notes": {
+      "type": "array", "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"outcome": {"const": "no_go"}}, "required": ["outcome"]},
+      "then": {
+        "properties": {
+          "candidate_bundle_hash": {"type": "null"},
+          "no_go_reason_codes": {"minItems": 1},
+          "deployable_candidate_success": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"rehearsal_kind": {"const": "synthetic_internal"}},
+        "required": ["rehearsal_kind"]
+      },
+      "then": {"properties": {"deployable_candidate_success": {"const": false}}}
+    }
+  ],
+  "$defs": {
+    "stableId": {
+      "type": "string", "minLength": 1, "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "stableIds": {
+      "type": "array", "items": {"$ref": "#/$defs/stableId"}, "uniqueItems": true
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableRate": {
+      "type": ["integer", "null"], "minimum": 0, "maximum": 1000000
+    }
+  }
+}

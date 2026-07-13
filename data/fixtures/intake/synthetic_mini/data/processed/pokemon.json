@@ -1,0 +1,9 @@
+{
+  "source": "synthetic_pokemon",
+  "dataset": "pokemon",
+  "items": [
+    {"pokemon_id": "p1", "name": "アルファ", "base_stats": {}, "type_ids": [0], "abilities": [{"ability_id": 10, "name": "とくせいA"}], "mega_evolution_ids": ["p1m"], "move_ids": [1]},
+    {"pokemon_id": "p2", "name": "ベータ", "base_stats": {}, "type_ids": [1], "abilities": [{"ability_id": 11, "name": "とくせいB"}], "mega_evolution_ids": [], "move_ids": [2]},
+    {"pokemon_id": "p1m", "name": "メガアルファ", "base_stats": {}, "type_ids": [0], "abilities": [{"ability_id": 10, "name": "とくせいA"}], "mega_evolution_ids": [], "move_ids": [1]}
+  ]
+}

@@ -1,0 +1,1657 @@
+{
+  "schema_version": "1.0.0",
+  "regulation_id": "M-C-REHEARSAL",
+  "regulation_revision": "synthetic-2026-07-13",
+  "expected_member_count": 235,
+  "source_manifest_ids": [
+    "pokemon-home-regulation-m-b-current",
+    "sim02-regulation-delta-rehearsal"
+  ],
+  "members": [
+    {
+      "national_dex_no": 3,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0003 フシギバナ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 6,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0006 リザードン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 9,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0009 カメックス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 15,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0015 スピアー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 18,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0018 ピジョット",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 24,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0024 アーボック",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 25,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0025 ピカチュウ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 26,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0026 ライチュウ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 26,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0026 ライチュウ (アローラのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 36,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0036 ピクシー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 38,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0038 キュウコン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 38,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0038 キュウコン (アローラのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 45,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0045 ラフレシア",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 59,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0059 ウインディ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 59,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0059 ウインディ (ヒスイのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 65,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0065 フーディン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 68,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0068 カイリキー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 71,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0071 ウツボット",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 80,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0080 ヤドラン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 80,
+      "form_code": "02",
+      "variant_code": "0",
+      "label": "No.0080 ヤドラン (ガラルのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 94,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0094 ゲンガー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 115,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0115 ガルーラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 121,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0121 スターミー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 127,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0127 カイロス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 128,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0128 ケンタロス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 128,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0128 ケンタロス (パルデアのすがた・コンバットしゅ)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 128,
+      "form_code": "02",
+      "variant_code": "0",
+      "label": "No.0128 ケンタロス (パルデアのすがた・ブレイズしゅ)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 128,
+      "form_code": "03",
+      "variant_code": "0",
+      "label": "No.0128 ケンタロス (パルデアのすがた・ウォーターしゅ)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 130,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0130 ギャラドス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 132,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0132 メタモン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 134,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0134 シャワーズ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 135,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0135 サンダース",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 136,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0136 ブースター",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 142,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0142 プテラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 143,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0143 カビゴン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 149,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0149 カイリュー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 154,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0154 メガニウム",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 157,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0157 バクフーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 157,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0157 バクフーン (ヒスイのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 160,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0160 オーダイル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 168,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0168 アリアドス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 181,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0181 デンリュウ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 184,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0184 マリルリ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 186,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0186 ニョロトノ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 196,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0196 エーフィ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 197,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0197 ブラッキー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 199,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0199 ヤドキング",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 199,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0199 ヤドキング (ガラルのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 205,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0205 フォレトス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 208,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0208 ハガネール",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 211,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0211 ハリーセン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 212,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0212 ハッサム",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 214,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0214 ヘラクロス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 227,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0227 エアームド",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 229,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0229 ヘルガー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 248,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0248 バンギラス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 254,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0254 ジュカイン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 257,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0257 バシャーモ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 260,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0260 ラグラージ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 279,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0279 ペリッパー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 282,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0282 サーナイト",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 302,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0302 ヤミラミ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 303,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0303 クチート",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 306,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0306 ボスゴドラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 308,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0308 チャーレム",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 310,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0310 ライボルト",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 319,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0319 サメハダー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 323,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0323 バクーダ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 324,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0324 コータス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 334,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0334 チルタリス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 350,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0350 ミロカロス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 351,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0351 ポワルン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 354,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0354 ジュペッタ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 358,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0358 チリーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 359,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0359 アブソル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 362,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0362 オニゴーリ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 376,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0376 メタグロス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 389,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0389 ドダイトス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 392,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0392 ゴウカザル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 395,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0395 エンペルト",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 398,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0398 ムクホーク",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 405,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0405 レントラー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 407,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0407 ロズレイド",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 409,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0409 ラムパルド",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 411,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0411 トリデプス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 428,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0428 ミミロップ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 442,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0442 ミカルゲ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 445,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0445 ガブリアス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 448,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0448 ルカリオ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 450,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0450 カバルドン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 454,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0454 ドクロッグ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 460,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0460 ユキノオー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 461,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0461 マニューラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 464,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0464 ドサイドン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 470,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0470 リーフィア",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 471,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0471 グレイシア",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 472,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0472 グライオン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 473,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0473 マンムー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 475,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0475 エルレイド",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 478,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0478 ユキメノコ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 479,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0479 ロトム (ロトムのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 479,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0479 ロトム (ヒートロトム)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 479,
+      "form_code": "02",
+      "variant_code": "0",
+      "label": "No.0479 ロトム (ウォッシュロトム)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 479,
+      "form_code": "03",
+      "variant_code": "0",
+      "label": "No.0479 ロトム (フロストロトム)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 479,
+      "form_code": "04",
+      "variant_code": "0",
+      "label": "No.0479 ロトム (スピンロトム)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 479,
+      "form_code": "05",
+      "variant_code": "0",
+      "label": "No.0479 ロトム (カットロトム)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 497,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0497 ジャローダ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 500,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0500 エンブオー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 503,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0503 ダイケンキ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 503,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0503 ダイケンキ (ヒスイのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 505,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0505 ミルホッグ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 510,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0510 レパルダス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 512,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0512 ヤナッキー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 514,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0514 バオッキー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 516,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0516 ヒヤッキー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 518,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0518 ムシャーナ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 530,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0530 ドリュウズ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 531,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0531 タブンネ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 534,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0534 ローブシン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 545,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0545 ペンドラー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 547,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0547 エルフーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 553,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0553 ワルビアル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 560,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0560 ズルズキン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 563,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0563 デスカーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 569,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0569 ダストダス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 571,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0571 ゾロアーク",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 571,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0571 ゾロアーク (ヒスイのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 579,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0579 ランクルス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 584,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0584 バイバニラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 587,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0587 エモンガ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 604,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0604 シビルドン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 609,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0609 シャンデラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 614,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0614 ツンベアー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 618,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0618 マッギョ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 618,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0618 マッギョ (ガラルのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 623,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0623 ゴルーグ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 635,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0635 サザンドラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 637,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0637 ウルガモス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 652,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0652 ブリガロン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 655,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0655 マフォクシー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 658,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0658 ゲッコウガ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 660,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0660 ホルード",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 663,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0663 ファイアロー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 666,
+      "form_code": "18",
+      "variant_code": "0",
+      "label": "No.0666 ビビヨン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 668,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0668 カエンジシ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 670,
+      "form_code": "05",
+      "variant_code": "0",
+      "label": "No.0670 フラエッテ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 671,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0671 フラージェス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 675,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0675 ゴロンダ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 676,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0676 トリミアン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 678,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0678 ニャオニクス (オスのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 678,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0678 ニャオニクス (メスのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 681,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0681 ギルガルド",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 683,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0683 フレフワン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 685,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0685 ペロリーム",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 687,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0687 カラマネロ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 689,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0689 ガメノデス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 691,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0691 ドラミドロ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 693,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0693 ブロスター",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 695,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0695 エレザード",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 697,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0697 ガチゴラス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 699,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0699 アマルルガ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 700,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0700 ニンフィア",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 701,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0701 ルチャブル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 702,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0702 デデンネ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 706,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0706 ヌメルゴン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 706,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0706 ヌメルゴン (ヒスイのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 707,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0707 クレッフィ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 709,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0709 オーロット",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 711,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0711 パンプジン (ちゅうだましゅ)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 711,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0711 パンプジン (こだましゅ)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 711,
+      "form_code": "02",
+      "variant_code": "0",
+      "label": "No.0711 パンプジン (おおだましゅ)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 711,
+      "form_code": "03",
+      "variant_code": "0",
+      "label": "No.0711 パンプジン (ギガだましゅ)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 713,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0713 クレベース",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 713,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0713 クレベース (ヒスイのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 715,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0715 オンバーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 724,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0724 ジュナイパー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 724,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0724 ジュナイパー (ヒスイのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 727,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0727 ガオガエン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 730,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0730 アシレーヌ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 733,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0733 ドデカバシ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 740,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0740 ケケンカニ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 745,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0745 ルガルガン (まひるのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 745,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0745 ルガルガン (まよなかのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 745,
+      "form_code": "02",
+      "variant_code": "0",
+      "label": "No.0745 ルガルガン (たそがれのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 748,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0748 ドヒドイデ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 750,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0750 バンバドロ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 752,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0752 オニシズクモ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 758,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0758 エンニュート",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 763,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0763 アマージョ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 765,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0765 ヤレユータン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 766,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0766 ナゲツケサル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 778,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0778 ミミッキュ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 780,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0780 ジジーロン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 784,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0784 ジャラランガ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 823,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0823 アーマーガア",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 841,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0841 アップリュー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 842,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0842 タルップル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 844,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0844 サダイジャ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 855,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0855 ポットデス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 858,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0858 ブリムオン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 861,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0861 オーロンゲ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 866,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0866 バリコオル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 867,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0867 デスバーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 869,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0869 マホイップ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 870,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0870 タイレーツ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 877,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0877 モルペコ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 887,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0887 ドラパルト",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 899,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0899 アヤシシ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 900,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0900 バサギリ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 902,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0902 イダイトウ (オスのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 902,
+      "form_code": "01",
+      "variant_code": "0",
+      "label": "No.0902 イダイトウ (メスのすがた)",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 903,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0903 オオニューラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 904,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0904 ハリーマン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 908,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0908 マスカーニャ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 911,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0911 ラウドボーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 914,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0914 ウェーニバル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 925,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0925 イッカネズミ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 934,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0934 キョジオーン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 936,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0936 グレンアルマ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 937,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0937 ソウブレイズ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 939,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0939 ハラバリー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 952,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0952 スコヴィラン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 956,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0956 クエスパトラ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 959,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0959 デカヌチャン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 964,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0964 イルカマン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 968,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0968 ミミズズ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 970,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0970 キラフロル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 972,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0972 ハカドッグ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 979,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0979 コノヨザル",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 981,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0981 リキキリン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 983,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.0983 ドドゲザン",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 1000,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.1000 サーフゴー",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 1013,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.1013 ヤバソチャ",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 1018,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.1018 ブリジュラス",
+      "pokemon_id": null
+    },
+    {
+      "national_dex_no": 9999,
+      "form_code": "00",
+      "variant_code": "0",
+      "label": "No.9999 SYNTHETIC-DELTA-TARGET",
+      "pokemon_id": null
+    }
+  ]
+}
