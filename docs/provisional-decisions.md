@@ -145,3 +145,16 @@
 - `owner`: SIM-02 trust maintainer
 - `implementation_evidence`: `src/champions_sim/promotion/trust_enrollment.py`、V3 compiler/readinessのpre/post/current-context再検証、enrollment negative E2E。test registry/key/policyは一時directoryだけに生成する。
 - `completion_relation`: 任意policy差替えをcompile caller境界で閉じるローカル工学判断である。actual enrollment、authoritative M-B source/license、Champions実機準拠、private-match投入、ランク1相当を証明しない。
+
+## PD-012: SIM-02C-A source-use precautionary classification
+
+- `status`: provisional
+- `scope`: SIM-02C-A local evidence inventory and candidate workbench
+- `current_value`: 公式Champions情報、Yakkun、ポケモンWiki、PokeDB、旧damage実装の5 source groupをすべて`review_required`とする。公式情報はChampions固有事実の`semantic_authority`を持ち得るが、open-data licenseまたはproject-specific permissionが確認できるまで、collectionは`manual_reference_only`または`disabled_pending_review`、candidate useは`restricted_local`、redistributionは`prohibited`、production promotionは`blocked`とする。
+- `reason`: 公開ページであること、公式であること、ローカルに既存bytesがあること、content hashが一致することは、保存・変換・学習・再配布・production利用の許諾を単独では示さない。旧PJにはsource別license decision、payload hash、parser lineageが不足する。
+- `risk`: 過度に保守的な分類により利用可能な情報まで停止する可能性と、逆に一般的なサイト規約を個別データの法的結論と誤読する可能性がある。本判断は法的助言または権利者の許諾ではない。
+- `uncertainty_rule`: source-specific reviewが完了するまでworkbenchは候補抽出とinventoryに限定し、`authorization_status: not_authorization`、production materialization 0を固定する。LLM、名前一致、全国図鑑番号、site ID、hash一致でpolicyを解除しない。
+- `review_trigger`: 権利者からの明示許諾、適用可能なopen licenseと遵守手順、利用規約の更新、法務・権利レビュー、またはsourceを使用しない独立生成データへの置換が確認された時。
+- `owner`: source/license review owner
+- `implementation_evidence`: `data/manifests/sim02c-source-policy-register-v1.json`、`data/manifests/sim02c-m-b-source-acquisition-plan-v1.json`、SIM-02C-A compiler/Schema/tests、実M-B assessment compilation `bdb90c2d3128f336e09addcfc19a1cf9a13a3a073cf0cf8aad61c0f12b9f90d5`。
+- `completion_relation`: source policyを誤って自己承認しないための暫定gateであり、authoritative mapping、Champions fidelity、private-match投入、rank-1 equivalenceを証明しない。

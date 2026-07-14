@@ -625,6 +625,31 @@
 - `status`: resolved_local / blocked_external_actual
 - `resolution`: enrollmentへledger instance IDとdomain-separated normalized path bindingを追加し、既存SQLite identityをread-only解決してからV3検証する。ledger消失・空置換・別path/instanceをnegative E2Eで拒否した。同一OS userによるregistry/ledger snapshot改変とtrusted clock provenanceはACL、backup/耐rollback、非巻戻しclockというactual authorization前提として`PD-011`へ残す。
 
+### AUD-SIM02C-006
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C-A / AUTHORITATIVE EVIDENCE INTAKE
+- `category`: unstructured_source_and_catalog_gap
+- `problem`: 既存intake/promotion compilerはsource bytesのhashとnegative mappingを保持するが、旧PJの取得config/parser/raw manifest/derived artifactをsource route単位で監査せず、semantic authorityとusage permissionを分離したreview、namespace/form-aware 235-row workbench、全required Catalog fieldの状態、最初の例外で止まらない全件blocker assessmentがなかった。次レギュレーションで何を再取得・審査・実装すべきかを1週間単位で機械再生成できなかった。
+- `expected`: tracked acquisition plan/policy/source lockとGit外payloadから、path/symlink/duplicate key/hash/size/count/source driftをfail-closed検査する。235件を縮小せず、name/dex/site-ID一致をcandidate以下に留め、Catalog required fieldをcandidate/missing/unknown/conflict/verifiedへ分け、source/policy/mapping/Catalog/mechanics/scenario/grounding/holdout/trust/rehearsal blockerを全件返す。全出力を`not_authorization`としproduction materializationを行わない。
+- `impact`: 旧ID衝突、欠落base stats、自由文effect、利用許諾不明、raw manifest未封印を隠したままV2/V3入力または学習環境へ誤昇格し、戦略探索が誤った遷移を最適化する。
+- `mitigation`: SIM-02B/V3を凍結したまま、独立`src/champions_sim/authoritative` workbench、7 Schema、5-route plan/policy、Gitignored content-addressed writer、CLI、合成敵対テストを追加した。source planはネットワーク取得を行わず既存local bytesだけをinventoryする。
+- `evidence`: `specs/sim-02c-authoritative-intake-contract.md`、`scripts/build_m_b_authoritative_intake.py`、`src/champions_sim/authoritative`、`tests/test_authoritative_intake.py`、plan/policy/7 Schema、compilation `bdb90c2d3128f336e09addcfc19a1cf9a13a3a073cf0cf8aad61c0f12b9f90d5`
+- `status`: resolved_local_workbench / blocked_external_promotion
+- `resolution`: synthetic 28 testsで決定性、公式source-manifest固定分母、regulation revision、自己hash、duplicate key、path/ADS escape、opened-handle confinement、symlink、snapshot/CLI identity drift、source-bound policy全用途、authority別acquisition profile、closed evidence role、manifest/inventory binding、declared/runtime source coverage、Catalog gap、Schema、atomic writerを検証した。実M-Bは5 route、raw 2,050 files / 405,018,864 bytes、derived 23、acquisition complete/partial 1/4、policy resolved 0/5、mapping candidate/conflict/verified 219/16/0、Catalog required/verified/lowerable 8,024/0/0、合計10,794 blockerの`NO-GO`を再現した。raw/processed payloadと全展開文書はGit外で、production materialization 0。次はreview overlayとapproved fieldだけをmechanicsへlowerするSIM-02C-Bで解消する。
+
+### AUD-SIM02C-007
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C-A / AUTHORITATIVE INTAKE HARDENING
+- `category`: mutable_authorization_policy_binding_denominator_toctou
+- `problem`: adversarial review reproduced post-construction authorization mutation, source-unbound permissive policy substitution, omitted private-match/training restrictions, evidence-empty completion, hash/parse split snapshots, unbound target denominator, partial final-directory publication, and Windows ADS path acceptance.
+- `expected`: every materialized document remains non-authorizing after revalidation; source policy covers the exact intended source/use set; M-B denominator is bound to reviewed source-manifest bytes and regulation revision; evidence and parse share one snapshot; final output appears atomically.
+- `status`: resolved_local_workbench / filesystem_race_residual_documented
+- `resolution`: writer-side full revalidation and defensive copies, exact source-ID/all-use policy gates, non-empty evidence/raw-manifest gates, single-byte-snapshot parsing, plan-pinned official target manifest and M-B CLI identities, explicit regulation revision lineage, ADS/reserved-path rejection, and staging-to-atomic-rename output were added. 23 focused tests and the actual 10,794-blocker M-B NO-GO compilation pass. A hostile same-user process racing directory junction replacement remains outside this workbench's Python-level trust boundary; generated output is non-authorizing and rechecked on reuse.
+
 ## SIM-02C Gate判定
 
 - Phase Contract: **SPECIFIED / IMPLEMENTATION SYNCHRONIZED**
@@ -632,12 +657,14 @@
 - semantic execution partition: **GO / VERIFIED LOCALLY** — cosmetic ID全変更でも重複拒否
 - artifact-root independent input manifest: **GO / VERIFIED LOCALLY** — round-trip、relocation、path/drift拒否
 - V3 trust/enrollment verifier: **GO / VERIFIED LOCALLY WITH EPHEMERAL FIXTURE** — test key/policy/registryだけ
+- SIM-02C-A authoritative intake workbench: **GO / VERIFIED LOCALLY** — actual 5 route / 235 mapping / 8,024 Catalog field / 10,794 blockerをcontent-addressed再生成
 - portable V3 output: **NOT AUTHORIZATION / current trust context required**
 - actual M-B production policy/key/enrollment: **NO-GO / NOT CONFIGURED**
-- actual M-B data gate: **NO-GO** — mapping 0/235、unresolved 219、conflict 16、target/execution 118/118、actual grounding 0、diagnostic/promotion blockers 718/720
+- actual M-B data gate: **NO-GO** — frozen V2 mapping 0/235・unresolved/conflict 219/16・target/execution 118/118・diagnostic/promotion 718/720に加え、SIM-02C-A promotion unresolved 235、Catalog verified 0/8,024、actual grounding 0
 - Champions fidelity / private-match投入: **NO-GO / UNPROVEN**
 - Rank-1 equivalence: **UNMEASURED / CLAIM FORBIDDEN**
 - Focused SIM-02C verification: **97 passed in 29.15s**
-- Full regression: **524 passed in 68.27s**
-- Repository size gate: **233 candidates / 0 violations**
+- Focused SIM-02C-A authoritative intake verification: **28 passed in 2.22s**
+- Full regression: **552 passed in 78.67s**
+- Repository size gate: **249 candidates / 0 violations**
 - SIM-01 frozen validation: **PASS / hash不変**

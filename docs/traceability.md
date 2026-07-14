@@ -37,6 +37,7 @@ Statusは次を使う。
 | `REQ-DATA-004` | Replayにbundle hash、RNG、初期化、全decision、結果を保存する | Replay v2 Schema | core replay、runner | generated Replay recursive Schema、roundtrip、verify | verified_local; bundle-bound |
 | `REQ-DATA-005` | 外部sourceの出典、license、size、hashを追跡する | Source manifest Schema、Git policy | legacy manifestに6参照元＋Catalog fixtureを記録 | bundle validator | restricted_local, blocked_external |
 | `REQ-DATA-006` | 旧PJをコピーせずM-B 235件のCatalog mapping候補とentity unionを再生成する | Catalog Intake / Source Lock / Mapping Evidence Schemas | `src/champions_sim/intake`、`src/champions_sim/compiler`、M-B source lock | 213 usage crosswalk、22 exact-name candidate、16 detail conflict隔離、9 artifact hash/count完全一致、88 intake blockers。昇格判定は0 resolved、219 unresolved、16 conflict | verified_local intake/bridge, restricted_local, promotion blocked |
+| `REQ-DATA-007` | semantic authorityとusage permissionを分離し、source acquisition・235 mapping・Catalog V2 field不足を固定分母で全件監査する | SIM-02C-A Authoritative Intake Contract、plan/policy/review/mapping/Catalog/assessment/compilation Schemas | `src/champions_sim/authoritative`、`scripts/build_m_b_authoritative_intake.py` | synthetic 28 tests。実M-Bは5 route、raw 2,050 files / 405,018,864 bytes、derived 23、candidate/conflict/verified 219/16/0、required/verified field 8,024/0、blocker 10,794、同一compilation hash再生成、Gitignored 5文書 | verified_local workbench, restricted_local, production promotion blocked |
 | `REQ-GIT-001` | 大容量artifactをGitから除外する | Git Artifact Policy | `.gitignore`、compiler output-root guard | `git ls-files --cached --others --exclude-standard`、full compiler artifactを`data/processed`外へ書く要求を拒否 | verified_local |
 | `REQ-GIT-002` | 2 MiB / 256 KiBの暫定上限を検査する | PD-001/002 | `scripts/check_repo_size.py` | governance size tests | provisional, verified_local |
 | `REQ-TECH-001` | Python 3.10以上、原則stdlib＋pytestを使う | `pyproject.toml` | `src/champions_sim`、scripts | full pytest suite | verified_local |
@@ -142,6 +143,20 @@ ProductionPromotionInputManifestV3 hash
 ```
 
 実行時刻や外部pathをportable identityへ入れず、`authorization_status: not_authorization`と`current_trust_context_required: true`を固定する。actual policy/key/enrollmentが未登録の現状では、このV3配線を現M-Bのactionable sealへ使わない。
+
+SIM-02C-A workbenchはproduction inputとは別に、次をcontent-addressed compilationへ束ねる。
+
+```text
+source acquisition plan hash + source policy registry hash
++ Catalog intake source-lock byte hash + exact TargetPool byte hash
++ source acquisition review hash
++ 235-row namespace/form mapping workbench hash
++ field-level Catalog V2 workbench hash
++ sorted all-blocker assessment hash
+-> authoritative intake compilation hash
+```
+
+絶対path、raw/processed payload、取得本文はportable identityへ入れない。5文書はGitignored `data/processed/sim02c/authoritative-intake/<compilation_hash>/`へ保存し、GitにはSchema、plan/policy、集約検証レポートだけを置く。このhashは同一性・完全性を示すが、利用許諾、source真正性、field verification、production authorizationを示さない。
 
 target poolのversionが変わった場合、旧coverage reportを新しい分母へ流用しない。
 

@@ -6,6 +6,7 @@
 - SIM-02B V2 test-authoritative path: **FROZEN / LOCAL ENGINEERING ONLY**
 - SIM-02B V2 production issuance: **NO-GO / FAIL-CLOSEDを維持**
 - SIM-02C trust and partition-integrity engineering gate: **GO / VERIFIED LOCALLY WITH EPHEMERAL FIXTURE**
+- SIM-02C-A authoritative evidence intake/Catalog V2 workbench: **GO / LOCAL ENGINEERING COMPLETE**
 - Production trust policy/key enrollment: **NO-GO / NOT CONFIGURED**
 - 現行M-B authoritative data gate: **NO-GO**
 - 現行M-B production readiness: **NO-GO / 発行不可**
@@ -85,6 +86,22 @@ Engineering Gateではtest用offline keyを一時directoryに生成してcryptog
 7. 4 rate `1.0`、silent fallback `0`、holdout novel gap `0`のV3 production readinessをcurrent trust contextで再検証する。
 8. actualまたはsealed-historical regulationで48時間candidate/正しいNO-GOと7日投入判断をwall-clock実測する。
 
+## SIM-02C-A completed engineering slice
+
+`specs/sim-02c-authoritative-intake-contract.md`を下位契約とし、production昇格と切り離したinventory/review workbenchを実装する。tracked plan/policy/source lockとGit外payloadから次の5文書をcontent-addressed生成する。
+
+1. source acquisition review
+2. authoritative mapping workbench
+3. Catalog V2 field workbench
+4. all-blocker intake assessment
+5. portable compilation summary
+
+全出力は`authorization_status: not_authorization`、`production_materialization_emitted: false`を固定する。official sourceの`semantic_authority`はusage permissionを意味せず、名前、全国図鑑番号、`n<number>`、usage crosswalkはreview前のcandidateに留める。raw/processed payloadはGit外に置き、plan/policy/target/source-lock/document hashだけをportable identityへ結合する。
+
+2026-07-14の実M-B runは5 route、raw 2,050 files / 405,018,864 bytes、derived 23を読み取り、network I/Oなしで同じcompilation hashを再生成した。acquisition integrityはcomplete 1 / partial 4、production policy resolved 0/5。固定235件はcandidate 219 / conflict 16 / verified 0で、promotion unresolvedは235。Catalog V2はspecies 235、moves 490、abilities 180、items 117、types 18、Mega relation candidate 70、required field 8,024、verified 0、runtime lowerable 0。assessmentはacquisition 2,024、policy 35、mapping 705、Catalog 8,024、その他6の合計10,794 blockerを全件列挙した。
+
+このsliceの成功は「不足を機械可読かつ再現可能にした」ことであり、Data Gateの解除ではない。次の大単位SIM-02C-Bではreview overlay、namespace/form mapping、field evidence、structured-effect lowering、handler/scenario/probeを同じlineageで接続する。
+
 ## Current decision
 
-Engineering implementationはephemeralなtest key/policy/enrollment registryを使う限定fixtureで`GO / VERIFIED LOCALLY`。これは署名・再解決・意味的partition・portable input・current-context再検証の配線を証明するだけである。現行M-Bは0/235 verified mapping、unresolved 219、conflict 16、118/118 target row/execution gap、actual grounding 0、actual production policy/key/enrollment未登録のためData Gateは`NO-GO`。Champions fidelity、private-match投入可能性、ランク1相当は未証明であり、V3 engineering fixtureが成功してもこの判定を解除しない。
+Trust engineering implementationはephemeralなtest key/policy/enrollment registryを使う限定fixtureで`GO / VERIFIED LOCALLY`。SIM-02C-A workbenchも実data inventoryで`GO / LOCAL ENGINEERING COMPLETE`だが、235/235がpromotion unresolved、Catalog verified field 0/8,024、actual grounding 0、actual production policy/key/enrollment未登録のためData Gateは`NO-GO`である。Champions fidelity、private-match投入可能性、ランク1相当は未証明であり、V3またはworkbenchのengineering成功でこの判定を解除しない。

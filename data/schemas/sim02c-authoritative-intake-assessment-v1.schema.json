@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:sim02c-authoritative-intake-assessment-v1",
+  "title": "SIM-02C-A Authoritative Intake Assessment V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "compiler_version",
+    "assessment_id",
+    "plan_id",
+    "regulation_id",
+    "regulation_revision",
+    "target_source_manifest_hash",
+    "target_pool_hash",
+    "source_review_hash",
+    "mapping_workbench_hash",
+    "catalog_workbench_hash",
+    "authorization_status",
+    "blockers",
+    "summary",
+    "assessment_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "compiler_version": {"const": "1.0.0"},
+    "assessment_id": {
+      "type": "string",
+      "pattern": "^authoritative-intake-assessment:[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"
+    },
+    "plan_id": {"$ref": "#/$defs/stableId"},
+    "regulation_id": {"$ref": "#/$defs/stableId"},
+    "regulation_revision": {"type": "string", "minLength": 1},
+    "target_source_manifest_hash": {"$ref": "#/$defs/sha256"},
+    "target_pool_hash": {"$ref": "#/$defs/sha256"},
+    "source_review_hash": {"$ref": "#/$defs/sha256"},
+    "mapping_workbench_hash": {"$ref": "#/$defs/sha256"},
+    "catalog_workbench_hash": {"$ref": "#/$defs/sha256"},
+    "authorization_status": {"const": "not_authorization"},
+    "blockers": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/blocker"}
+    },
+    "summary": {"$ref": "#/$defs/assessmentSummary"},
+    "assessment_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "code",
+        "subject",
+        "evidence_required",
+        "restart_condition"
+      ],
+      "properties": {
+        "stage": {
+          "enum": [
+            "acquisition",
+            "policy",
+            "mapping",
+            "catalog",
+            "mechanics",
+            "scenario",
+            "grounding",
+            "holdout",
+            "trust",
+            "rehearsal"
+          ]
+        },
+        "code": {"$ref": "#/$defs/blockerCode"},
+        "subject": {"$ref": "#/$defs/stableId"},
+        "evidence_required": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "restart_condition": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      }
+    },
+    "blockerCode": {
+      "enum": [
+        "required_evidence_file_missing",
+        "source_id_mismatch",
+        "source_evidence_coverage_incomplete",
+        "raw_manifest_source_missing",
+        "raw_manifest_results_empty",
+        "raw_manifest_results_missing",
+        "raw_manifest_result_invalid",
+        "raw_manifest_saved_path_missing",
+        "raw_manifest_saved_file_missing",
+        "raw_manifest_byte_count_mismatch",
+        "raw_manifest_result_unsealed",
+        "raw_manifest_hash_mismatch",
+        "raw_inventory_missing",
+        "raw_inventory_too_small",
+        "derived_artifact_missing",
+        "derived_source_mismatch",
+        "derived_record_pointer_invalid",
+        "derived_record_count_too_small",
+        "source_policy_review_unresolved",
+        "source_policy_binding_mismatch",
+        "source_collection_not_approved",
+        "source_candidate_use_restricted",
+        "source_private_match_use_not_allowed",
+        "source_training_use_not_allowed",
+        "source_redistribution_prohibited",
+        "source_production_promotion_blocked",
+        "authoritative_mapping_missing",
+        "candidate_mapping_conflict",
+        "candidate_mapping_unreviewed",
+        "namespace_form_identity_incomplete",
+        "mapping_permission_unresolved",
+        "target_denominator_authority_unresolved",
+        "catalog_field_missing",
+        "catalog_field_unknown_semantics",
+        "catalog_field_conflict",
+        "catalog_field_unverified",
+        "runtime_handler_coverage_incomplete",
+        "scenario_coverage_incomplete",
+        "private_match_grounding_missing",
+        "external_holdout_missing",
+        "production_attestation_missing",
+        "regulation_rehearsal_missing"
+      ]
+    },
+    "stageBlockerCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "acquisition": {"type": "integer", "minimum": 0},
+        "policy": {"type": "integer", "minimum": 0},
+        "mapping": {"type": "integer", "minimum": 0},
+        "catalog": {"type": "integer", "minimum": 0},
+        "mechanics": {"type": "integer", "minimum": 0},
+        "scenario": {"type": "integer", "minimum": 0},
+        "grounding": {"type": "integer", "minimum": 0},
+        "holdout": {"type": "integer", "minimum": 0},
+        "trust": {"type": "integer", "minimum": 0},
+        "rehearsal": {"type": "integer", "minimum": 0}
+      }
+    },
+    "codeBlockerCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required_evidence_file_missing": {"type": "integer", "minimum": 0},
+        "source_id_mismatch": {"type": "integer", "minimum": 0},
+        "source_evidence_coverage_incomplete": {"type": "integer", "minimum": 0},
+        "raw_manifest_source_missing": {"type": "integer", "minimum": 0},
+        "raw_manifest_results_empty": {"type": "integer", "minimum": 0},
+        "raw_manifest_results_missing": {"type": "integer", "minimum": 0},
+        "raw_manifest_result_invalid": {"type": "integer", "minimum": 0},
+        "raw_manifest_saved_path_missing": {"type": "integer", "minimum": 0},
+        "raw_manifest_saved_file_missing": {"type": "integer", "minimum": 0},
+        "raw_manifest_byte_count_mismatch": {"type": "integer", "minimum": 0},
+        "raw_manifest_result_unsealed": {"type": "integer", "minimum": 0},
+        "raw_manifest_hash_mismatch": {"type": "integer", "minimum": 0},
+        "raw_inventory_missing": {"type": "integer", "minimum": 0},
+        "raw_inventory_too_small": {"type": "integer", "minimum": 0},
+        "derived_artifact_missing": {"type": "integer", "minimum": 0},
+        "derived_source_mismatch": {"type": "integer", "minimum": 0},
+        "derived_record_pointer_invalid": {"type": "integer", "minimum": 0},
+        "derived_record_count_too_small": {"type": "integer", "minimum": 0},
+        "source_policy_review_unresolved": {"type": "integer", "minimum": 0},
+        "source_policy_binding_mismatch": {"type": "integer", "minimum": 0},
+        "source_collection_not_approved": {"type": "integer", "minimum": 0},
+        "source_candidate_use_restricted": {"type": "integer", "minimum": 0},
+        "source_private_match_use_not_allowed": {"type": "integer", "minimum": 0},
+        "source_training_use_not_allowed": {"type": "integer", "minimum": 0},
+        "source_redistribution_prohibited": {"type": "integer", "minimum": 0},
+        "source_production_promotion_blocked": {"type": "integer", "minimum": 0},
+        "authoritative_mapping_missing": {"type": "integer", "minimum": 0},
+        "candidate_mapping_conflict": {"type": "integer", "minimum": 0},
+        "candidate_mapping_unreviewed": {"type": "integer", "minimum": 0},
+        "namespace_form_identity_incomplete": {"type": "integer", "minimum": 0},
+        "mapping_permission_unresolved": {"type": "integer", "minimum": 0},
+        "target_denominator_authority_unresolved": {"type": "integer", "minimum": 0},
+        "catalog_field_missing": {"type": "integer", "minimum": 0},
+        "catalog_field_unknown_semantics": {"type": "integer", "minimum": 0},
+        "catalog_field_conflict": {"type": "integer", "minimum": 0},
+        "catalog_field_unverified": {"type": "integer", "minimum": 0},
+        "runtime_handler_coverage_incomplete": {"type": "integer", "minimum": 0},
+        "scenario_coverage_incomplete": {"type": "integer", "minimum": 0},
+        "private_match_grounding_missing": {"type": "integer", "minimum": 0},
+        "external_holdout_missing": {"type": "integer", "minimum": 0},
+        "production_attestation_missing": {"type": "integer", "minimum": 0},
+        "regulation_rehearsal_missing": {"type": "integer", "minimum": 0}
+      }
+    },
+    "assessmentSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "candidate_for_production_promotion",
+        "fixed_target_denominator",
+        "verified_mapping_count",
+        "verified_catalog_field_count",
+        "blocker_enumeration_complete",
+        "assessment_blocker_enumeration_rate_ppm",
+        "blocker_count",
+        "stage_blocker_counts",
+        "code_blocker_counts"
+      ],
+      "properties": {
+        "decision": {"const": "NO-GO"},
+        "candidate_for_production_promotion": {"const": false},
+        "fixed_target_denominator": {"type": "integer", "minimum": 1},
+        "verified_mapping_count": {"const": 0},
+        "verified_catalog_field_count": {"const": 0},
+        "blocker_enumeration_complete": {"const": true},
+        "assessment_blocker_enumeration_rate_ppm": {"const": 1000000},
+        "blocker_count": {"type": "integer", "minimum": 1},
+        "stage_blocker_counts": {"$ref": "#/$defs/stageBlockerCounts"},
+        "code_blocker_counts": {"$ref": "#/$defs/codeBlockerCounts"}
+      }
+    }
+  }
+}

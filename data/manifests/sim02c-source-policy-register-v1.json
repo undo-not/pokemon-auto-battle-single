@@ -1,0 +1,138 @@
+{
+  "schema_version": "1.0.0",
+  "registry_id": "sim02c-source-policy-register-v1",
+  "reviewed_on": "2026-07-14",
+  "authorization_status": "not_authorization",
+  "policies": [
+    {
+      "policy_id": "policy.legacy-damage.restricted-local",
+      "source_group": "legacy_damage_implementation",
+      "source_ids": [
+        "legacy_damage_calculator",
+        "manual_damage_rules"
+      ],
+      "review_status": "review_required",
+      "evidence_urls": [
+        "https://creativecommons.org/licenses/by-nc-sa/3.0/deed.ja",
+        "https://wiki.pokemonwiki.com/wiki/%E3%83%80%E3%83%A1%E3%83%BC%E3%82%B8",
+        "https://yakkun.com/info/about.htm"
+      ],
+      "decision_basis": "The legacy calculator and manually curated rules are local implementation evidence, but their mechanics lineage includes third-party references whose reuse scope and field-level provenance have not been reviewed for this project.",
+      "collection_status": "manual_reference_only",
+      "candidate_use": "restricted_local",
+      "private_match_use": "review_required",
+      "training_use": "prohibited",
+      "redistribution": "prohibited",
+      "production_promotion": "blocked",
+      "notes": "Inventory and deterministic local validation only. Code ownership, mechanics correctness, upstream attribution, and compatible reuse permission must all be resolved separately; this policy is not authorization or legal advice."
+    },
+    {
+      "policy_id": "policy.official-pokemon.restricted-local",
+      "source_group": "official_pokemon_web",
+      "source_ids": [
+        "pokemon_home_regulation_notice"
+      ],
+      "review_status": "review_required",
+      "evidence_urls": [
+        "https://champions-news.pokemon-home.com/ja/page/776.html",
+        "https://news.pokemon-home.com/ja/page/751.html",
+        "https://web-view.app.pokemonchampions.jp/battle/pages/events/rs178066986988lmoqpm/ja/pokemon.html",
+        "https://web-view.app.pokemonchampions.jp/docs/terms/0/1/index.html?lng=10",
+        "https://www.pokemon.co.jp/rules/?inc=footer"
+      ],
+      "decision_basis": "Official pages are semantic authority for Champions regulation facts, but no open-data license or project-specific permission for automated collection, corpus use, training, redistribution, or production promotion is recorded. Official status is not treated as usage permission.",
+      "collection_status": "disabled_pending_review",
+      "candidate_use": "restricted_local",
+      "private_match_use": "review_required",
+      "training_use": "prohibited",
+      "redistribution": "prohibited",
+      "production_promotion": "blocked",
+      "notes": "Existing local bytes may be inventoried without network access. Reacquisition and every downstream use require source-specific review; this conservative gate is not authorization or legal advice."
+    },
+    {
+      "policy_id": "policy.pokedb.restricted-local",
+      "source_group": "pokedb_champions",
+      "source_ids": [
+        "article_insights",
+        "pokedb_champions_article_bodies",
+        "pokedb_champions_article_search",
+        "pokedb_champions_garchomp_usage_detail",
+        "pokedb_champions_pokemon_usage",
+        "pokedb_champions_pokemon_usage_details",
+        "pokedb_champions_top_articles"
+      ],
+      "review_status": "review_required",
+      "evidence_urls": [
+        "https://champs.pokedb.tokyo/pokemon/list?season=2&rule=0&q=",
+        "https://champs.pokedb.tokyo/terms"
+      ],
+      "decision_basis": "The legacy corpus links a PokeDB terms page, but no completed review establishes permission for automated reacquisition, bulk corpus retention, model training, redistribution, or production promotion.",
+      "collection_status": "disabled_pending_review",
+      "candidate_use": "restricted_local",
+      "private_match_use": "review_required",
+      "training_use": "prohibited",
+      "redistribution": "prohibited",
+      "production_promotion": "blocked",
+      "notes": "Usage ranks, sets, and article-derived insights remain third-party candidates and must not be treated as official facts or namespace-safe mappings. Inventory only; no network acquisition is authorized."
+    },
+    {
+      "policy_id": "policy.pokemonwiki.restricted-local",
+      "source_group": "pokemonwiki",
+      "source_ids": [
+        "pokemonwiki_ability_details",
+        "pokemonwiki_ability_index",
+        "pokemonwiki_field_states",
+        "pokemonwiki_grounding",
+        "pokemonwiki_move_details",
+        "pokemonwiki_move_index",
+        "pokemonwiki_multi_hit_moves",
+        "pokemonwiki_status_changes",
+        "pokemonwiki_status_conditions"
+      ],
+      "review_status": "review_required",
+      "evidence_urls": [
+        "https://creativecommons.org/licenses/by-nc-sa/3.0/deed.ja",
+        "https://wiki.pokemonwiki.com/wiki/%E3%81%A8%E3%81%8F%E3%81%9B%E3%81%84%E4%B8%80%E8%A6%A7",
+        "https://wiki.pokemonwiki.com/wiki/%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3Wiki:%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3Wiki%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6"
+      ],
+      "decision_basis": "The captured Wiki page declares CC BY-NC-SA 3.0 unless otherwise noted, but attribution, noncommercial, share-alike, exceptions, imported material, and project-output compatibility have not been reviewed or implemented.",
+      "collection_status": "disabled_pending_review",
+      "candidate_use": "restricted_local",
+      "private_match_use": "review_required",
+      "training_use": "prohibited",
+      "redistribution": "prohibited",
+      "production_promotion": "blocked",
+      "notes": "General mechanics text is third-party reference evidence, not Champions-specific authority. Retain local inventory only until a source and license review defines compliant attribution and output handling."
+    },
+    {
+      "policy_id": "policy.yakkun.restricted-local",
+      "source_group": "yakkun_champions",
+      "source_ids": [
+        "yakkun_ability_list",
+        "yakkun_champions_offer",
+        "yakkun_champions_pokemon_details",
+        "yakkun_champions_zukan",
+        "yakkun_item_list",
+        "yakkun_move_details",
+        "yakkun_move_list",
+        "yakkun_speed_tool",
+        "yakkun_type_chart"
+      ],
+      "review_status": "review_required",
+      "evidence_urls": [
+        "https://yakkun.com/ch/zukan",
+        "https://yakkun.com/info/about.htm",
+        "https://yakkun.com/info/privacy.htm"
+      ],
+      "decision_basis": "The legacy project records source pages and site information pages but no reusable data license or project-specific permission for bulk acquisition, corpus retention, training, redistribution, or production promotion.",
+      "collection_status": "disabled_pending_review",
+      "candidate_use": "restricted_local",
+      "private_match_use": "review_required",
+      "training_use": "prohibited",
+      "redistribution": "prohibited",
+      "production_promotion": "blocked",
+      "notes": "Names, site IDs, learned moves, and availability rows are candidate evidence only. Do not infer national-dex, form, or variant identity from site IDs or names; inventory only and perform no network reacquisition."
+    }
+  ],
+  "registry_hash": "bbf3ee3afc70ed49ebeef7d196bf7324379341dd78e421da400512511dbd1277"
+}
