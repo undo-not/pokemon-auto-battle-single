@@ -118,3 +118,5 @@ license未確認のartifactは`license_status: unverified`、`local_research_onl
 actual evidenceを削除またはpruneする場合は、対応するpromotion/readiness sealの再検証に必要かを先に確認する。昇格候補と、その候補を否定した再生成不能な反証artifactは外部storeに残し、Gitにはlocatorとhashを保持する。
 
 production trust anchorは検証対象のartifact root内へ置かない。公開検証鍵、trusted issuer ID、approved manifest/license hashのような秘密でないreview済みdescriptorだけを小さいGit管理manifestとして置ける。秘密鍵、credential、署名用tokenはGitへ置かず、OS secret storeまたはアクセス制御された外部設定から供給する。入力source manifest自身が宣言する`official`/`verified`値や同じroot内のallowlistをtrust anchorとして扱わない。
+
+SIM-02Cのactual enrollment registryとSQLite ledgerはworkspace/artifact root外のACL保護stateとして扱い、Gitへ入れない。誤配置時も追跡されないよう`/.local/trust/`、`*.sqlite3`、`*.sqlite3-wal`、`*.sqlite3-shm`をignoreする。ledger backupもGitではなく、容量上限・retention・rollback protectionを持つ外部運用領域へ置く。

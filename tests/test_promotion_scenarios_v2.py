@@ -21,7 +21,14 @@ from champions_sim.capabilities.models import (
     TargetCapability,
     TargetCapabilitySet,
 )
-from champions_sim.core import BattleEventKind, ReplayRecord, canonical_hash
+from champions_sim.core import (
+    ActionSelection,
+    BattleEventKind,
+    DecisionRequestSet,
+    ReplayInitialState,
+    ReplayRecord,
+    canonical_hash,
+)
 from champions_sim.promotion.scenarios import (
     EngineScenarioV2,
     PromotionScenarioError,
@@ -29,6 +36,7 @@ from champions_sim.promotion.scenarios import (
     build_engine_scenario_corpus_v2,
     build_scenario_partition_manifest_v2,
     replay_choice_sequence_hash,
+    replay_execution_hash_v2,
     verify_engine_probe_v2,
 )
 from scripts.validate_sim01_bundle import (
@@ -186,6 +194,7 @@ def _scenario(
         catalog_hash=replay.bundle.catalog_content_hash,
         ruleset_hash=replay.bundle.ruleset_content_hash,
         replay_hash=replay.replay_hash,
+        replay_execution_hash=replay_execution_hash_v2(replay),
         witness_step_index=step_index,
         witness_event_index=event_index,
         witness_event_kind=event.kind.value,
@@ -193,6 +202,145 @@ def _scenario(
         source_lineage_ids=(f"source-{lineage_tag}",),
         collection_lineage_ids=(f"collection-{lineage_tag}",),
         authoring_lineage_ids=(f"author-{lineage_tag}",),
+    )
+
+
+def _cosmetically_relabel_replay(replay: ReplayRecord) -> ReplayRecord:
+    """Relabel every record coordinate while retaining execution substance."""
+
+    instance_labels = {
+        str(pokemon.instance_id): f"cosmetic-{side.player.value}-{index}"
+        for side in replay.initial_state.payload.sides
+        for index, pokemon in enumerate(side.team)
+    }
+    sides = tuple(
+        replace(
+            side,
+            team=tuple(
+                replace(
+                    pokemon,
+                    instance_id=instance_labels[str(pokemon.instance_id)],
+                )
+                for pokemon in side.team
+            ),
+            active_instance_id=instance_labels[str(side.active_instance_id)],
+        )
+        for side in replay.initial_state.payload.sides
+    )
+    relabelled_battle_id = "cosmetic-battle-id"
+    initial_state = ReplayInitialState.capture(
+        replace(
+            replay.initial_state.payload,
+            battle_id=relabelled_battle_id,
+            sides=sides,
+        )
+    )
+    provisional_labels = {
+        value: f"PD-{101 + index:03d}"
+        for index, value in enumerate(replay.provisional_decision_ids)
+    }
+
+    def relabel_event(event, labels):
+        return replace(
+            event,
+            subject=(
+                instance_labels.get(str(event.subject), str(event.subject))
+                if event.subject is not None
+                else None
+            ),
+            details=tuple(
+                (
+                    key,
+                    labels.get(value, value) if isinstance(value, str) else value,
+                )
+                for key, value in event.details
+            ),
+        )
+
+    initial_labels = {
+        replay.battle_id: relabelled_battle_id,
+        **instance_labels,
+    }
+    initial_events = tuple(
+        relabel_event(event, initial_labels) for event in replay.initial_events
+    )
+    steps = []
+    for step_index, step in enumerate(replay.steps):
+        request_labels = {
+            request.request_id: (
+                f"cosmetic-request-{step_index}-{request.player.value}"
+            )
+            for request in step.requests.requests
+        }
+        action_labels = {
+            action.action_id: (
+                f"cosmetic-action-{step_index}-{request.player.value}-{index}"
+            )
+            for request in step.requests.requests
+            for index, action in enumerate(request.legal_actions)
+        }
+        requests = DecisionRequestSet(
+            tuple(
+                replace(
+                    request,
+                    request_id=request_labels[request.request_id],
+                    legal_actions=tuple(
+                        replace(
+                            action,
+                            action_id=action_labels[action.action_id],
+                            switch_to=(
+                                instance_labels[str(action.switch_to)]
+                                if action.switch_to is not None
+                                else None
+                            ),
+                        )
+                        for action in request.legal_actions
+                    ),
+                )
+                for request in step.requests.requests
+            )
+        )
+        selections = tuple(
+            ActionSelection(
+                request_id=request_labels[selection.request_id],
+                player=selection.player,
+                action_id=action_labels[selection.action_id],
+            )
+            for selection in step.selections
+        )
+        scalar_labels = {
+            replay.battle_id: relabelled_battle_id,
+            **instance_labels,
+            **request_labels,
+            **action_labels,
+        }
+        steps.append(
+            replace(
+                step,
+                requests=requests,
+                selections=selections,
+                events=tuple(
+                    relabel_event(event, scalar_labels) for event in step.events
+                ),
+                provisional_decision_ids=tuple(
+                    provisional_labels[value]
+                    for value in step.provisional_decision_ids
+                ),
+            )
+        )
+    return replace(
+        replay,
+        replay_id="cosmetic-replay-id",
+        initial_state=initial_state,
+        initial_events=initial_events,
+        steps=tuple(steps),
+        provisional_decision_ids=tuple(
+            provisional_labels[value] for value in replay.provisional_decision_ids
+        ),
+        source_manifest_ids=tuple(
+            f"cosmetic-source-{index}"
+            for index, _ in enumerate(replay.source_manifest_ids)
+        ),
     )
 
 
@@ -374,6 +522,22 @@ def test_probe_rejects_every_scenario_binding_mutation(
         )
 
 
+def test_probe_recomputes_execution_hash_from_bound_replay() -> None:
+    engine, capability_set, replays, scenario, *_ = _artifacts()
+    attacked = replace(scenario, replay_execution_hash="0" * 64)
+
+    with pytest.raises(
+        PromotionScenarioError,
+        match="replay_execution_hash",
+    ):
+        verify_engine_probe_v2(
+            engine=engine,
+            capability_set=capability_set,
+            scenario=attacked,
+            replay=replays[0],
+        )
+
+
 def test_probe_rejects_rng_algorithm_and_replay_body_mutations() -> None:
     engine, capability_set, replays, scenario, *_ = _artifacts()
 
@@ -497,12 +661,83 @@ def test_partition_rejects_executable_and_replay_hash_overlap() -> None:
     )
     with pytest.raises(
         PromotionScenarioError,
-        match="scenario_hash_overlap,replay_hash_overlap",
+        match=(
+            "scenario_hash_overlap,replay_hash_overlap,"
+            "replay_execution_hash_overlap"
+        ),
     ):
         build_scenario_partition_manifest_v2(
             development=development,
             external_holdout=attacked_holdout,
         )
+
+
+def test_partition_rejects_semantic_replay_overlap_after_all_id_relabelling() -> None:
+    (
+        _, capability_set, replays, first, _, _, development, _, _,
+    ) = _artifacts()
+    relabelled_replay = _cosmetically_relabel_replay(replays[0])
+
+    assert relabelled_replay.replay_hash != replays[0].replay_hash
+    assert replay_choice_sequence_hash(relabelled_replay) != first.choice_sequence_hash
+    assert replay_execution_hash_v2(relabelled_replay) == (
+        first.replay_execution_hash
+    )
+
+    relabelled_scenario = _scenario(
+        scenario_id="scenario-cosmetically-relabeled-holdout",
+        role="external_holdout",
+        capability_set=capability_set,
+        capability_id=first.capability_id,
+        replay=relabelled_replay,
+        lineage_tag="cosmetically-relabeled-holdout",
+    )
+    assert relabelled_scenario.scenario_hash != first.scenario_hash
+    attacked_holdout = _corpus(
+        corpus_id="cosmetically-relabeled-holdout-corpus",
+        role="external_holdout",
+        capability_set=capability_set,
+        scenarios=(relabelled_scenario,),
+    )
+
+    with pytest.raises(
+        PromotionScenarioError,
+        match="replay_execution_hash_overlap",
+    ):
+        build_scenario_partition_manifest_v2(
+            development=development,
+            external_holdout=attacked_holdout,
+        )
+
+
+def test_replay_execution_hash_changes_with_battle_substance() -> None:
+    replay = _artifacts()[2][0]
+    step_index, event_index, _ = _damage_witness(replay)
+    step = replay.steps[step_index]
+    event = step.events[event_index]
+    details = dict(event.details)
+    details["amount"] = int(details["amount"]) + 1
+    attacked_event = replace(event, details=tuple(details.items()))
+    attacked_step = replace(
+        step,
+        events=(
+            *step.events[:event_index],
+            attacked_event,
+            *step.events[event_index + 1 :],
+        ),
+    )
+    attacked_replay = replace(
+        replay,
+        steps=(
+            *replay.steps[:step_index],
+            attacked_step,
+            *replay.steps[step_index + 1 :],
+        ),
+    )
+
+    assert replay_execution_hash_v2(attacked_replay) != (
+        replay_execution_hash_v2(replay)
+    )
 
 
 def test_corpora_and_report_fail_closed_on_empty_missing_and_extra_inputs() -> None:

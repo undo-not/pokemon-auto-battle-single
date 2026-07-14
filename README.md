@@ -1,6 +1,6 @@
 # champions_sim
 
-`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装、SIM-02のRegulation/TargetPool/Coverage/Diff、AI-01の6→3選出・paired arena・公開情報baseline、SIM-02Bのresolver-backed promotion/readiness v2までローカル実装済みです。現行M-B全体の検証済みCatalog/メカニクスcoverage、actual実機grounding、学習済み/search方策、BlueStacks入力操作は未完成です。
+`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装、SIM-02のRegulation/TargetPool/Coverage/Diff、AI-01の6→3選出・paired arena・公開情報baseline、SIM-02Bのresolver-backed promotion/readiness v2、SIM-02Cの外部trust/enrollment付きV3工学verifierまでローカル実装済みです。現行M-B全体の検証済みCatalog/メカニクスcoverage、actual trust enrollment、actual実機grounding、学習済み/search方策、BlueStacks入力操作は未完成です。
 
 ## 現在のスコープ
 
@@ -20,7 +20,8 @@
 - Policy-free AI adapterは内部ではsealed fixture、bundle hash、seed/RNG lineageへ結合した`reset`/`step`を提供しますが、policy-facing resultには公開identity、観測、公開履歴、合法手だけを返し、privileged lineageはReplayへ分離します。報酬と方策は定義せず、Champions candidateはcapability/grounding evidenceがverifiedになるまでactionableにしません。
 - AI-01は自己申告`VERIFIED`による迂回を再計算型readiness resolverで閉じ、6体roster→順序付き3体のsealed team preview、paired seed/side-swap arena、公開情報だけを使うtype-coverage選出＋type-aware行動baselineを実装しました。v1 compilerはintake診断専用のまま凍結し、SIM-02B v2だけがresolver検証済みsource/license/artifact、scenario、grounding、probe、holdoutを再コンパイルしてreadinessを発行できます。
 - SIM-02Bのlocal engineering gateは、test-authoritativeな独立sourceから3 capability、development 3 scenario、external holdout 1 scenarioを完全コンパイルし、決定性、Replay再実行、再解決、改ざん拒否、scope別sealまで検証済みです。このsealは`champions_candidate=false`であり、Champions準拠や強度の証明ではありません。
-- 現行M-Bを同じnegative assessmentへ通すと、mapping 0/235、unresolved 219、conflict 16、target capability row 118、execution gap 118、diagnostic blocker 718、promotion blocker 720のexact `NO-GO`です。最後の追加blockerは、ローカルJSONのauthority文字列を信頼しないための外部trust anchor不足です。集約値だけを小さなgoldenへ残し、完全assessmentはGit外に保存します。
+- Production trustは3層で区別します。(1) SIM-02B V2はproduction verifierを意図的に持たず、全production発行をfail-closedにします。(2) SIM-02C V3は一時test key/policy/enrollment registry/ledgerで、OpenSSH Ed25519、固定外部enrollment、ledger installation固定、current-context再検証、意味的partition、portable inputの配線をローカル検証済みです。(3) actual M-B用policy/key/enrollment/保護ledger/非巻戻しclockは未登録で、actual production発行は`NO-GO`です。V3 portable output単体は常に`not_authorization`です。
+- 現行M-Bをfrozen V2 negative assessmentへ通すと、mapping 0/235、unresolved 219、conflict 16、target capability row 118、execution gap 118、diagnostic blocker 718、promotion blocker 720のexact `NO-GO`です。goldenの`production_trust_anchor_status: not_implemented`はV2発行経路のhistorical fieldであり、V3工学verifierまたはactual enrollmentの状態へ読み替えません。集約値だけを小さなgoldenへ残し、完全assessmentはGit外に保存します。
 - AI-01 frozen synthetic benchmarkは64 pair / 128戦、Replay verification 100%、candidate 126勝0分2敗です。単一SIM-01 fixtureの工学回帰に限り、reportは常に`champions_candidate=false`、`rank1_equivalence_status=unmeasured`です。
 - 実ゲームの操作対象はプライベートマッチのフレンド戦に限定します。
 - ランクマッチ自動操作、BlueStacks入力操作、学習実験は現在の対象外です。read-only診断/captureもフレンド戦のgrounding用途に限定します。
@@ -41,6 +42,7 @@
 - [SIM-02 Phase Contract](specs/sim-02-phase-contract.md)
 - [AI-01 Phase Contract](specs/ai-01-phase-contract.md)
 - [SIM-02B Phase Contract](specs/sim-02b-phase-contract.md)
+- [SIM-02C Phase Contract](specs/sim-02c-phase-contract.md)
 - [仕様監査規則](specs/spec-audit.md)
 - [暫定判断台帳](docs/provisional-decisions.md)
 - [仕様監査ログ](docs/spec-audit-log.md)
@@ -50,7 +52,8 @@
 - [SIM-02検証レポート](docs/validation-report-sim02.md)
 - [AI-01検証レポート](docs/validation-report-ai01.md)
 - [SIM-02B検証レポート](docs/validation-report-sim02b.md)
-- `data/schemas/`: RuleSet、Catalog、Battle fixture、Replay v2、source manifest、production Catalog input、source-to-capability report、AI-01 Arena report/evidence manifestのJSON Schema
+- [SIM-02C検証レポート](docs/validation-report-sim02c.md)
+- `data/schemas/`: RuleSet、Catalog、Battle fixture、Replay v2、source manifest、production Catalog input、source-to-capability report、AI-01 Arena、SIM-02B scenario/promotion/readiness、SIM-02C trust/enrollment/input/Compilation/readinessのJSON Schema
 - `data/manifests/`: 小さな出典manifest例。元データ本体は含めない
 - `scripts/validate_sim01_bundle.py`: Schema、loader、Replay、manifest hash、license scopeの統合検査
 - `scripts/check_repo_size.py`: `PD-001/002`のGit候補ファイル容量検査
@@ -93,7 +96,7 @@ python -m pytest -q
 
 ## データ管理
 
-`data/raw/`、`data/processed/`、`replays/`、`runs/`、`checkpoints/`、`embeddings/`、`llm_cache/`、`videos/`、`screenshots/`はGit管理外です。Gitにはスキーマ、小さなfixture、manifest、集約結果だけを残します。詳細と暫定上限は[Git・成果物容量方針](docs/git-artifact-policy.md)を参照してください。
+`data/raw/`、`data/processed/`、`replays/`、`runs/`、`checkpoints/`、`embeddings/`、`llm_cache/`、`videos/`、`screenshots/`はGit管理外です。Gitにはスキーマ、小さなfixture、manifest、集約結果だけを残します。actual trust registry、private key、ledgerもGitへ保存せず、artifact root/workspace外の明示運用状態として扱います。誤配置防止のため`/.local/trust/`と`*.sqlite3*`もignoreします。詳細と暫定上限は[Git・成果物容量方針](docs/git-artifact-policy.md)を参照してください。
 
 ## 次のゲート
 
@@ -108,8 +111,10 @@ python -m pytest -q
 - AI-01 trusted-local evaluation foundation: 6→3選出、paired arena、公開情報baseline、Replay evidenceを実装・ローカル検証済み。process isolationは未達
 - AI-01 synthetic strength: frozen regressionは成功。ただし実M-B/scenario holdout/上位層較正がないため`UNMEASURED`
 - SIM-02B local engineering gate: resolver-backed production型、evidence-backed development/external-holdout scenario corpus、可搬Compilation、readiness v2を実装・ローカル検証済み。test scopeは`champions_candidate=false`
-- 現行M-B SIM-02B data gate: mapping 0/235、必須証拠不足、artifact-root外trust anchor未実装のexact `NO-GO`。production発行は明示停止し、local engineering完了で解除しない
-- 次の大目的 SIM-02C: production trust anchor + authoritative M-B evidence + executable scenario corpus。外部信頼境界、verified mapping、構造化Catalog/RuleSet、実機grounding、lineage分離holdoutを一つの大きな成果として揃える
+- SIM-02B V2 production path: production verifierを意図的に持たずunconditional fail-closed。frozen M-B assessmentのtrust fieldはこのV2状態だけを表す
+- SIM-02C V3 engineering verifier: ephemeral key/policy/enrollment、execution fingerprint、portable input、current-context再検証を実装・ローカル検証済み。portable outputはauthorizationではない
+- 現行M-B actual data/enrollment gate: mapping 0/235、必須証拠不足、actual policy/key/enrollment未登録のexact `NO-GO`。production発行は明示停止し、local engineering完了で解除しない
+- 継続する大目的 SIM-02C: actual production enrollment + authoritative M-B evidence + executable scenario corpus。verified mapping、構造化Catalog/RuleSet、実機grounding、lineage分離holdoutを一つの大きな成果として揃える
 - ランク1相当の主張: `NO-GO`。synthetic勝率、self-play Elo、LLM評価を代替証拠にしない
 - 公式Champions準拠としての昇格: 実機照合が終わるまで`NO-GO`
 - データ・派生物の再配布: license確認が終わるまで`NO-GO`

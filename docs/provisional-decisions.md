@@ -120,3 +120,28 @@
 - `owner`: competitive evaluation maintainer
 - `latest_evidence`: 2026-07-14に64 pair / 128 matches、candidate 126勝0分2敗、net utility 124/128 = 968,750 ppm、Replay verification 1,000,000 ppm、illegal/error/private-state-delivery violation 0。report hash `5fe3ac9d5fda0957fc0f4d1d61e17d1994e10959d5f5b40f997d0fd5c76dc2ac`とArena evidence hash `7a7c9bba506f4545f5f48ed5c76eef30c476efc681cd3847c23e7d8d4254b8e2`を`data/golden/ai01-synthetic-benchmark-v1.json`へ固定した。
 - `completion_relation`: AI-01の配線・決定性・回帰ゲートは満たすが、Champions fidelity、汎化、ランク1相当は証明しない。
+
+## PD-010: SIM-02C production trust verifier backend
+
+- `status`: provisional
+- `scope`: SIM-02C private/local production-source authorization engineering
+- `current_value`: 外部署名の初期検証backendをOpenSSH `ssh-keygen -Y verify`とEd25519鍵にする。専用namespaceとUTF-8 canonical JSONでdomain separationし、compiler側は公開鍵policyだけを持つ。
+- `reason`: Python stdlibにはEd25519 verifierがなく、共有HMAC secretはcompiler PCを署名者にもしてしまう。自作暗号を避け、Windows実行環境に存在する監査実績のある非対称署名backendで秘密鍵をcompiler PCから分離する。
+- `risk`: OpenSSH binary/versionの可用性、platform差、allowed-signers semantics、外部policy/key provisioningに依存する。署名成功はsourceの内容・license・Champions conformanceを自動的に証明しない。
+- `uncertainty_rule`: backend不在、binary hash/path未確認、policy hash不一致、key未登録・期限外・失効、revocation/ledger不可用時はproductionをfail-closedする。test keyはproduction keyとして登録しない。
+- `review_trigger`: actual production policy/keyを初めてenrollする時、対象PC/OSを変更する時、OpenSSH backendのサポートが不安定になった時、または監査済みPython暗号backendを正式依存にできる時。
+- `owner`: SIM-02 trust maintainer
+- `completion_relation`: trust engineering gateのbackend選択であり、actual issuer enrollment、authoritative M-B evidence、production readinessの完了を意味しない。
+
+## PD-011: SIM-02C fixed enrollment root and stable trust binding
+
+- `status`: provisional
+- `scope`: SIM-02C private/local production-source authorization engineering
+- `current_value`: callerが指定するpolicy path/hashだけをroot trustにせず、`%USERPROFILE%\.champions_sim\production-trust\enrollment-registry-v1.json`という起動時固定per-user pathの外部registryへ明示登録されたpolicyだけを受理する。registry ID/hash、enrollment ID/binding hash、policy ID/hash、OpenSSH executable hash、minimum policy epoch、status、有効期間に加え、事前provision済みSQLite ledgerのinstance IDと正規化path bindingをcurrent trusted timeで検査する。portable V3 bindingから検証実行時刻と生pathを除外し、同一有効入力のbyte identityを保つ一方、`authorization_status: not_authorization`とcurrent-context再検証要求を固定する。
+- `reason`: callerが任意Ed25519鍵、policy、expected policy hashを一式生成すると、署名検証自体は成功しても「そのpolicyを誰が信頼へ登録したか」を証明できないことが敵対的監査で判明した。compile callerから独立した固定registryを明示的なenrollment操作の境界にする。
+- `risk`: 同一OS user権限でregistry、ledgerまたはPython実装を改変・rollbackできる攻撃、同一processでのmonkeypatch、起動時`HOME`/`USERPROFILE`、trusted clock provenance、workspace/実行binaryのcode integrity、OS ACL/監査ログはこのローカル実装だけでは保護しない。固定registryは運用上のtrust rootであり、署名sourceの内容、license、Champions fidelity、運用者の正当性を自動証明しない。
+- `uncertainty_rule`: registry不存在・artifact root内配置・hash不一致・unknown/duplicate field・未登録policy・revoked/期限外enrollment・minimum epoch未達・ledger不存在/instance/path不一致・pre/post enrollment drift・current再検証不能時はfail-closedする。既定registryとledgerをworkspace外のACL保護・耐rollback運用stateとして維持し、workspace移設やsymlinkで重なる構成は許可しない。actual運用では非巻戻しのtrusted clockを外部供給する。compilerはregistry、ledger identityや秘密鍵を暗黙作成せず、private key、ledger、actual registryをGitまたはportable JSONへ保存しない。
+- `review_trigger`: actual policy/key/enrollmentを初めて登録する時、OS user/process分離やACLを導入する時、packaged binary/code signingへ移行する時、registry pathまたはOpenSSH backendを変更する時、実運用のrevocation/rotation手順を定義する時。
+- `owner`: SIM-02 trust maintainer
+- `implementation_evidence`: `src/champions_sim/promotion/trust_enrollment.py`、V3 compiler/readinessのpre/post/current-context再検証、enrollment negative E2E。test registry/key/policyは一時directoryだけに生成する。
+- `completion_relation`: 任意policy差替えをcompile caller境界で閉じるローカル工学判断である。actual enrollment、authoritative M-B source/license、Champions実機準拠、private-match投入、ランク1相当を証明しない。

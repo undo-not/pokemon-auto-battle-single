@@ -27,14 +27,16 @@ from champions_sim.core import (
     ReplayRecord,
     canonical_hash,
     canonical_json,
+    to_canonical_data,
 )
 from champions_sim.engine import BattleEngine
 from champions_sim.runner import verify_replay
 
 
-SCENARIO_SCHEMA_VERSION = "2.0.0"
-PARTITION_SCHEMA_VERSION = "2.0.0"
+SCENARIO_SCHEMA_VERSION = "2.1.0"
+PARTITION_SCHEMA_VERSION = "2.1.0"
 ENGINE_PROBE_SCHEMA_VERSION = "2.0.0"
+REPLAY_EXECUTION_HASH_VERSION = "1.0.0"
 
 _STABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -107,6 +109,7 @@ class EngineScenarioV2:
     catalog_hash: str
     ruleset_hash: str
     replay_hash: str
+    replay_execution_hash: str
     witness_step_index: int
     witness_event_index: int
     witness_event_kind: str
@@ -127,6 +130,7 @@ class EngineScenarioV2:
             (self.catalog_hash, "catalog_hash"),
             (self.ruleset_hash, "ruleset_hash"),
             (self.replay_hash, "replay_hash"),
+            (self.replay_execution_hash, "replay_execution_hash"),
             (self.witness_event_hash, "witness_event_hash"),
         ):
             _sha256(value, label)
@@ -153,6 +157,7 @@ class EngineScenarioV2:
             "catalog_hash": self.catalog_hash,
             "ruleset_hash": self.ruleset_hash,
             "replay_hash": self.replay_hash,
+            "replay_execution_hash": self.replay_execution_hash,
             "witness_step_index": self.witness_step_index,
             "witness_event_index": self.witness_event_index,
             "witness_event_kind": self.witness_event_kind,
@@ -286,6 +291,8 @@ class ScenarioPartitionManifestV2:
     external_holdout_scenario_hashes: tuple[str, ...]
     development_replay_hashes: tuple[str, ...]
     external_holdout_replay_hashes: tuple[str, ...]
+    development_replay_execution_hashes: tuple[str, ...]
+    external_holdout_replay_execution_hashes: tuple[str, ...]
     development_source_lineage_ids: tuple[str, ...]
     external_holdout_source_lineage_ids: tuple[str, ...]
     development_collection_lineage_ids: tuple[str, ...]
@@ -294,6 +301,7 @@ class ScenarioPartitionManifestV2:
     external_holdout_authoring_lineage_ids: tuple[str, ...]
     scenario_hash_overlap: tuple[str, ...]
     replay_hash_overlap: tuple[str, ...]
+    replay_execution_hash_overlap: tuple[str, ...]
     source_lineage_overlap: tuple[str, ...]
     collection_lineage_overlap: tuple[str, ...]
     authoring_lineage_overlap: tuple[str, ...]
@@ -317,6 +325,14 @@ class ScenarioPartitionManifestV2:
             (self.external_holdout_scenario_hashes, "external_holdout_scenario_hashes"),
             (self.development_replay_hashes, "development_replay_hashes"),
             (self.external_holdout_replay_hashes, "external_holdout_replay_hashes"),
+            (
+                self.development_replay_execution_hashes,
+                "development_replay_execution_hashes",
+            ),
+            (
+                self.external_holdout_replay_execution_hashes,
+                "external_holdout_replay_execution_hashes",
+            ),
         ):
             _sorted_unique_hashes(values, label)
         for values, label in (
@@ -331,6 +347,7 @@ class ScenarioPartitionManifestV2:
         overlaps = (
             self.scenario_hash_overlap,
             self.replay_hash_overlap,
+            self.replay_execution_hash_overlap,
             self.source_lineage_overlap,
             self.collection_lineage_overlap,
             self.authoring_lineage_overlap,
@@ -366,6 +383,12 @@ class ScenarioPartitionManifestV2:
             "external_holdout_scenario_hashes": list(self.external_holdout_scenario_hashes),
             "development_replay_hashes": list(self.development_replay_hashes),
             "external_holdout_replay_hashes": list(self.external_holdout_replay_hashes),
+            "development_replay_execution_hashes": list(
+                self.development_replay_execution_hashes
+            ),
+            "external_holdout_replay_execution_hashes": list(
+                self.external_holdout_replay_execution_hashes
+            ),
             "development_source_lineage_ids": list(self.development_source_lineage_ids),
             "external_holdout_source_lineage_ids": list(self.external_holdout_source_lineage_ids),
             "development_collection_lineage_ids": list(self.development_collection_lineage_ids),
@@ -374,6 +397,9 @@ class ScenarioPartitionManifestV2:
             "external_holdout_authoring_lineage_ids": list(self.external_holdout_authoring_lineage_ids),
             "scenario_hash_overlap": list(self.scenario_hash_overlap),
             "replay_hash_overlap": list(self.replay_hash_overlap),
+            "replay_execution_hash_overlap": list(
+                self.replay_execution_hash_overlap
+            ),
             "source_lineage_overlap": list(self.source_lineage_overlap),
             "collection_lineage_overlap": list(self.collection_lineage_overlap),
             "authoring_lineage_overlap": list(self.authoring_lineage_overlap),
@@ -470,6 +496,12 @@ def build_scenario_partition_manifest_v2(
     holdout_replay_hashes = tuple(
         sorted({value.replay_hash for value in external_holdout.scenarios})
     )
+    development_replay_execution_hashes = tuple(
+        sorted({value.replay_execution_hash for value in development.scenarios})
+    )
+    holdout_replay_execution_hashes = tuple(
+        sorted({value.replay_execution_hash for value in external_holdout.scenarios})
+    )
     development_source = _lineage_ids(development, "source_lineage_ids")
     holdout_source = _lineage_ids(external_holdout, "source_lineage_ids")
     development_collection = _lineage_ids(
@@ -489,6 +521,12 @@ def build_scenario_partition_manifest_v2(
     replay_overlap = tuple(
         sorted(set(development_replay_hashes) & set(holdout_replay_hashes))
     )
+    replay_execution_overlap = tuple(
+        sorted(
+            set(development_replay_execution_hashes)
+            & set(holdout_replay_execution_hashes)
+        )
+    )
     source_overlap = tuple(sorted(set(development_source) & set(holdout_source)))
     collection_overlap = tuple(
         sorted(set(development_collection) & set(holdout_collection))
@@ -501,6 +539,7 @@ def build_scenario_partition_manifest_v2(
         for values, label in (
             (scenario_overlap, "scenario_hash_overlap"),
             (replay_overlap, "replay_hash_overlap"),
+            (replay_execution_overlap, "replay_execution_hash_overlap"),
             (source_overlap, "source_lineage_overlap"),
             (collection_overlap, "collection_lineage_overlap"),
             (authoring_overlap, "authoring_lineage_overlap"),
@@ -531,6 +570,12 @@ def build_scenario_partition_manifest_v2(
         external_holdout_scenario_hashes=holdout_scenario_hashes,
         development_replay_hashes=development_replay_hashes,
         external_holdout_replay_hashes=holdout_replay_hashes,
+        development_replay_execution_hashes=(
+            development_replay_execution_hashes
+        ),
+        external_holdout_replay_execution_hashes=(
+            holdout_replay_execution_hashes
+        ),
         development_source_lineage_ids=development_source,
         external_holdout_source_lineage_ids=holdout_source,
         development_collection_lineage_ids=development_collection,
@@ -539,6 +584,7 @@ def build_scenario_partition_manifest_v2(
         external_holdout_authoring_lineage_ids=holdout_authoring,
         scenario_hash_overlap=(),
         replay_hash_overlap=(),
+        replay_execution_hash_overlap=(),
         source_lineage_overlap=(),
         collection_lineage_overlap=(),
         authoring_lineage_overlap=(),
@@ -551,6 +597,253 @@ def replay_choice_sequence_hash(replay: ReplayRecord) -> str:
     if type(replay) is not ReplayRecord:
         raise PromotionScenarioError("choice hashing requires exact ReplayRecord")
     return canonical_hash(tuple(step.selections for step in replay.steps))
+
+
+def _replay_instance_labels(replay: ReplayRecord) -> dict[str, str]:
+    """Map cosmetic Pokemon instance IDs to stable player/team positions."""
+
+    labels: dict[str, str] = {}
+    for side in sorted(
+        replay.initial_state.payload.sides,
+        key=lambda value: value.player.value,
+    ):
+        for index, pokemon in enumerate(side.team):
+            labels[str(pokemon.instance_id)] = f"{side.player.value}:team:{index}"
+    return labels
+
+
+def _semantic_initial_state(
+    replay: ReplayRecord,
+    instance_labels: Mapping[str, str],
+) -> dict[str, Any]:
+    """Return private initial state substance without cosmetic/source IDs."""
+
+    payload = to_canonical_data(replay.initial_state.payload)
+    if not isinstance(payload, dict):  # pragma: no cover - exact BattleState contract.
+        raise PromotionScenarioError("Replay initial state is not canonical data")
+    payload.pop("battle_id", None)
+    # RuleSet content is bound independently.  Its mutable label is not execution
+    # identity, just as Catalog ID is not identity when its content hash is fixed.
+    payload.pop("ruleset_id", None)
+    sides = payload.get("sides")
+    if not isinstance(sides, list):  # pragma: no cover - exact BattleState contract.
+        raise PromotionScenarioError("Replay initial state sides are malformed")
+    normalized_sides: list[dict[str, Any]] = []
+    for side in sorted(sides, key=lambda value: str(value.get("player"))):
+        normalized = dict(side)
+        active = normalized.get("active_instance_id")
+        normalized["active_instance_id"] = instance_labels.get(str(active), str(active))
+        team = normalized.get("team")
+        if not isinstance(team, list):  # pragma: no cover - exact SideState contract.
+            raise PromotionScenarioError("Replay initial state team is malformed")
+        normalized_team: list[dict[str, Any]] = []
+        for pokemon in team:
+            normalized_pokemon = dict(pokemon)
+            instance_id = normalized_pokemon.get("instance_id")
+            normalized_pokemon["instance_id"] = instance_labels.get(
+                str(instance_id), str(instance_id)
+            )
+            profile = normalized_pokemon.get("mega_evolution_profile")
+            if isinstance(profile, dict):
+                normalized_profile = dict(profile)
+                # These fields prove provenance in the full Replay but do not
+                # alter the exact grounded stat profile used by the engine.
+                normalized_profile.pop("source_manifest_id", None)
+                normalized_profile.pop("source_record_id", None)
+                normalized_profile.pop("profile_hash", None)
+                normalized_pokemon["mega_evolution_profile"] = normalized_profile
+            normalized_team.append(normalized_pokemon)
+        normalized["team"] = normalized_team
+        normalized_sides.append(normalized)
+    payload["sides"] = normalized_sides
+    return payload
+
+
+def _semantic_action(
+    action: Any,
+    instance_labels: Mapping[str, str],
+) -> dict[str, Any]:
+    value: dict[str, Any] = {"kind": action.kind.value}
+    if action.move_id is not None:
+        value["move_id"] = str(action.move_id)
+    if action.switch_to is not None:
+        value["switch_to"] = instance_labels.get(
+            str(action.switch_to), str(action.switch_to)
+        )
+    return value
+
+
+def _semantic_scalar(
+    value: Any,
+    *,
+    replay: ReplayRecord,
+    instance_labels: Mapping[str, str],
+    request_labels: Mapping[str, str],
+) -> Any:
+    if not isinstance(value, str):
+        return value
+    if value in instance_labels:
+        return instance_labels[value]
+    if value in request_labels:
+        return request_labels[value]
+    if value == replay.battle_id:
+        return "battle"
+    if value == replay.replay_id:
+        return "replay"
+    return value
+
+
+def _semantic_event(
+    event: Any,
+    *,
+    replay: ReplayRecord,
+    instance_labels: Mapping[str, str],
+    request_labels: Mapping[str, str],
+    action_labels: Mapping[tuple[str, str], str],
+) -> dict[str, Any]:
+    details: dict[str, Any] = {}
+    for key, value in event.details:
+        if key in {
+            "provisional_decision_id",
+            "record_id",
+            "replay_id",
+            "source_manifest_id",
+            "source_record_id",
+        }:
+            continue
+        if (
+            key == "action_id"
+            and isinstance(value, str)
+            and event.actor is not None
+        ):
+            normalized = action_labels.get(
+                (event.actor.value, value),
+                value,
+            )
+        else:
+            normalized = _semantic_scalar(
+                value,
+                replay=replay,
+                instance_labels=instance_labels,
+                request_labels=request_labels,
+            )
+        details[key] = normalized
+    return {
+        # Array position already binds event order; stored sequence numbers are
+        # record coordinates, not battle execution substance.
+        "kind": event.kind.value,
+        "actor": event.actor.value if event.actor is not None else None,
+        "subject": (
+            instance_labels.get(str(event.subject), str(event.subject))
+            if event.subject is not None
+            else None
+        ),
+        "details": details,
+    }
+
+
+def replay_execution_hash_v2(replay: ReplayRecord) -> str:
+    """Hash battle execution substance independently from cosmetic Replay IDs.
+
+    The full ``ReplayRecord.replay_hash`` remains the artifact identity used for
+    exact verification.  This second identity is deliberately insensitive to
+    replay/battle/request/action IDs, Pokemon instance labels, source/provisional
+    labels, and derived state hashes so those labels cannot disguise a copied
+    development execution as external holdout evidence.
+    """
+
+    if type(replay) is not ReplayRecord:
+        raise PromotionScenarioError(
+            "execution hashing requires exact ReplayRecord"
+        )
+    replay.__post_init__()
+    instance_labels = _replay_instance_labels(replay)
+    initial_events = [
+        _semantic_event(
+            event,
+            replay=replay,
+            instance_labels=instance_labels,
+            request_labels={},
+            action_labels={},
+        )
+        for event in replay.initial_events
+    ]
+    steps: list[dict[str, Any]] = []
+    for step in replay.steps:
+        requests = sorted(
+            step.requests.requests,
+            key=lambda value: value.player.value,
+        )
+        selections = {value.player: value for value in step.selections}
+        request_labels = {
+            request.request_id: (
+                f"request:{request.player.value}:{request.kind.value}"
+            )
+            for request in requests
+        }
+        action_labels: dict[tuple[str, str], str] = {}
+        decisions: list[dict[str, Any]] = []
+        for request in requests:
+            actions = {value.action_id: value for value in request.legal_actions}
+            for action in request.legal_actions:
+                action_labels[(request.player.value, action.action_id)] = (
+                    "action:"
+                    + canonical_hash(
+                        {
+                            "player": request.player.value,
+                            "request_kind": request.kind.value,
+                            "action": _semantic_action(action, instance_labels),
+                        }
+                    )
+                )
+            selection = selections[request.player]
+            selected_action = actions[selection.action_id]
+            decisions.append(
+                {
+                    "player": request.player.value,
+                    "decision_kind": request.kind.value,
+                    "selected_action": _semantic_action(
+                        selected_action, instance_labels
+                    ),
+                }
+            )
+        steps.append(
+            {
+                "decisions": decisions,
+                "rng_before": to_canonical_data(step.rng_before),
+                "rng_after": to_canonical_data(step.rng_after),
+                "events": [
+                    _semantic_event(
+                        event,
+                        replay=replay,
+                        instance_labels=instance_labels,
+                        request_labels=request_labels,
+                        action_labels=action_labels,
+                    )
+                    for event in step.events
+                ],
+                "terminal": step.terminal,
+            }
+        )
+    return canonical_hash(
+        {
+            "schema_version": REPLAY_EXECUTION_HASH_VERSION,
+            "simulator_version": replay.bundle.simulator_version,
+            "engine_semantics_version": replay.bundle.engine_semantics_version,
+            "catalog_content_hash": replay.bundle.catalog_content_hash,
+            "ruleset_content_hash": replay.bundle.ruleset_content_hash,
+            "rng_algorithm_id": replay.rng_algorithm_id,
+            "initial_rng": to_canonical_data(replay.initial_rng),
+            "rng_after_initialization": to_canonical_data(
+                replay.rng_after_initialization
+            ),
+            "final_rng": to_canonical_data(replay.final_rng),
+            "initial_state": _semantic_initial_state(replay, instance_labels),
+            "initial_events": initial_events,
+            "steps": steps,
+            "result": to_canonical_data(replay.result),
+        }
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1057,6 +1350,11 @@ def verify_engine_probe_v2(
         ("catalog_hash", scenario.catalog_hash, replay.bundle.catalog_content_hash),
         ("ruleset_hash", scenario.ruleset_hash, replay.bundle.ruleset_content_hash),
         ("replay_hash", scenario.replay_hash, replay.replay_hash),
+        (
+            "replay_execution_hash",
+            scenario.replay_execution_hash,
+            replay_execution_hash_v2(replay),
+        ),
     )
     mismatches = [label for label, actual, expected in bindings if actual != expected]
     if mismatches:
@@ -1406,6 +1704,7 @@ def build_engine_probe_report_v2(
 __all__ = [
     "ENGINE_PROBE_SCHEMA_VERSION",
     "PARTITION_SCHEMA_VERSION",
+    "REPLAY_EXECUTION_HASH_VERSION",
     "SCENARIO_SCHEMA_VERSION",
     "EngineProbeReportV2",
     "EngineScenarioCorpusV2",
@@ -1417,5 +1716,6 @@ __all__ = [
     "build_engine_scenario_corpus_v2",
     "build_scenario_partition_manifest_v2",
     "replay_choice_sequence_hash",
+    "replay_execution_hash_v2",
     "verify_engine_probe_v2",
 ]

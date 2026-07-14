@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import _sim02b_fixture as fixture_module
 from _sim02b_fixture import (
     CORE_ARTIFACT_IDS,
     DEVELOPMENT_ARTIFACT_IDS,
+    HOLDOUT_ARTIFACT_IDS,
     build_test_authoritative_sim02b_fixture,
     rewrite_manifest_artifact,
     rewrite_source_manifests_as_production_claim,
@@ -23,6 +25,10 @@ from champions_sim.promotion import compiler as promotion_compiler
 from champions_sim.promotion.sources import (
     PromotionSourceError,
     PromotionSourceScopeV2,
+)
+from champions_sim.promotion.scenarios import (
+    PromotionScenarioError,
+    build_engine_scenario_corpus_v2,
 )
 
 
@@ -132,6 +138,74 @@ def test_resigned_scenario_byte_drift_is_rejected_against_runtime_object(
         match="development scenario corpus bytes differ from exact runtime object",
     ):
         fixture.compile()
+
+
+def test_compiler_rejects_replay_id_relabelled_development_execution_as_holdout(
+    tmp_path: Path,
+) -> None:
+    fixture = build_test_authoritative_sim02b_fixture(tmp_path)
+    holdout_scenario = fixture.external_holdout_scenario_corpus.scenarios[0]
+    development_scenario = next(
+        value
+        for value in fixture.development_scenario_corpus.scenarios
+        if value.capability_id == holdout_scenario.capability_id
+    )
+    development_replay = fixture.replays[development_scenario.scenario_id]
+    relabelled_replay = replace(
+        development_replay,
+        replay_id="replay-cosmetically-relabeled-holdout",
+    )
+    attacked_scenario = replace(
+        holdout_scenario,
+        initial_state_hash=development_scenario.initial_state_hash,
+        choice_sequence_hash=development_scenario.choice_sequence_hash,
+        seed=development_scenario.seed,
+        rng_algorithm_id=development_scenario.rng_algorithm_id,
+        replay_hash=relabelled_replay.replay_hash,
+        replay_execution_hash=development_scenario.replay_execution_hash,
+        witness_step_index=development_scenario.witness_step_index,
+        witness_event_index=development_scenario.witness_event_index,
+        witness_event_kind=development_scenario.witness_event_kind,
+        witness_event_hash=development_scenario.witness_event_hash,
+    )
+    attacked_holdout = build_engine_scenario_corpus_v2(
+        corpus_id=fixture.external_holdout_scenario_corpus.corpus_id,
+        corpus_role="external_holdout",
+        target_capability_set_hash=(
+            fixture.external_holdout_scenario_corpus.target_capability_set_hash
+        ),
+        catalog_hash=fixture.external_holdout_scenario_corpus.catalog_hash,
+        ruleset_hash=fixture.external_holdout_scenario_corpus.ruleset_hash,
+        scenarios=(attacked_scenario,),
+    )
+    rewrite_manifest_artifact(
+        fixture,
+        HOLDOUT_ARTIFACT_IDS["replay"],
+        relabelled_replay.to_json(),
+    )
+    rewrite_manifest_artifact(
+        fixture,
+        HOLDOUT_ARTIFACT_IDS["scenarios"],
+        attacked_holdout.to_json(),
+    )
+    replays = dict(fixture.replays)
+    replays[holdout_scenario.scenario_id] = relabelled_replay
+    attacked_fixture = replace(
+        fixture,
+        external_holdout_scenario_corpus=attacked_holdout,
+        replays=replays,
+    )
+
+    assert relabelled_replay.replay_hash != development_replay.replay_hash
+    assert (
+        attacked_scenario.replay_execution_hash
+        == development_scenario.replay_execution_hash
+    )
+    with pytest.raises(
+        PromotionScenarioError,
+        match="replay_execution_hash_overlap",
+    ):
+        attacked_fixture.compile()
 
 
 def test_resolver_derived_production_claim_cannot_promote_synthetic_regulation(

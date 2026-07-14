@@ -526,8 +526,8 @@
 - `impact`: synthetic fixtureまたは任意local dataをChampions準拠candidateへ自己昇格でき、SIM-02B全gateと下流AI評価を迂回する。
 - `mitigation`: artifact-root外trust-anchor verifierが未実装（`trust_anchor_status: not_implemented`）の間、current/verifiedを含むproduction claimをcompilerで常にfail-closed拒否する。現M-B assessmentへ`production_trust_anchor_missing`を追加し、production blockerを720へ更新した。test-authoritative engineering pathは維持する。
 - `evidence`: `tests/test_promotion_compiler_e2e_v2.py::test_untrusted_local_claims_cannot_issue_production_candidate`、`src/champions_sim/promotion/compiler.py::_validate_scope`
-- `status`: open
-- `resolution`:
+- `status`: resolved
+- `resolution`: SIM-02B V2はproduction発行をunconditional fail-closedのまま凍結し、local JSONだけでcandidateを発行する脆弱経路を閉じた。positive trust verificationはV2を緩和せず、SIM-02C V3の外部policy/attestation/enrollment型へ分離した。SIM-02B goldenの`production_trust_anchor_status: not_implemented`はこのV2発行経路のfrozen fieldであり、V3工学verifierの有無を表さない。actual M-B enrollment未設定のNO-GOは`AUD-SIM02C-003`で追跡する。
 
 ### AUD-SIM02B-007
 
@@ -542,16 +542,102 @@
 - `status`: resolved
 - `resolution`: manifest/artifact snapshotを再利用してrecord JSON pointer/hashだけを追加検証する経路へ変更した。E2Eで3 manifestが各1回だけ解決されることを固定し、artifact再読時のsize/hash検査は維持した。
 
-## SIM-02B Gate判定
+## SIM-02B Gate判定（frozen V2 completion snapshot）
 
 - Phase Contract: **SPECIFIED / FROZEN FOR SIM-02B**
 - v2 local engineering implementation: **GO / ENGINEERING COMPLETE**
 - test-authoritative positive E2E: **GO** — 3 capability、development 3 scenario、external holdout 1 scenario、再コンパイル・再検証・改変拒否
 - test-authoritative readiness seal: **GO / `champions_candidate: false`**
 - actual M-B data gate: **NO-GO** — 0/235 verified mapping、118/118 target row/execution gap、718 diagnostic blockers、720 promotion blockers
-- production source trust anchor: **NO-GO / NOT IMPLEMENTED / issuance disabled** — `AUD-SIM02B-006`
+- V2 production verifier: **INTENTIONALLY ABSENT / unconditional fail-closed / issuance disabled** — `AUD-SIM02B-006`
 - actual M-B production readiness seal: **NO-GO / 発行不可** — `AUD-SIM02B-003`
 - one-week actual adaptation rehearsal: **NO-GO / UNMEASURED** — `AUD-SIM02B-005`
 - Rank-1 equivalence: **UNMEASURED / CLAIM FORBIDDEN** — `AUD-AI01-004/005`
 - Full regression: **454 passed in 43.17s**
 - 次の大目的: **SIM-02C Production Trust Anchor + Authoritative M-B Evidence + Executable Scenario Corpus**
+
+## SIM-02C事前監査 — 2026-07-14
+
+### AUD-SIM02C-001
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C / EXTERNAL HOLDOUT INTEGRITY
+- `category`: semantic_identity_gap
+- `problem`: scenario hashはscenario ID/partition/lineage labelを除外するがfull `ReplayRecord.replay_hash`を含む。Replay hashは`replay_id`を含むため、development Replayの`replay_id`だけを変更し、別source/collection/authoring labelを付けると同一executionをexternal holdoutとしてcompileできた。
+- `expected`: bound Replayの実行内容からrecord/battle/request/action/lineageのcosmetic IDに依存しないexecution fingerprintを再計算し、development/holdout間の意味的重複を0にする。宣言hashはbound Replayと一致させる。
+- `impact`: 開発に使用した対戦をID変更だけでblind holdoutに見せ、novel gap 0とproduction昇格根拠を偽装できる。
+- `mitigation`: production trust導入前はactual M-B production発行を停止したまま維持する。
+- `suggested_action`: `replay_execution_hash`をscenario/partition/Compilationへ結合し、relabel duplicateのnegative E2Eを追加する。
+- `evidence`: `src/champions_sim/promotion/scenarios.py`、`src/champions_sim/core/replay.py`、現HEAD 1ce04c2での敵対的再現
+- `status`: resolved
+- `resolution`: Replayのsimulator/engine/Catalog/RuleSet、private initial state、RNG境界、decision/action substance、events、terminal resultから`replay_execution_hash_v2`を再計算する。replay/battle/request/action/instance/source/provisional IDを全置換してfull Replay hashとchoice hashが変わってもexecution hashは同一になること、battle substance変更では変わることを固定した。scenario/partition/compilerが宣言hash一致とdevelopment/holdout execution overlap 0を要求し、unitおよびcompiler E2Eでrelabel attackを拒否する。
+
+### AUD-SIM02C-002
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C / PRODUCTION TRUST AND PORTABILITY
+- `category`: missing_spec
+- `problem`: V2はproduction trust verifierを持たず意図的に全production claimを拒否する。またCompilation JSONはhash-bound summaryだが、再検証に必要なrequest/replays/tracesをprivate runtime fieldへ保持し、fresh processでJSON単体から再構築できない。
+- `expected`: V2を緩和せず、artifact-root外のpinned public-key policy、revocation、trusted clock、replay ledgerで署名subjectを検証するV3と、絶対path/secretを含まないinput manifestを別契約にする。portable summary単体をauthorizationにしない。
+- `impact`: V2拒否を雑に解除すると任意local JSONをChampions candidateへ昇格でき、反対にsummaryだけをportable再検証可能と誤認すると必要なruntime evidenceを失う。
+- `mitigation`: V2 production issuanceをunconditional fail-closedのまま維持し、actual key enrollment前はproduction policyを未構成とする。
+- `suggested_action`: `specs/sim-02c-phase-contract.md`に従い、trust policy/attestation/receipt、V3 Compilation/readiness、input manifest、敵対的E2Eを実装する。
+- `evidence`: `src/champions_sim/promotion/compiler.py`、`src/champions_sim/env/readiness_v2.py`、`PD-010`
+- `status`: resolved
+- `resolution`: V2の拒否を維持したまま、artifact-root非依存`ProductionPromotionInputManifestV3`、OpenSSH Ed25519 policy/attestation/receipt、trust-bound `AttestedProductionPromotionCompilationV3`、current-context再検証型`ResolvedChampionsReadinessV3`を別型で実装した。portable documentは絶対path・secret・検証実行時刻を含めず、常に`authorization_status: not_authorization`とcurrent-context要求を持つ。pre/post resolverは同一content-addressed manifestへ収束し、その間のV2 core compileは1 resolved source snapshotだけを消費する。ephemeral fixtureで配線を検証するが、actual issuer/source/license/M-B readinessを証明しない。
+
+### AUD-SIM02C-003
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C / PRODUCTION TRUST ROOT
+- `category`: arbitrary_policy_substitution
+- `problem`: 初期V3案はcaller supplied `ProductionTrustContextV1`のpolicy pathとexpected policy hashを相互照合するだけで、caller自身がEd25519 key、policy、attestationを一式作れば暗号検証に成功した。policy hash pinは内容同一性を示すが、そのpolicyが事前に信頼登録されたことを示さない。
+- `expected`: compile callerがpathを選べないartifact root/workspace外の固定enrollment stateをrootとし、登録済みpolicy/verification binary/minimum epoch/status/validityだけを受理する。pre/post/current再検証でenrollment driftを拒否する。
+- `impact`: 任意local actorが自分をissuerとして登録したように見せ、署名subjectを自己承認してproduction V3経路を迂回できる。
+- `mitigation`: actual enrollmentが構成されるまでactual M-B production発行を停止し、portable summaryをauthorizationにしない。
+- `suggested_action`: 固定per-user enrollment registryを追加し、registry/enrollment bindingをV3 Compilation/readinessへ結合する。missing/unregistered/revoked/expired/driftをnegative E2Eで拒否する。
+- `evidence`: `src/champions_sim/promotion/trust_enrollment.py`、`src/champions_sim/promotion/compiler_v3.py`、SIM-02C enrollment/compiler tests、`PD-011`
+- `status`: resolved
+- `resolution`: `%USERPROFILE%\.champions_sim\production-trust\enrollment-registry-v1.json`をcaller非選択の起動時固定rootとして読み取り専用利用し、registry ID/hash、enrollment ID/binding、policy ID/hash、OpenSSH executable hash、minimum policy epoch、status、有効期間、provision済みledger instance ID/path bindingを検査する。registry/ledger identityを作成・更新するproduction APIは持たず、testでは一時directoryへの明示monkeypatch/provisionだけを使う。同一process monkeypatch、起動環境、同一OS userによるregistry/ledger/code改変はcode integrityとOS保護を信頼する脅威境界として`PD-011`へ明示した。actual registry/key/policy/ledger/clockは未登録である。
+
+### AUD-SIM02C-004
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C / SOURCE SNAPSHOT TOCTOU
+- `category`: change_compile_restore
+- `problem`: pre trust検証後にsource artifactと宣言manifestを一時変更し、V2 core compile後に元へ戻すと、post resolverは元の署名subjectへ収束してもbase Compilationだけが一時snapshotを保持できた。
+- `expected`: post filesystem再読だけでなく、coreが実際に消費した初期resolved source snapshotとbase requestを署名subject/input manifestへ照合する。
+- `status`: resolved
+- `resolution`: baseの保持source setからcore入口時のgrounding-only recordsを復元し、manifest/license/artifact digestを含むsource authority hashとinput resolution hashを署名対象へexact比較した。request bindingもbase retained requestから再計算する。change-compile-restore negative E2Eは修正前に再現し、修正後にfail-closedした。
+
+### AUD-SIM02C-005
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: SIM-02C / TRUST LEDGER CONTINUITY
+- `category`: external_state_rollback
+- `problem`: caller選択ledgerを削除するとtrust core単体は新規SQLiteを作成でき、同一attestation IDの履歴を失う。`trusted_time`もprivileged context入力であり、OS保護なしでは巻戻せる。
+- `expected`: public V3は固定enrollmentに登録した既存ledger installationだけを受理し、消失/別instanceを拒否する。actual運用はledger snapshot rollbackとclock rollbackを外部で防止する。
+- `status`: resolved_local / blocked_external_actual
+- `resolution`: enrollmentへledger instance IDとdomain-separated normalized path bindingを追加し、既存SQLite identityをread-only解決してからV3検証する。ledger消失・空置換・別path/instanceをnegative E2Eで拒否した。同一OS userによるregistry/ledger snapshot改変とtrusted clock provenanceはACL、backup/耐rollback、非巻戻しclockというactual authorization前提として`PD-011`へ残す。
+
+## SIM-02C Gate判定
+
+- Phase Contract: **SPECIFIED / IMPLEMENTATION SYNCHRONIZED**
+- SIM-02B V2 production path: **FAIL-CLOSED / issuance disabled**
+- semantic execution partition: **GO / VERIFIED LOCALLY** — cosmetic ID全変更でも重複拒否
+- artifact-root independent input manifest: **GO / VERIFIED LOCALLY** — round-trip、relocation、path/drift拒否
+- V3 trust/enrollment verifier: **GO / VERIFIED LOCALLY WITH EPHEMERAL FIXTURE** — test key/policy/registryだけ
+- portable V3 output: **NOT AUTHORIZATION / current trust context required**
+- actual M-B production policy/key/enrollment: **NO-GO / NOT CONFIGURED**
+- actual M-B data gate: **NO-GO** — mapping 0/235、unresolved 219、conflict 16、target/execution 118/118、actual grounding 0、diagnostic/promotion blockers 718/720
+- Champions fidelity / private-match投入: **NO-GO / UNPROVEN**
+- Rank-1 equivalence: **UNMEASURED / CLAIM FORBIDDEN**
+- Focused SIM-02C verification: **97 passed in 29.15s**
+- Full regression: **524 passed in 68.27s**
+- Repository size gate: **233 candidates / 0 violations**
+- SIM-01 frozen validation: **PASS / hash不変**

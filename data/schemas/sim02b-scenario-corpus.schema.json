@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:champions_sim:schema:sim02b-scenario-corpus:2",
+  "$id": "urn:champions_sim:schema:sim02b-scenario-corpus:2.1",
   "title": "SIM-02B Evidence-bound Engine Scenario Corpus V2",
   "type": "object",
   "additionalProperties": false,
@@ -15,7 +15,7 @@
     "corpus_hash"
   ],
   "properties": {
-    "schema_version": {"const": "2.0.0"},
+    "schema_version": {"const": "2.1.0"},
     "corpus_id": {"$ref": "#/$defs/id"},
     "corpus_role": {"enum": ["development", "external_holdout"]},
     "target_capability_set_hash": {"$ref": "#/$defs/sha"},
@@ -59,6 +59,7 @@
         "catalog_hash",
         "ruleset_hash",
         "replay_hash",
+        "replay_execution_hash",
         "witness_step_index",
         "witness_event_index",
         "witness_event_kind",
@@ -84,6 +85,7 @@
         "catalog_hash": {"$ref": "#/$defs/sha"},
         "ruleset_hash": {"$ref": "#/$defs/sha"},
         "replay_hash": {"$ref": "#/$defs/sha"},
+        "replay_execution_hash": {"$ref": "#/$defs/sha"},
         "witness_step_index": {"type": "integer", "minimum": 0},
         "witness_event_index": {"type": "integer", "minimum": 0},
         "witness_event_kind": {"$ref": "#/$defs/id"},

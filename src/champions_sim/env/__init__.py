@@ -32,14 +32,23 @@ from .readiness_v2 import (
     ResolvedChampionsReadinessV2,
     resolve_champions_readiness_v2,
 )
+from .readiness_v3 import (
+    CHAMPIONS_READINESS_V3_SCHEMA_VERSION,
+    ChampionsReadinessV3Error,
+    ResolvedChampionsReadinessV3,
+    resolve_champions_readiness_v3,
+    validate_champions_readiness_v3,
+)
 
 __all__ = [
     "AI_ENV_ADAPTER_SCHEMA_VERSION",
     "AI_ENV_ADAPTER_VERSION",
     "CHAMPIONS_READINESS_SCHEMA_VERSION",
     "CHAMPIONS_READINESS_V2_SCHEMA_VERSION",
+    "CHAMPIONS_READINESS_V3_SCHEMA_VERSION",
     "ChampionsReadinessError",
     "ChampionsReadinessV2Error",
+    "ChampionsReadinessV3Error",
     "DeterministicBattleEnv",
     "EnvironmentNotActionable",
     "EnvironmentStateError",
@@ -56,10 +65,13 @@ __all__ = [
     "ResetResult",
     "ResolvedChampionsReadiness",
     "ResolvedChampionsReadinessV2",
+    "ResolvedChampionsReadinessV3",
     "SealedEnvironmentFixture",
     "SealedEnvironmentInput",
     "StepResult",
     "TransitionInfo",
     "resolve_champions_readiness",
     "resolve_champions_readiness_v2",
+    "resolve_champions_readiness_v3",
+    "validate_champions_readiness_v3",
 ]

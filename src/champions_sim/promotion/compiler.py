@@ -2,11 +2,11 @@
 
 The frozen v1 compiler remains diagnostic-only.  This module accepts only
 integrity-resolved V2 source manifests plus exact engine-scenario and Replay
-objects whose canonical bytes are present in those manifests.  It returns a
-test-authoritative compilation only after every positive engineering gate
-passes.  Production issuance additionally needs an artifact-root-external
-trust anchor and remains disabled until that verifier exists; incomplete M-B
-evidence belongs in the separate negative assessment API.
+objects whose canonical bytes are present in those manifests.  The public V2
+API returns test-authoritative compilations only and is unconditionally
+fail-closed for production.  Verified production entry is exclusively through
+the V3 trust/enrollment wrapper; incomplete M-B evidence belongs in the
+separate negative assessment API.
 """
 
 from __future__ import annotations
@@ -84,9 +84,20 @@ from .sources import (
     read_resolved_artifact,
     read_resolved_json_record,
 )
+from .trust import ProductionTrustSubjectV1, ResolvedProductionTrustV1
+from .trust_enrollment import (
+    ResolvedProductionTrustEnrollmentV1,
+    validate_production_trust_receipt_enrollment_v1,
+)
 
 
 PROMOTION_COMPILATION_SCHEMA_VERSION = "2.0.0"
+
+# Only the dedicated V3 compiler may cross the production branch after it has
+# verified an artifact-root-external trust attestation.  The public V2 API
+# always calls the core with ``None`` and therefore remains unconditionally
+# fail-closed for production sources.
+_PRODUCTION_TRUST_CAPABILITY_V3 = object()
 
 PROMOTION_COMPONENT_HASH_FIELDS = (
     "source_resolution_set_hash",
@@ -114,6 +125,45 @@ PROMOTION_COMPONENT_HASH_FIELDS = (
 
 class PromotionCompilationError(ValueError):
     """Positive promotion evidence is absent, inconsistent, or forged."""
+
+
+@dataclass(frozen=True, slots=True)
+class _VerifiedProductionTrustProofV3:
+    """Misuse-resistant in-process proof; not a hostile-code boundary."""
+
+    subject: ProductionTrustSubjectV1
+    receipt: ResolvedProductionTrustV1
+    enrollment: ResolvedProductionTrustEnrollmentV1
+
+    def __post_init__(self) -> None:
+        if type(self.subject) is not ProductionTrustSubjectV1:
+            raise PromotionCompilationError(
+                "V3 trust proof requires an exact production subject"
+            )
+        if type(self.receipt) is not ResolvedProductionTrustV1:
+            raise PromotionCompilationError(
+                "V3 trust proof requires an exact resolved trust receipt"
+            )
+        if type(self.enrollment) is not ResolvedProductionTrustEnrollmentV1:
+            raise PromotionCompilationError(
+                "V3 trust proof requires an exact external trust enrollment"
+            )
+        self.subject.__post_init__()
+        self.receipt.__post_init__()
+        self.enrollment.__post_init__()
+        if self.receipt.subject_hash != self.subject.subject_hash:
+            raise PromotionCompilationError(
+                "V3 trust proof receipt differs from its production subject"
+            )
+        try:
+            validate_production_trust_receipt_enrollment_v1(
+                self.enrollment,
+                self.receipt,
+            )
+        except Exception as error:
+            raise PromotionCompilationError(
+                "V3 trust proof receipt differs from its external enrollment"
+            ) from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -710,7 +760,33 @@ def compile_production_promotion_v2(
     replays: Mapping[str, ReplayRecord],
     validated_traces: Mapping[str, ValidatedGroundingTrace] | None = None,
 ) -> ProductionPromotionCompilationV2:
-    """Compile a positive candidate from resolver-verified artifact bytes."""
+    """Compile a positive engineering candidate from resolver-verified bytes.
+
+    Production sources deliberately remain unavailable through the V2 API.
+    SIM-02C V3 performs external trust verification before entering the shared
+    compilation core with a module-private capability.
+    """
+
+    return _compile_production_promotion_v2_core(
+        request,
+        development_scenario_corpus=development_scenario_corpus,
+        external_holdout_scenario_corpus=external_holdout_scenario_corpus,
+        replays=replays,
+        validated_traces=validated_traces,
+        _production_trust_capability=None,
+    )
+
+
+def _compile_production_promotion_v2_core(
+    request: ProductionPromotionRequestV2,
+    *,
+    development_scenario_corpus: EngineScenarioCorpusV2,
+    external_holdout_scenario_corpus: EngineScenarioCorpusV2,
+    replays: Mapping[str, ReplayRecord],
+    validated_traces: Mapping[str, ValidatedGroundingTrace] | None = None,
+    _production_trust_capability: object | None,
+) -> ProductionPromotionCompilationV2:
+    """Shared V2 substance compiler; production entry is module-private."""
 
     if type(request) is not ProductionPromotionRequestV2:
         raise PromotionCompilationError("promotion compilation requires exact request")
@@ -754,7 +830,11 @@ def compile_production_promotion_v2(
         raise PromotionCompilationError("Regulation and TargetPool identities differ")
     if catalog.engine_semantics_version != ruleset.engine_semantics_version:
         raise PromotionCompilationError("Catalog and RuleSet semantics differ")
-    _validate_scope(regulation, initial_sources)
+    _validate_scope(
+        regulation,
+        initial_sources,
+        _production_trust_capability=_production_trust_capability,
+    )
     _validate_declared_source_ids(
         initial_sources,
         regulation.source_manifest_ids,
@@ -779,7 +859,11 @@ def compile_production_promotion_v2(
         initial_sources,
         references,
     )
-    _validate_scope(regulation, sources)
+    _validate_scope(
+        regulation,
+        sources,
+        _production_trust_capability=_production_trust_capability,
+    )
     record_values = _resolved_record_values(request, sources, references)
     _validate_mapping_evidence(mapping, record_values)
     _validate_corpus_evidence(development_construction, record_values)
@@ -1117,6 +1201,33 @@ def compile_production_promotion_v2(
         _request=request,
         _replays=dict(replays),
         _validated_traces=trace_map,
+    )
+
+
+def _compile_verified_production_promotion_v3_substance(
+    request: ProductionPromotionRequestV2,
+    *,
+    trust_proof: _VerifiedProductionTrustProofV3,
+    development_scenario_corpus: EngineScenarioCorpusV2,
+    external_holdout_scenario_corpus: EngineScenarioCorpusV2,
+    replays: Mapping[str, ReplayRecord],
+    validated_traces: Mapping[str, ValidatedGroundingTrace] | None = None,
+) -> ProductionPromotionCompilationV2:
+    """Private entry used only after compiler_v3 verifies external trust."""
+
+    if type(trust_proof) is not _VerifiedProductionTrustProofV3:
+        raise PromotionCompilationError(
+            "V3 production compilation requires an exact verified trust proof"
+        )
+    trust_proof.__post_init__()
+
+    return _compile_production_promotion_v2_core(
+        request,
+        development_scenario_corpus=development_scenario_corpus,
+        external_holdout_scenario_corpus=external_holdout_scenario_corpus,
+        replays=replays,
+        validated_traces=validated_traces,
+        _production_trust_capability=_PRODUCTION_TRUST_CAPABILITY_V3,
     )
 
 
@@ -1485,16 +1596,23 @@ def _validate_grounding_scenario_bindings(
         raise PromotionCompilationError("grounding assertions do not cover exact requirements")
 
 
-def _validate_scope(regulation, sources) -> None:
+def _validate_scope(
+    regulation,
+    sources,
+    *,
+    _production_trust_capability: object | None,
+) -> None:
     if sources.scope is PromotionSourceScopeV2.TEST_AUTHORITATIVE:
         if regulation.status != "synthetic" or regulation.verification_status != "synthetic_rehearsal":
             raise PromotionCompilationError("test source scope requires synthetic Regulation")
         return
     if regulation.status != "current" or regulation.verification_status != "verified":
         raise PromotionCompilationError("production source scope requires current verified Regulation")
+    if _production_trust_capability is _PRODUCTION_TRUST_CAPABILITY_V3:
+        return
     raise PromotionCompilationError(
         "production promotion requires an artifact-root-external trust anchor "
-        "for source authority and is disabled until that verifier is implemented"
+        "and fixed enrollment; the public V2 production entry is disabled by design"
     )
 
 

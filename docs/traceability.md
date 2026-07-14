@@ -51,7 +51,10 @@ Statusは次を使う。
 | `REQ-AI01-004` | 部分観測だけで両seatを公平に評価する | AI-01 Arena Plan/Report Schema | `run_paired_arena`、`runner.run_battle(policy_seed=...)` | paired engine/agent seed、role-fixed RNG、side swap、fresh/exact BoundAgent、private setからpublic battle IDへの非干渉、Replay再検証100%、default evidence manifest、byte-identical report | verified_local trusted-process synthetic; process isolation/external corpus blocked |
 | `REQ-AI01-005` | 非自明な選出・行動baselineを持つ | AI-01 Phase Contract、PD-009 | `TypeCoverageTeamSelectionPolicy`、`TypeAwareDamagePolicy`、benchmark CLI | tactical type fixture、selection privacy、64 pair/128 match frozen golden、Random referenceへ正のutility | verified_local engineering baseline only |
 | `REQ-SIM02B-001` | intake診断v1とpromotion v2を分離し、証拠付きscenario corpusからだけreadinessを発行する | SIM-02B Phase Contract | `src/champions_sim/promotion` v2 compiler、`src/champions_sim/env/readiness_v2.py`、V2 compilation/report/scenario/readiness schemas | exact Compilation再解決、test-authoritative engineering seal、将来production projectionの型検査、source/Catalog/RuleSet/grounding/scenario/partition/probe/document hash mutation拒否、portable manifest/schema、resolver-backed positive E2E、現M-B exact NO-GOをfocused testsで確認 | local engineering verified; production issuance disabled pending external trust anchor/evidence |
-| `REQ-SIM02B-002` | local manifestのauthority/license/status自己申告でproduction候補を発行しない | SIM-02B trust-anchor clarification | `src/champions_sim/promotion/compiler.py`、production forgery E2E | source/license/Regulation/timingを整合再署名した完全local claimをartifact-root外trust anchor不足で拒否。assessmentへ専用blockerを追加 | verified fail-closed; external trust-anchor verifier not implemented |
+| `REQ-SIM02B-002` | local manifestのauthority/license/status自己申告でproduction候補を発行しない | SIM-02B trust-anchor clarification | `src/champions_sim/promotion/compiler.py`、production forgery E2E | source/license/Regulation/timingを整合再署名した完全local claimをV2で常に拒否。assessmentへ専用blockerを追加 | verified fail-closed; V2 production verifier intentionally absent/frozen; V3は別型 |
+| `REQ-SIM02C-001` | artifact自身では偽造できない外部署名と固定外部enrollmentでproduction source/bindingを承認する | SIM-02C Phase Contract、PD-010、PD-011 | `src/champions_sim/promotion/trust.py`、`trust_enrollment.py`、`compiler_v3.py`、`env/readiness_v3.py` | Ed25519 positive/idempotent、wrong key/issuer/namespace/signature/subject、expiry/revocation/epoch/ledger conflict、未登録policy差替え、ledger instance/path固定と消失/別instance拒否、change-compile-restore source snapshot拒否、current-context再検証、strict Schema | verified_local with ephemeral key/policy/enrollment/ledger; actual enrollment/clock/OS protection blocked_external |
+| `REQ-SIM02C-002` | cosmetic ID変更で同一executionをexternal holdoutへ混入させない | SIM-02C semantic partition contract、scenario/partition Schema 2.1 | `replay_execution_hash_v2`、scenario/partition/compiler binding | replay/battle/request/action/instance/source/provisional ID全変更でもexecution hashを維持し、development/holdout overlapをunit/E2Eで拒否。battle substance変更ではhashが変化 | verified_local |
+| `REQ-SIM02C-003` | path/secretを含めずpromotion入力を再供給可能にする | SIM-02C input manifest contract、input manifest Schema V3 | `ProductionPromotionInputManifestV3`、rehydration API、V3 compiler | round-trip、別root relocation、path escape/UNC/drive、unknown/duplicate field、manifest/artifact/binding drift、fresh-context再検証 | verified_local; portable output is not authorization |
 | `REQ-GROUND-004` | GroundingFrameをcapture contentとmanifest identityへ結合する | GroundingTrace/Capture Schema | `capture_id + capture_manifest_hash`、`validate_grounding_trace_against_store` | conflicting/wrong manifest hash、missing capture、artifact改竄、evidenceなしconformant traceを拒否 | verified_local resolver contract; no actual trace |
 | `REQ-OBS-001` | 瞬間観測とUI量子化・履歴memoryを分離する | SIM-01 observation contract | `BattleState.observation_for` | opponentのhp/max_hp/exact fractionを`None`、observation leakage tests。UI adapterは未実装 | verified_local snapshot, adapter pending |
 | `REQ-TYPE-001` | sparse type chartの省略pairを倍率1とする | Catalog Schema、SIM-01 type chart contract | `CatalogSnapshot.type_effectiveness` | Catalog semantic validation、engine tests | verified_local |
@@ -124,6 +127,22 @@ source_resolution_set_hash + artifact_binding_hash
 
 このidentityは同一性と完全性を検査するもので、source真正性、Champions実機準拠、ランク1相当をhash単体で証明しない。resolver再解決、engine/Replay再実行、grounding、sealed holdoutを再検証できることが昇格条件である。
 
+SIM-02C V3はV2 substanceへ次のidentityを追加する。pre/post resolverは同一content-addressed input manifestへ収束し、その間のV2 core compileは1つのresolved source snapshotだけを消費する。portable documentはhash bindingであり、単体authorizationではない。
+
+```text
+ProductionPromotionInputManifestV3 hash
++ replay_execution_hash set + cross-partition overlap count
++ signed production trust subject + attestation hash
++ fixed external enrollment registry hash + enrollment binding hash
++ policy ID/epoch/hash + OpenSSH executable hash
++ provisioned ledger instance ID + normalized path binding hash
++ V2 component/document/compilation hashes
+-> AttestedProductionPromotionCompilationV3
+-> current trust context再検証済みResolvedChampionsReadinessV3
+```
+
+実行時刻や外部pathをportable identityへ入れず、`authorization_status: not_authorization`と`current_trust_context_required: true`を固定する。actual policy/key/enrollmentが未登録の現状では、このV3配線を現M-Bのactionable sealへ使わない。
+
 target poolのversionが変わった場合、旧coverage reportを新しい分母へ流用しない。
 
 AI-01 Arena reportは次のidentityを追加で保存する。
@@ -157,7 +176,9 @@ silent fallback count: 0
 required mega_evolution in current M-B RuleSet: unsupported
 actual BlueStacks GroundingTrace: 0
 SIM-02B diagnostic blocking reasons / promotion blockers: 718 / 720
-production source trust anchor: not implemented; issuance disabled
+V2 production verifier: intentionally absent/fail-closed; issuance disabled
+V3 engineering verifier: verified locally with ephemeral key/policy/enrollment
+actual M-B production policy/key/enrollment: absent; issuance NO-GO
 SIM-02B rank1 equivalence status: unmeasured
 ```
 

@@ -62,6 +62,7 @@ from champions_sim.promotion.scenarios import (
     EngineScenarioV2,
     build_engine_scenario_corpus_v2,
     replay_choice_sequence_hash,
+    replay_execution_hash_v2,
 )
 from champions_sim.promotion.sources import PromotionRecordReferenceV2
 from champions_sim.regulations import (
@@ -904,6 +905,7 @@ def _scenario(
         catalog_hash=replay.bundle.catalog_content_hash,
         ruleset_hash=replay.bundle.ruleset_content_hash,
         replay_hash=replay.replay_hash,
+        replay_execution_hash=replay_execution_hash_v2(replay),
         witness_step_index=step_index,
         witness_event_index=event_index,
         witness_event_kind=event.kind.value,
