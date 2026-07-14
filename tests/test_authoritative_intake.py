@@ -4,6 +4,7 @@ from collections import Counter
 from dataclasses import dataclass, replace
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 from typing import Any, Callable
@@ -24,7 +25,7 @@ from champions_sim.authoritative import (
     write_authoritative_intake_documents,
 )
 from champions_sim.intake import CatalogIntakePaths, CatalogIntakeProfile
-from scripts.validate_sim01_bundle import validate_document_contract
+from scripts.validate_sim01_bundle import BundleValidationError, validate_document_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +49,8 @@ class _AuthoritativeFixture:
     policy_path: Path
     raw_payload_path: Path
     raw_manifest_path: Path
+    parser_path: Path
+    derived_path: Path
     config: AuthoritativeIntakeConfig
 
     def compile(self) -> AuthoritativeIntakeCompilation:
@@ -135,6 +138,67 @@ def _build_fixture(tmp_path: Path) -> _AuthoritativeFixture:
             ],
         },
     )
+    raw_manifest_payload = raw_manifest_path.read_bytes()
+
+    parser_path = repository / "tools/synthetic_parser.json"
+    _write_json(
+        parser_path,
+        {
+            "artifact": "synthetic-parser",
+            "operation": "deterministic-fixture-normalization",
+            "version": 1,
+        },
+    )
+    parser_payload = parser_path.read_bytes()
+
+    derived_path = repository / "data/processed/moves.json"
+    derived_payload = derived_path.read_bytes()
+    expected_lineage_hash = canonical_sha256(
+        {
+            "binding_domain": "sim02c-derived-lineage-v2",
+            "schema_version": "2.0.0",
+            "route_id": "synthetic-local-route",
+            "output": {
+                "artifact_id": "synthetic-derived-moves",
+                "relative_path": "data/processed/moves.json",
+                "byte_count": len(derived_payload),
+                "sha256": hashlib.sha256(derived_payload).hexdigest(),
+                "record_count": 2,
+                "declared_source": "synthetic_moves",
+                "actual_source": "synthetic_moves",
+            },
+            "source_artifacts": [
+                {
+                    "artifact_id": "synthetic-raw-manifest",
+                    "relative_path": "data/raw/synthetic/manifest.json",
+                    "role": "raw_manifest",
+                    "byte_count": len(raw_manifest_payload),
+                    "sha256": hashlib.sha256(raw_manifest_payload).hexdigest(),
+                    "source_id": "synthetic-source",
+                    "expected_source_id": "synthetic-source",
+                    "inventory_id": "synthetic-raw-json",
+                    "payload_inventory_hash": canonical_sha256(
+                        [
+                            {
+                                "relative_path": "data/raw/synthetic/payload.json",
+                                "byte_count": len(payload),
+                                "sha256": hashlib.sha256(payload).hexdigest(),
+                            }
+                        ]
+                    ),
+                }
+            ],
+            "transform_artifacts": [
+                {
+                    "artifact_id": "synthetic-parser",
+                    "relative_path": "tools/synthetic_parser.json",
+                    "role": "parser",
+                    "byte_count": len(parser_payload),
+                    "sha256": hashlib.sha256(parser_payload).hexdigest(),
+                }
+            ],
+        }
+    )
 
     policy = _seal(
         {
@@ -167,8 +231,8 @@ def _build_fixture(tmp_path: Path) -> _AuthoritativeFixture:
 
     plan = _seal(
         {
-            "schema_version": "1.0.0",
-            "plan_id": "synthetic-authoritative-intake-v1",
+            "schema_version": "2.0.0",
+            "plan_id": "synthetic-authoritative-intake-v2",
             "regulation_id": "TEST-B",
             "target_pool_path": "target_pool.json",
             "target_source_manifests": [
@@ -197,11 +261,19 @@ def _build_fixture(tmp_path: Path) -> _AuthoritativeFixture:
                     "candidate_roles": ["catalog_reference"],
                     "evidence_files": [
                         {
+                            "artifact_id": "synthetic-parser",
+                            "role": "parser",
+                            "relative_path": "tools/synthetic_parser.json",
+                            "required": True,
+                            "expected_source_id": None,
+                        },
+                        {
                             "artifact_id": "synthetic-raw-manifest",
                             "role": "raw_manifest",
                             "relative_path": "data/raw/synthetic/manifest.json",
                             "required": True,
                             "expected_source_id": "synthetic-source",
+                            "inventory_id": "synthetic-raw-json",
                         }
                     ],
                     "raw_inventories": [
@@ -209,7 +281,7 @@ def _build_fixture(tmp_path: Path) -> _AuthoritativeFixture:
                             "inventory_id": "synthetic-raw-json",
                             "relative_path": "data/raw/synthetic",
                             "suffixes": [".json"],
-                            "expected_min_files": 2,
+                            "expected_min_files": 1,
                         }
                     ],
                     "derived_artifacts": [
@@ -219,6 +291,13 @@ def _build_fixture(tmp_path: Path) -> _AuthoritativeFixture:
                             "record_pointer": "/items",
                             "expected_min_records": 2,
                             "expected_source": "synthetic_moves",
+                            "lineage_requirements": {
+                                "source_artifact_ids": [
+                                    "synthetic-raw-manifest"
+                                ],
+                                "transform_artifact_ids": ["synthetic-parser"],
+                                "expected_lineage_hash": expected_lineage_hash,
+                            },
                         }
                     ],
                 }
@@ -235,6 +314,8 @@ def _build_fixture(tmp_path: Path) -> _AuthoritativeFixture:
         policy_path=policy_path,
         raw_payload_path=raw_payload_path,
         raw_manifest_path=raw_manifest_path,
+        parser_path=parser_path,
+        derived_path=derived_path,
         config=AuthoritativeIntakeConfig(
             repository_root=repository,
             legacy_root=repository,
@@ -262,6 +343,8 @@ def test_compilation_is_deterministic_complete_no_go_and_not_authorization(
     first = authoritative_fixture.compile()
     second = authoritative_fixture.compile()
 
+    assert first.summary_data()["schema_version"] == "2.0.0"
+    assert first.summary_data()["compiler_version"] == "2.0.0"
     assert first.compilation_hash == second.compilation_hash
     assert first.document_map == second.document_map
     assert first.to_json() == second.to_json()
@@ -281,6 +364,13 @@ def test_compilation_is_deterministic_complete_no_go_and_not_authorization(
     assert assessment["summary"]["candidate_for_production_promotion"] is False
     assert assessment["summary"]["fixed_target_denominator"] == 3
     assert assessment["summary"]["blocker_enumeration_complete"] is True
+    assert assessment["summary"]["blocker_enumeration_scope"] == (
+        "declared_workbench_surfaces_and_known_gap_hints"
+    )
+    assert (
+        assessment["summary"]["undeclared_dependency_enumeration_complete"]
+        is False
+    )
     assert assessment["authorization_status"] == "not_authorization"
     assert first.summary_data()["production_materialization_emitted"] is False
     assert all(
@@ -289,8 +379,11 @@ def test_compilation_is_deterministic_complete_no_go_and_not_authorization(
     )
 
     route = first.source_review["routes"][0]
-    assert route["acquisition_integrity_status"] == "complete"
+    assert route["acquisition_integrity_status"] == "snapshot_bound"
     assert route["raw_manifest_audits"][0]["sealed_result_count"] == 1
+    assert route["derived_artifacts"][0]["lineage_status"] == "snapshot_bound"
+    assert first.source_review["summary"]["acquisition_route_integrity_rate_ppm"] == 0
+    assert first.source_review["summary"]["snapshot_bound_route_rate_ppm"] == 1_000_000
     assert route["production_promotable"] is False
     assert first.source_review["network_io_performed"] is False
     assert first.catalog_workbench["payload_policy"] == "restricted_local_git_external"
@@ -515,6 +608,18 @@ def test_plan_and_policy_self_hashes_reject_unsigned_mutation(
         loader(path)
 
 
+def test_v2_loader_rejects_legacy_v1_plan_contract(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["schema_version"] = "1.0.0"
+    plan["plan_id"] = "synthetic-authoritative-intake-v1"
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="unsupported acquisition plan"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
 @pytest.mark.parametrize(
     ("loader", "path_attribute"),
     [
@@ -529,9 +634,10 @@ def test_strict_json_loaders_reject_duplicate_keys(
 ) -> None:
     path = getattr(authoritative_fixture, path_attribute)
     text = path.read_text(encoding="utf-8")
+    version = _read_json(path)["schema_version"]
     text = text.replace(
-        '"schema_version": "1.0.0"',
-        '"schema_version": "1.0.0",\n  "schema_version": "1.0.0"',
+        f'"schema_version": "{version}"',
+        f'"schema_version": "{version}",\n  "schema_version": "{version}"',
         1,
     )
     path.write_text(text, encoding="utf-8", newline="\n")
@@ -549,6 +655,29 @@ def test_plan_rejects_path_escape_even_when_resealed(
 
     with pytest.raises(AuthoritativeIntakeError, match="unsafe relative path"):
         load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
+def test_plan_loader_matches_locator_and_json_pointer_schema_constraints(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["routes"][0]["locators"] = [
+        "https://example.invalid/synthetic\nforged"
+    ]
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+    with pytest.raises(AuthoritativeIntakeError, match="control characters"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+    fixture = _build_fixture(
+        authoritative_fixture.repository.parent / "invalid-record-pointer"
+    )
+    plan = _read_json(fixture.plan_path)
+    plan["routes"][0]["derived_artifacts"][0]["record_pointer"] = (
+        "/items/~2invalid"
+    )
+    _write_json(fixture.plan_path, _seal(plan, "plan_hash"))
+    with pytest.raises(AuthoritativeIntakeError, match="RFC 6901"):
+        load_source_acquisition_plan(fixture.plan_path)
 
 
 def test_plan_rejects_empty_evidence_route_and_windows_ads_path(
@@ -627,6 +756,184 @@ def test_plan_rejects_unknown_evidence_role_and_incomplete_external_chain(
         load_source_acquisition_plan(fixture.plan_path)
 
 
+def test_plan_rejects_one_path_declared_for_multiple_roles(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    evidence = plan["routes"][0]["evidence_files"]
+    evidence.append(
+        {
+            "artifact_id": "synthetic-parser-alias",
+            "role": "normalizer",
+            "relative_path": "tools/synthetic_parser.json",
+            "required": True,
+            "expected_source_id": None,
+        }
+    )
+    evidence.sort(key=lambda value: value["artifact_id"])
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="relative paths must be unique"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
+def test_plan_requires_raw_manifest_source_binding(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    manifest = next(
+        value
+        for value in plan["routes"][0]["evidence_files"]
+        if value["role"] == "raw_manifest"
+    )
+    manifest["expected_source_id"] = None
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="requires expected_source_id"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
+def test_plan_rejects_evidence_and_derived_artifact_id_overlap(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["routes"][0]["derived_artifacts"][0]["artifact_id"] = "synthetic-parser"
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="artifact IDs must be disjoint"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
+def test_plan_rejects_one_path_reused_across_routes(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    second_route = json.loads(json.dumps(plan["routes"][0]))
+    second_route["route_id"] = "zz-cross-route-alias"
+    plan["routes"].append(second_route)
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="globally role-independent"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
+@pytest.mark.parametrize("reuse_kind", ["hardlink", "identical_copy"])
+def test_runtime_rejects_reused_bytes_across_evidence_roles(
+    authoritative_fixture: _AuthoritativeFixture,
+    reuse_kind: str,
+) -> None:
+    alias = authoritative_fixture.repository / "tools/synthetic_normalizer.json"
+    if reuse_kind == "hardlink":
+        os.link(authoritative_fixture.parser_path, alias)
+        expected = "one opened file"
+    else:
+        shutil.copyfile(authoritative_fixture.parser_path, alias)
+        expected = "identical bytes"
+
+    plan = _read_json(authoritative_fixture.plan_path)
+    evidence = plan["routes"][0]["evidence_files"]
+    evidence.append(
+        {
+            "artifact_id": "synthetic-normalizer",
+            "role": "normalizer",
+            "relative_path": "tools/synthetic_normalizer.json",
+            "required": True,
+            "expected_source_id": None,
+        }
+    )
+    evidence.sort(key=lambda value: value["artifact_id"])
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match=expected):
+        authoritative_fixture.compile()
+
+
+@pytest.mark.parametrize("reuse_kind", ["hardlink", "identical_copy"])
+def test_runtime_rejects_cross_route_role_reuse(
+    authoritative_fixture: _AuthoritativeFixture,
+    reuse_kind: str,
+) -> None:
+    repository = authoritative_fixture.repository
+    implementation = repository / "second/implementation.json"
+    implementation.parent.mkdir(parents=True)
+    if reuse_kind == "hardlink":
+        os.link(authoritative_fixture.parser_path, implementation)
+        expected = "one opened file"
+    else:
+        shutil.copyfile(authoritative_fixture.parser_path, implementation)
+        expected = "identical bytes"
+    _write_json(repository / "second/review.json", {"review": "fixture-only"})
+    _write_json(repository / "second/validator.json", {"validator": "fixture-only"})
+    _write_json(
+        repository / "second/derived.json",
+        {"source": "second-local-source", "items": [{"id": "second:1"}]},
+    )
+
+    policy = _read_json(authoritative_fixture.policy_path)
+    second_policy = dict(policy["policies"][0])
+    second_policy.update(
+        {
+            "policy_id": "zz-second-local-policy",
+            "source_group": "second-local-fixture",
+            "source_ids": ["second-local-source"],
+        }
+    )
+    policy["policies"].append(second_policy)
+    policy["policies"].sort(key=lambda value: value["policy_id"])
+    _write_json(authoritative_fixture.policy_path, _seal(policy, "registry_hash"))
+
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["routes"].append(
+        {
+            "route_id": "zz-second-local-route",
+            "root_kind": "legacy",
+            "source_kind": "local_implementation",
+            "semantic_authority": "local_implementation",
+            "source_ids": ["second-local-source"],
+            "locators": ["legacy://second-local-fixture"],
+            "policy_id": "zz-second-local-policy",
+            "candidate_roles": ["mechanics_reference"],
+            "evidence_files": [
+                {
+                    "artifact_id": "second-implementation",
+                    "role": "implementation",
+                    "relative_path": "second/implementation.json",
+                    "required": True,
+                    "expected_source_id": "second-local-source",
+                },
+                {
+                    "artifact_id": "second-review",
+                    "role": "review_record",
+                    "relative_path": "second/review.json",
+                    "required": True,
+                    "expected_source_id": None,
+                },
+                {
+                    "artifact_id": "second-validator",
+                    "role": "validator",
+                    "relative_path": "second/validator.json",
+                    "required": True,
+                    "expected_source_id": None,
+                },
+            ],
+            "raw_inventories": [],
+            "derived_artifacts": [
+                {
+                    "artifact_id": "second-derived",
+                    "relative_path": "second/derived.json",
+                    "record_pointer": "/items",
+                    "expected_min_records": 1,
+                    "expected_source": "second-local-source",
+                }
+            ],
+        }
+    )
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match=expected):
+        authoritative_fixture.compile()
+
+
 def test_runtime_source_coverage_requires_present_identity_matching_evidence(
     authoritative_fixture: _AuthoritativeFixture,
 ) -> None:
@@ -698,14 +1005,323 @@ def test_empty_raw_manifest_is_partial_and_explicitly_blocked(
     assert route["raw_manifest_audits"][0]["result_count"] == 0
 
 
+def test_raw_manifest_source_mismatch_invalidates_lineage_and_route(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    manifest = _read_json(authoritative_fixture.raw_manifest_path)
+    manifest["source_id"] = "wrong-upstream"
+    _write_json(authoritative_fixture.raw_manifest_path, manifest)
+
+    compilation = authoritative_fixture.compile()
+    codes = _blocker_codes(compilation)
+    assert "source_id_mismatch" in codes
+    assert "derived_lineage_invalid" in codes
+    audit = compilation.source_review["routes"][0]["raw_manifest_audits"][0]
+    assert audit["source_id"] == "wrong-upstream"
+    assert audit["expected_source_id"] == "synthetic-source"
+    assert audit["source_identity_status"] == "mismatch"
+    assert audit["integrity_status"] == "incomplete"
+    route = compilation.source_review["routes"][0]
+    assert route["derived_artifacts"][0]["lineage_status"] == "invalid"
+    assert route["acquisition_integrity_status"] == "partial"
+
+
+def test_invalid_raw_source_identifier_is_normalized_and_schema_valid(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    manifest = _read_json(authoritative_fixture.raw_manifest_path)
+    manifest["source_id"] = "wrong upstream\nwith control"
+    _write_json(authoritative_fixture.raw_manifest_path, manifest)
+
+    compilation = authoritative_fixture.compile()
+    audit = compilation.source_review["routes"][0]["raw_manifest_audits"][0]
+    assert audit["source_id"] == "invalid_source_id"
+    assert audit["source_identity_status"] == "mismatch"
+    assert audit["integrity_status"] == "incomplete"
+    assert "source_id_mismatch" in _blocker_codes(compilation)
+    validate_document_contract(
+        compilation.source_review,
+        _read_json(
+            SCHEMA_ROOT / "sim02c-source-acquisition-review-v2.schema.json"
+        ),
+        "source review with invalid raw source ID",
+        fail_on_unknown_keywords=True,
+    )
+
+
+def test_non_string_derived_source_is_normalized_and_schema_valid(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    extra_path = (
+        authoritative_fixture.repository
+        / "data/processed/invalid-derived-source.json"
+    )
+    _write_json(extra_path, {"source": 42, "items": [{"id": 1}]})
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["routes"][0]["derived_artifacts"].append(
+        {
+            "artifact_id": "zz-invalid-derived-source",
+            "relative_path": "data/processed/invalid-derived-source.json",
+            "record_pointer": "/items",
+            "expected_min_records": 1,
+            "expected_source": "synthetic_moves",
+            "lineage_requirements": {
+                "expected_lineage_hash": "0" * 64,
+                "source_artifact_ids": ["synthetic-raw-manifest"],
+                "transform_artifact_ids": ["synthetic-parser"],
+            },
+        }
+    )
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    compilation = authoritative_fixture.compile()
+    result = next(
+        value
+        for value in compilation.source_review["routes"][0]["derived_artifacts"]
+        if value["artifact_id"] == "zz-invalid-derived-source"
+    )
+    assert result["actual_source"] is None
+    assert result["lineage_status"] == "invalid"
+    assert "derived_source_mismatch" in _blocker_codes(compilation)
+    validate_document_contract(
+        compilation.source_review,
+        _read_json(
+            SCHEMA_ROOT / "sim02c-source-acquisition-review-v2.schema.json"
+        ),
+        "source review with invalid derived source",
+        fail_on_unknown_keywords=True,
+    )
+
+
+def test_derived_source_mismatch_cannot_be_resealed_as_snapshot_bound(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    baseline = authoritative_fixture.compile()
+    route = baseline.source_review["routes"][0]
+    raw_identity = next(
+        value
+        for value in route["evidence_artifacts"]
+        if value["artifact_id"] == "synthetic-raw-manifest"
+    )
+    parser_identity = next(
+        value
+        for value in route["evidence_artifacts"]
+        if value["artifact_id"] == "synthetic-parser"
+    )
+    raw_audit = route["raw_manifest_audits"][0]
+
+    derived = _read_json(authoritative_fixture.derived_path)
+    derived["source"] = "wrong-source"
+    _write_json(authoritative_fixture.derived_path, derived)
+    payload = authoritative_fixture.derived_path.read_bytes()
+    forged_lineage_hash = canonical_sha256(
+        {
+            "binding_domain": "sim02c-derived-lineage-v2",
+            "schema_version": "2.0.0",
+            "route_id": route["route_id"],
+            "output": {
+                "artifact_id": "synthetic-derived-moves",
+                "relative_path": "data/processed/moves.json",
+                "byte_count": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "record_count": 2,
+                "declared_source": "synthetic_moves",
+                "actual_source": "wrong-source",
+            },
+            "source_artifacts": [
+                {
+                    "artifact_id": raw_identity["artifact_id"],
+                    "relative_path": raw_identity["relative_path"],
+                    "role": raw_identity["role"],
+                    "byte_count": raw_identity["byte_count"],
+                    "sha256": raw_identity["sha256"],
+                    "source_id": raw_audit["source_id"],
+                    "expected_source_id": raw_audit["expected_source_id"],
+                    "inventory_id": raw_audit["inventory_id"],
+                    "payload_inventory_hash": raw_audit[
+                        "payload_inventory_hash"
+                    ],
+                }
+            ],
+            "transform_artifacts": [
+                {
+                    "artifact_id": parser_identity["artifact_id"],
+                    "relative_path": parser_identity["relative_path"],
+                    "role": parser_identity["role"],
+                    "byte_count": parser_identity["byte_count"],
+                    "sha256": parser_identity["sha256"],
+                }
+            ],
+        }
+    )
+
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["routes"][0]["derived_artifacts"][0]["lineage_requirements"][
+        "expected_lineage_hash"
+    ] = forged_lineage_hash
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    local_lock = authoritative_fixture.repository / "wrong-source-lock.json"
+    lock = _read_json(SOURCE_LOCK)
+    locked = next(
+        value for value in lock["artifacts"] if value["artifact_id"] == "moves"
+    )
+    locked["byte_count"] = len(payload)
+    locked["sha256"] = hashlib.sha256(payload).hexdigest()
+    _write_json(local_lock, lock)
+    fixture = replace(
+        authoritative_fixture,
+        config=replace(
+            authoritative_fixture.config,
+            source_lock_path=local_lock,
+        ),
+    )
+
+    compilation = fixture.compile()
+    result = compilation.source_review["routes"][0]["derived_artifacts"][0]
+    assert "derived_source_mismatch" in _blocker_codes(compilation)
+    assert result["actual_source"] == "wrong-source"
+    assert result["lineage_status"] == "invalid"
+
+
+def test_manifest_without_source_specific_inventory_binding_is_partial(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    manifest = next(
+        value
+        for value in plan["routes"][0]["evidence_files"]
+        if value["role"] == "raw_manifest"
+    )
+    manifest.pop("inventory_id")
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    compilation = authoritative_fixture.compile()
+    codes = _blocker_codes(compilation)
+    assert "raw_manifest_inventory_binding_missing" in codes
+    assert "raw_inventory_manifest_binding_missing" in codes
+    assert "source_evidence_coverage_incomplete" in codes
+    assert (
+        compilation.source_review["routes"][0]["acquisition_integrity_status"]
+        == "partial"
+    )
+
+
+def test_bound_inventory_rejects_unmanifested_payload(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    _write_json(
+        authoritative_fixture.repository / "data/raw/synthetic/unmanifested.json",
+        {"source_id": "unbound"},
+    )
+
+    compilation = authoritative_fixture.compile()
+    assert "raw_inventory_contains_unmanifested_payload" in _blocker_codes(
+        compilation
+    )
+    audit = compilation.source_review["routes"][0]["raw_manifest_audits"][0]
+    assert audit["unmanifested_file_count"] == 1
+    assert audit["integrity_status"] == "incomplete"
+
+
+def test_raw_manifest_rejects_duplicate_canonical_saved_path(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    manifest = _read_json(authoritative_fixture.raw_manifest_path)
+    manifest["results"].append(dict(manifest["results"][0]))
+    _write_json(authoritative_fixture.raw_manifest_path, manifest)
+
+    compilation = authoritative_fixture.compile()
+    assert "raw_manifest_duplicate_saved_path" in _blocker_codes(compilation)
+    audit = compilation.source_review["routes"][0]["raw_manifest_audits"][0]
+    assert audit["duplicate_saved_path_count"] == 1
+    assert audit["inventory_binding_status"] == "mismatch"
+    assert audit["integrity_status"] == "incomplete"
+
+
+def test_plan_rejects_duplicate_raw_inventory_path(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    duplicate = dict(plan["routes"][0]["raw_inventories"][0])
+    duplicate["inventory_id"] = "zz-duplicate-inventory"
+    plan["routes"][0]["raw_inventories"].append(duplicate)
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="relative paths must be unique"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
+def test_manifest_and_inventory_cannot_mix_payload_snapshots(
+    authoritative_fixture: _AuthoritativeFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_inventory = authoritative_compiler._inventory_raw_root
+    mutated = False
+
+    def mutate_before_inventory(*args: Any, **kwargs: Any):
+        nonlocal mutated
+        if not mutated:
+            mutated = True
+            payload = authoritative_fixture.raw_payload_path.read_bytes()
+            authoritative_fixture.raw_payload_path.write_bytes(payload + b" ")
+        return original_inventory(*args, **kwargs)
+
+    monkeypatch.setattr(
+        authoritative_compiler,
+        "_inventory_raw_root",
+        mutate_before_inventory,
+    )
+    with pytest.raises(
+        AuthoritativeIntakeError,
+        match="raw payload changed across source snapshot",
+    ):
+        authoritative_fixture.compile()
+
+
+@pytest.mark.parametrize("reuse_kind", ["same_path", "hardlink", "identical_copy"])
+def test_derived_artifact_cannot_reuse_raw_payload(
+    authoritative_fixture: _AuthoritativeFixture,
+    reuse_kind: str,
+) -> None:
+    if reuse_kind == "same_path":
+        derived_path = authoritative_fixture.raw_payload_path
+    else:
+        derived_path = authoritative_fixture.repository / f"data/processed/{reuse_kind}.json"
+        if reuse_kind == "hardlink":
+            os.link(authoritative_fixture.raw_payload_path, derived_path)
+        else:
+            shutil.copyfile(authoritative_fixture.raw_payload_path, derived_path)
+
+    plan = _read_json(authoritative_fixture.plan_path)
+    declaration = plan["routes"][0]["derived_artifacts"][0]
+    declaration.update(
+        {
+            "relative_path": derived_path.relative_to(
+                authoritative_fixture.repository
+            ).as_posix(),
+            "record_pointer": "/records",
+            "expected_min_records": 1,
+        }
+    )
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="derived artifact must be independent"):
+        authoritative_fixture.compile()
+
+
 def test_manifested_payload_must_belong_to_declared_raw_inventory(
     authoritative_fixture: _AuthoritativeFixture,
 ) -> None:
+    _write_json(
+        authoritative_fixture.repository / "data/other-inventory/unrelated.json",
+        {"source_id": "unrelated"},
+    )
     plan = _read_json(authoritative_fixture.plan_path)
     inventory = plan["routes"][0]["raw_inventories"][0]
     inventory.update(
         {
-            "relative_path": "data/processed",
+            "relative_path": "data/other-inventory",
             "suffixes": [".json"],
             "expected_min_files": 1,
         }
@@ -714,6 +1330,96 @@ def test_manifested_payload_must_belong_to_declared_raw_inventory(
 
     compilation = authoritative_fixture.compile()
     assert "raw_manifest_payload_outside_inventory" in _blocker_codes(compilation)
+    assert (
+        compilation.source_review["routes"][0]["acquisition_integrity_status"]
+        == "partial"
+    )
+
+
+def test_source_label_and_record_count_do_not_replace_lineage_requirements(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["routes"][0]["derived_artifacts"][0].pop("lineage_requirements")
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    compilation = authoritative_fixture.compile()
+    assert "derived_lineage_requirements_missing" in _blocker_codes(compilation)
+    derived = compilation.source_review["routes"][0]["derived_artifacts"][0]
+    assert derived["actual_source"] == "synthetic_moves"
+    assert derived["record_count"] == 2
+    assert derived["lineage_status"] == "missing"
+    assert (
+        compilation.source_review["routes"][0]["acquisition_integrity_status"]
+        == "partial"
+    )
+
+
+def test_declared_lineage_graph_gap_is_machine_readable_and_never_bound(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    declaration = plan["routes"][0]["derived_artifacts"][0]
+    declaration.pop("lineage_requirements")
+    declaration["lineage_gap_hint"] = {
+        "reason_codes": ["derived_parent_unsupported"],
+        "parent_refs": [
+            {
+                "route_id": "synthetic-local-route",
+                "artifact_id": "synthetic-parser",
+            }
+        ],
+        "unregistered_paths": [],
+        "runtime_dependencies": [],
+    }
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    compilation = authoritative_fixture.compile()
+    blocker = next(
+        value
+        for value in compilation.assessment["blockers"]
+        if value["code"] == "derived_lineage_graph_unrepresentable"
+    )
+    assert "synthetic-local-route:synthetic-parser" in blocker["evidence_required"]
+    assert "route-qualified DAG" in blocker["restart_condition"]
+    derived = compilation.source_review["routes"][0]["derived_artifacts"][0]
+    assert derived["lineage_status"] == "unrepresentable"
+    assert derived["lineage_binding_hash"] is None
+    assert derived["lineage_gap_hint"] == declaration["lineage_gap_hint"]
+    assert (
+        compilation.source_review["routes"][0]["acquisition_integrity_status"]
+        == "partial"
+    )
+
+
+def test_plan_rejects_lineage_proof_and_gap_hint_together(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    plan = _read_json(authoritative_fixture.plan_path)
+    plan["routes"][0]["derived_artifacts"][0]["lineage_gap_hint"] = {
+        "reason_codes": ["unregistered_transform"],
+        "parent_refs": [],
+        "unregistered_paths": ["tools/missing-transform.py"],
+        "runtime_dependencies": [],
+    }
+    _write_json(authoritative_fixture.plan_path, _seal(plan, "plan_hash"))
+
+    with pytest.raises(AuthoritativeIntakeError, match="mutually exclusive"):
+        load_source_acquisition_plan(authoritative_fixture.plan_path)
+
+
+def test_transform_mutation_invalidates_snapshot_lineage(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    original = authoritative_fixture.parser_path.read_text(encoding="utf-8")
+    authoritative_fixture.parser_path.write_text(
+        original.rstrip() + " \n", encoding="utf-8", newline="\n"
+    )
+
+    compilation = authoritative_fixture.compile()
+    assert "derived_lineage_invalid" in _blocker_codes(compilation)
+    derived = compilation.source_review["routes"][0]["derived_artifacts"][0]
+    assert derived["lineage_status"] == "invalid"
     assert (
         compilation.source_review["routes"][0]["acquisition_integrity_status"]
         == "partial"
@@ -1006,25 +1712,25 @@ def test_documents_conform_to_strict_json_schemas(
 ) -> None:
     compilation = authoritative_fixture.compile()
     documents = {
-        "sim02c-source-acquisition-plan-v1.schema.json": _read_json(
+        "sim02c-source-acquisition-plan-v2.schema.json": _read_json(
             authoritative_fixture.plan_path
         ),
         "sim02c-source-policy-register-v1.schema.json": _read_json(
             authoritative_fixture.policy_path
         ),
-        "sim02c-source-acquisition-review-v1.schema.json": (
+        "sim02c-source-acquisition-review-v2.schema.json": (
             compilation.source_review
         ),
-        "sim02c-authoritative-mapping-workbench-v1.schema.json": (
+        "sim02c-authoritative-mapping-workbench-v2.schema.json": (
             compilation.mapping_workbench
         ),
-        "sim02c-authoritative-catalog-v2-workbench.schema.json": (
+        "sim02c-authoritative-catalog-v2-workbench-v2.schema.json": (
             compilation.catalog_workbench
         ),
-        "sim02c-authoritative-intake-assessment-v1.schema.json": (
+        "sim02c-authoritative-intake-assessment-v2.schema.json": (
             compilation.assessment
         ),
-        "sim02c-authoritative-intake-compilation-v1.schema.json": (
+        "sim02c-authoritative-intake-compilation-v2.schema.json": (
             compilation.summary_data()
         ),
     }
@@ -1035,5 +1741,111 @@ def test_documents_conform_to_strict_json_schemas(
             document,
             _read_json(schema_path),
             schema_name,
+            fail_on_unknown_keywords=True,
+        )
+
+
+def test_source_review_schema_rejects_false_provenance_claims(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    review = authoritative_fixture.compile().source_review
+    schema_name = "sim02c-source-acquisition-review-v2.schema.json"
+    schema = _read_json(SCHEMA_ROOT / schema_name)
+    route = review["routes"][0]
+    assert route["raw_manifest_audits"][0]["integrity_status"] == "verified"
+    assert route["derived_artifacts"][0]["lineage_status"] == "snapshot_bound"
+
+    mutations: list[dict[str, Any]] = []
+
+    unknown_role = json.loads(json.dumps(review))
+    unknown_role["routes"][0]["evidence_artifacts"][0]["role"] = "invented_role"
+    mutations.append(unknown_role)
+
+    false_raw_integrity = json.loads(json.dumps(review))
+    false_raw_integrity["routes"][0]["raw_manifest_audits"][0][
+        "hash_mismatch_count"
+    ] = 1
+    mutations.append(false_raw_integrity)
+
+    false_snapshot_binding = json.loads(json.dumps(review))
+    false_snapshot_binding["routes"][0]["derived_artifacts"][0][
+        "lineage_binding_hash"
+    ] = None
+    mutations.append(false_snapshot_binding)
+
+    false_reproduced_route = json.loads(json.dumps(review))
+    false_reproduced_route["routes"][0]["acquisition_integrity_status"] = (
+        "reproduced"
+    )
+    false_reproduced_route["summary"]["acquisition_integrity_counts"] = {
+        "reproduced": 1
+    }
+    false_reproduced_route["summary"]["acquisition_route_integrity_rate_ppm"] = (
+        1_000_000
+    )
+    mutations.append(false_reproduced_route)
+
+    for mutation in mutations:
+        with pytest.raises(BundleValidationError):
+            validate_document_contract(
+                mutation,
+                schema,
+                schema_name,
+                fail_on_unknown_keywords=True,
+            )
+
+
+def test_source_review_schema_rejects_false_snapshot_bound_route(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    manifest = _read_json(authoritative_fixture.raw_manifest_path)
+    manifest["results"] = []
+    _write_json(authoritative_fixture.raw_manifest_path, manifest)
+    review = authoritative_fixture.compile().source_review
+    assert review["routes"][0]["acquisition_integrity_status"] == "partial"
+
+    forged = json.loads(json.dumps(review))
+    route = forged["routes"][0]
+    route["acquisition_integrity_status"] = "snapshot_bound"
+    counts = forged["summary"]["acquisition_integrity_counts"]
+    counts["partial"] -= 1
+    if counts["partial"] == 0:
+        del counts["partial"]
+    counts["snapshot_bound"] = counts.get("snapshot_bound", 0) + 1
+    forged["summary"]["snapshot_bound_route_rate_ppm"] = (
+        counts["snapshot_bound"]
+        * 1_000_000
+        // forged["summary"]["route_count"]
+    )
+    unsigned = {key: value for key, value in forged.items() if key != "review_hash"}
+    forged["review_hash"] = canonical_sha256(unsigned)
+
+    schema_name = "sim02c-source-acquisition-review-v2.schema.json"
+    with pytest.raises(BundleValidationError):
+        validate_document_contract(
+            forged,
+            _read_json(SCHEMA_ROOT / schema_name),
+            schema_name,
+            fail_on_unknown_keywords=True,
+        )
+
+
+def test_compilation_schema_rejects_false_reproduced_claim(
+    authoritative_fixture: _AuthoritativeFixture,
+) -> None:
+    summary = authoritative_fixture.compile().summary_data()
+    summary["source_summary"]["acquisition_integrity_counts"] = {
+        "reproduced": 1
+    }
+    summary["source_summary"]["acquisition_route_integrity_rate_ppm"] = 1_000_000
+
+    with pytest.raises(BundleValidationError):
+        validate_document_contract(
+            summary,
+            _read_json(
+                SCHEMA_ROOT
+                / "sim02c-authoritative-intake-compilation-v2.schema.json"
+            ),
+            "compilation with false reproduced claim",
             fail_on_unknown_keywords=True,
         )

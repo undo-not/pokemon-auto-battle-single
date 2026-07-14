@@ -28,12 +28,12 @@ from champions_sim.authoritative.models import (  # noqa: E402
 
 
 DEFAULT_PLAN = (
-    ROOT / "data/manifests/sim02c-m-b-source-acquisition-plan-v1.json"
+    ROOT / "data/manifests/sim02c-m-b-source-acquisition-plan-v2.json"
 )
 DEFAULT_POLICY = ROOT / "data/manifests/sim02c-source-policy-register-v1.json"
 DEFAULT_SOURCE_LOCK = ROOT / "data/manifests/catalog-intake-m-b-source-lock.json"
 DEFAULT_OUTPUT_ROOT = ROOT / "data/processed/sim02c/authoritative-intake"
-EXPECTED_PLAN_HASH = "740db609476684f6772f08da120faef8534855d851e851731167195a5209d75a"
+EXPECTED_PLAN_HASH = "f4d0fbc5290ade0bec9079073082860f86f1fdb9805e3d6248f65cc4a15cd1f9"
 EXPECTED_POLICY_HASH = "bbf3ee3afc70ed49ebeef7d196bf7324379341dd78e421da400512511dbd1277"
 EXPECTED_SOURCE_LOCK_HASH = "68dc5041fa52c3ccc63f8b588cc8e52f8f6814d79203e64b0d8686b86675a8e8"
 

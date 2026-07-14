@@ -14,8 +14,8 @@ import re
 from typing import Any, Mapping
 
 
-AUTHORITATIVE_INTAKE_SCHEMA_VERSION = "1.0.0"
-AUTHORITATIVE_INTAKE_COMPILER_VERSION = "1.0.0"
+AUTHORITATIVE_INTAKE_SCHEMA_VERSION = "2.0.0"
+AUTHORITATIVE_INTAKE_COMPILER_VERSION = "2.0.0"
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _STABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$")

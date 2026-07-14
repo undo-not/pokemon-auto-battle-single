@@ -105,7 +105,7 @@ test-authoritative fixtureはpromotion経路の正当性を検証するための
 
 これらはrepositoryのignored pathまたはアクセス制御された外部artifact storeへ置き、content-addressed keyで保存する。Git上のmanifestから、外部locator、media type、byte size、SHA-256、取得時刻、source issuer、license/use-policy、local-research/distribution制約、対象Regulation/TargetPool、parser/compiler version、親artifactとpartition lineageへ追跡できなければpromotion入力にしない。
 
-SIM-02C-A authoritative intakeの展開済みsource review、235-row mapping、Catalog V2 field workbench、全件assessment、compilation summaryも`data/processed/sim02c/authoritative-intake/<compilation_hash>/`へ置く。実M-B初回runでは最大文書が約2.96MB、5文書合計が約6.37MBであり、集約値だけをvalidation reportへ転記する。tracked plan/policy/source lock/Schemaから外部payloadへhashで辿れるようにし、raw 2,050 files / 405,018,864 bytesや旧PJ本体をworkspaceへコピーしない。`not_authorization`文書をproduction Catalogまたは許諾証跡として扱わない。
+SIM-02C-A authoritative intakeの展開済みsource review、235-row mapping、Catalog V2 field workbench、全件assessment、compilation summaryも`data/processed/sim02c/authoritative-intake/<compilation_hash>/`へ置く。現行V2実M-B runでは最大文書2,997,817 bytes、5文書合計6,490,033 bytesであり、集約値だけをvalidation reportへ転記する。tracked plan/policy/source lock/Schemaから外部payloadへhashで辿れるようにし、raw payload 2,025 files / 404,113,376 bytesや旧PJ本体をworkspaceへコピーしない。`not_authorization`文書をproduction Catalogまたは許諾証跡として扱わない。
 
 license未確認のartifactは`license_status: unverified`、`local_research_only: true`、`redistribution: prohibited`を固定する。この制約はraw dataだけでなく、当該dataを復元可能または再配布不可な派生Catalog、corpus、Replay、grounding添付にも継承する。hash一致は同一性・完全性の検査であり、source真正性や再配布権の証明には使わない。
 

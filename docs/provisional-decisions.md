@@ -156,5 +156,18 @@
 - `uncertainty_rule`: source-specific reviewが完了するまでworkbenchは候補抽出とinventoryに限定し、`authorization_status: not_authorization`、production materialization 0を固定する。LLM、名前一致、全国図鑑番号、site ID、hash一致でpolicyを解除しない。
 - `review_trigger`: 権利者からの明示許諾、適用可能なopen licenseと遵守手順、利用規約の更新、法務・権利レビュー、またはsourceを使用しない独立生成データへの置換が確認された時。
 - `owner`: source/license review owner
-- `implementation_evidence`: `data/manifests/sim02c-source-policy-register-v1.json`、`data/manifests/sim02c-m-b-source-acquisition-plan-v1.json`、SIM-02C-A compiler/Schema/tests、実M-B assessment compilation `bdb90c2d3128f336e09addcfc19a1cf9a13a3a073cf0cf8aad61c0f12b9f90d5`。
+- `implementation_evidence`: `data/manifests/sim02c-source-policy-register-v1.json`、`data/manifests/sim02c-m-b-source-acquisition-plan-v2.json`、凍結V1と分離したSIM-02C-A V2 compiler/Schema/tests、実M-B assessment compilation `050640f2da1374831fd34d096c9d49a811e1a67ec9f912a02f8303e575660eb4`。旧V1 compilation `bdb90c2d...`は監査でsupersededされ、現行判定に使わない。
 - `completion_relation`: source policyを誤って自己承認しないための暫定gateであり、authoritative mapping、Champions fidelity、private-match投入、rank-1 equivalenceを証明しない。
+
+## PD-013: SIM-02C-A legacy inventory and record anomaly floors
+
+- `status`: provisional
+- `scope`: SIM-02C-A local legacy evidence inventory diagnostics only
+- `current_value`: `data/manifests/sim02c-m-b-source-acquisition-plan-v2.json`のplan hash `f4d0fbc5290ade0bec9079073082860f86f1fdb9805e3d6248f65cc4a15cd1f9`に封印した各raw inventoryの`expected_min_files`と各derived artifactの`expected_min_records`をroute-local anomaly floorとして使う。値の正本はこのhash付きplanであり、変更時は新plan ID/hashと本decisionのreviewを必要とする。
+- `reason`: 旧PJの既知snapshotからファイルまたはrecordsが欠落した退行を、巨大payloadをGitへ入れずに検出するため。
+- `risk`: 既知snapshotの件数はsourceの完全性、現行M-Bとの一致、field正確性、利用許諾を証明しない。sourceの正当な再編・重複除去でfalse blockerを出す一方、同件数の誤内容を見逃し得る。
+- `uncertainty_rule`: minima到達を`complete`、`verified`、`reproduced`、promotion可能の根拠にしない。固定235 target denominator、8,024 required field denominator、hash/lineage/policy/grounding gateを縮小せず、minima未達はblocker、到達は単なる件数退行なしとして扱う。
+- `review_trigger`: sourceのreview済み再取得、parser変更、deduplication、レギュレーション変更、または各routeのauthoritative manifest/record denominatorが確定した時。
+- `owner`: SIM-02 data provenance maintainer
+- `implementation_evidence`: plan V2、`load_source_acquisition_plan`のpositive-minimum検査、raw inventory/derived record blocker、実M-B compilation `050640f2da1374831fd34d096c9d49a811e1a67ec9f912a02f8303e575660eb4`。
+- `completion_relation`: 旧snapshotの欠落検知用係数を明示するだけで、authoritative evidence、Champions fidelity、private-match投入、rank-1 equivalenceを証明しない。

@@ -638,6 +638,7 @@
 - `evidence`: `specs/sim-02c-authoritative-intake-contract.md`、`scripts/build_m_b_authoritative_intake.py`、`src/champions_sim/authoritative`、`tests/test_authoritative_intake.py`、plan/policy/7 Schema、compilation `bdb90c2d3128f336e09addcfc19a1cf9a13a3a073cf0cf8aad61c0f12b9f90d5`
 - `status`: resolved_local_workbench / blocked_external_promotion
 - `resolution`: synthetic 28 testsで決定性、公式source-manifest固定分母、regulation revision、自己hash、duplicate key、path/ADS escape、opened-handle confinement、symlink、snapshot/CLI identity drift、source-bound policy全用途、authority別acquisition profile、closed evidence role、manifest/inventory binding、declared/runtime source coverage、Catalog gap、Schema、atomic writerを検証した。実M-Bは5 route、raw 2,050 files / 405,018,864 bytes、derived 23、acquisition complete/partial 1/4、policy resolved 0/5、mapping candidate/conflict/verified 219/16/0、Catalog required/verified/lowerable 8,024/0/0、合計10,794 blockerの`NO-GO`を再現した。raw/processed payloadと全展開文書はGit外で、production materialization 0。次はreview overlayとapproved fieldだけをmechanicsへlowerするSIM-02C-Bで解消する。
+- `superseded_by`: `AUD-SIM02C-008`。上記はV1時点の履歴であり、`complete 1/5`と10,794件を現行判定へ使用しない。
 
 ### AUD-SIM02C-007
 
@@ -649,6 +650,20 @@
 - `expected`: every materialized document remains non-authorizing after revalidation; source policy covers the exact intended source/use set; M-B denominator is bound to reviewed source-manifest bytes and regulation revision; evidence and parse share one snapshot; final output appears atomically.
 - `status`: resolved_local_workbench / filesystem_race_residual_documented
 - `resolution`: writer-side full revalidation and defensive copies, exact source-ID/all-use policy gates, non-empty evidence/raw-manifest gates, single-byte-snapshot parsing, plan-pinned official target manifest and M-B CLI identities, explicit regulation revision lineage, ADS/reserved-path rejection, and staging-to-atomic-rename output were added. 23 focused tests and the actual 10,794-blocker M-B NO-GO compilation pass. A hostile same-user process racing directory junction replacement remains outside this workbench's Python-level trust boundary; generated output is non-authorizing and rechecked on reuse.
+- `superseded_by`: `AUD-SIM02C-008`。23-test/V1 compilationは履歴として保持するが現行証拠に使わない。
+
+### AUD-SIM02C-008
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C-A / AUTHORITATIVE INTAKE V2 LINEAGE AND VERSION BOUNDARY
+- `category`: cross_route_role_reuse_mixed_snapshot_unrepresentable_lineage_version_drift
+- `problem`: 遅延した独立監査で、同一file/bytesのroute横断role再利用、manifest payloadと後続inventoryの混合snapshot、raw payloadをderived outputへ再利用する循環、重複`saved_to`、実legacyのcross-route/derived-parent DAGを表現できない再開条件、破壊的変更後も1.0.0を名乗る版境界を再現した。さらにraw manifest原典IDをlineage hashへ結合しない経路、evidence/derived ID衝突、Schema単体の偽`verified / snapshot_bound / reproduced` claim、declared/actual derived source不一致を織り込んだlineage再封印、敵対source値によるSchema-invalid出力、loaderとSchemaのlocator/RFC 6901差、blocker完全列挙scopeの過大主張、phase契約のpurpose/暫定minima未登録を再現した。tracked reportも旧`complete 1/5`を現行値として残していた。
+- `expected`: V1文書を凍結Schemaで再検証可能に保ち、V2 plan/compiler/outputを別versionへ分離する。全route共通claim registryとmanifest/inventory同一projectionを要求し、lineageを表現できない成果物は親route/artifactと不足依存を列挙した専用blockerへ落とす。原典IDをhash domainへ結合し、snapshot bindingを取得再現またはpromotionへ数えず、blocker完全性を宣言済みsurfaceと既知gapへ限定する。
+- `impact`: 同一証拠の多重計上、異なる時点のpayloadを1 compilationへ混在、循環lineage、解消不能なrestart指示、旧新artifactのversion衝突により、誤った環境を学習・探索へ渡し得る。
+- `status`: resolved_local_v2 / blocked_external_promotion
+- `resolution`: compiler/schema/planを2.0.0へ分離し、旧V1 planと6 Schemaを凍結保存した。全route共通のpath/file-key/hash role claim、raw↔derived独立性、evidence/derived ID非交差、duplicate saved path、manifest↔inventory exactly-one binding、走査間projection driftのhard failを実装した。raw manifestの期待/観測source IDをlineage V2 hash domainへ結合し、derivedのdeclared/actual source一致もsnapshot条件とし、敵対source値はartifact hashを残してcontrol-safe値へ正規化した。Schemaはroleとstatus条件を閉じ、V2に因果的取得証拠がない間は`reproduced`を拒否する。loaderをlocator control制約とRFC 6901 pointerへ一致させ、purposeと暫定minimaをPD-013へ登録した。旧生成codeを逆引きし、23 derived中15件をstructured `lineage_gap_hint`＋`derived_lineage_graph_unrepresentable`、8件をrequirements missingとして固定した。blocker完全性は`declared_workbench_surfaces_and_known_gap_hints`に限定し、未宣言依存の完全性をfalseとした。実M-B V2はraw payload 2,025 files / 404,113,376 bytes、derived 23、`reproduced/snapshot_bound/partial = 0/0/5`、acquisition 2,104、policy 35、mapping 705、Catalog 8,024、その他6、合計10,874 blockerの`NO-GO`を同一hashでdry/write再生成した。
+- `evidence`: plan `sim02c-m-b-source-acquisition-plan-v2` hash `f4d0fbc5290ade0bec9079073082860f86f1fdb9805e3d6248f65cc4a15cd1f9`、compilation `050640f2da1374831fd34d096c9d49a811e1a67ec9f912a02f8303e575660eb4`、57 focused tests、70 focused+governance tests、581 full regression、7 actual Schema検査、10,874 unique blocker検査、256-file size gate。
 
 ## SIM-02C Gate判定
 
@@ -657,14 +672,14 @@
 - semantic execution partition: **GO / VERIFIED LOCALLY** — cosmetic ID全変更でも重複拒否
 - artifact-root independent input manifest: **GO / VERIFIED LOCALLY** — round-trip、relocation、path/drift拒否
 - V3 trust/enrollment verifier: **GO / VERIFIED LOCALLY WITH EPHEMERAL FIXTURE** — test key/policy/registryだけ
-- SIM-02C-A authoritative intake workbench: **GO / VERIFIED LOCALLY** — actual 5 route / 235 mapping / 8,024 Catalog field / 10,794 blockerをcontent-addressed再生成
+- SIM-02C-A authoritative intake V2 workbench: **GO / VERIFIED LOCALLY** — actual 5 route全partial / 235 mapping / 8,024 Catalog field / 10,874 blockerをcontent-addressed再生成
 - portable V3 output: **NOT AUTHORIZATION / current trust context required**
 - actual M-B production policy/key/enrollment: **NO-GO / NOT CONFIGURED**
 - actual M-B data gate: **NO-GO** — frozen V2 mapping 0/235・unresolved/conflict 219/16・target/execution 118/118・diagnostic/promotion 718/720に加え、SIM-02C-A promotion unresolved 235、Catalog verified 0/8,024、actual grounding 0
 - Champions fidelity / private-match投入: **NO-GO / UNPROVEN**
 - Rank-1 equivalence: **UNMEASURED / CLAIM FORBIDDEN**
-- Focused SIM-02C verification: **97 passed in 29.15s**
-- Focused SIM-02C-A authoritative intake verification: **28 passed in 2.22s**
-- Full regression: **552 passed in 78.67s**
-- Repository size gate: **249 candidates / 0 violations**
+- Focused SIM-02C-A authoritative intake verification: **57 passed in 3.98s**
+- Focused SIM-02C-A + governance verification: **70 passed in 7.28s**
+- Full regression: **581 passed in 78.77s**
+- Repository size gate: **256 candidates / 0 violations**
 - SIM-01 frozen validation: **PASS / hash不変**

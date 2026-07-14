@@ -1,0 +1,442 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:sim02c-source-acquisition-plan-v2",
+  "title": "SIM-02C-A Source Acquisition Plan V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "regulation_id",
+    "target_pool_path",
+    "target_source_manifests",
+    "expected_target_count",
+    "policy_registry_id",
+    "routes",
+    "plan_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "plan_id": {"$ref": "#/$defs/stableId"},
+    "regulation_id": {"$ref": "#/$defs/stableId"},
+    "target_pool_path": {"$ref": "#/$defs/relativePosixPath"},
+    "target_source_manifests": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/targetSourceManifest"}
+    },
+    "expected_target_count": {"type": "integer", "minimum": 1},
+    "policy_registry_id": {"$ref": "#/$defs/stableId"},
+    "routes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/route"}
+    },
+    "plan_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relativePosixPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!//)(?!.*\\\\)(?!.*:)(?!.*[\\u0000-\\u001F\\u007F])(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*(?:^|/)\\s)(?!.*[.\\s](?:/|$))[^/]+(?:/[^/]+)*$"
+    },
+    "locator": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "recordPointer": {
+      "type": "string",
+      "pattern": "^(?:|(?:/(?:[^~/]|~[01])*)+)$"
+    },
+    "targetSourceManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_id",
+        "relative_path",
+        "sha256",
+        "required_authority"
+      ],
+      "properties": {
+        "manifest_id": {"$ref": "#/$defs/stableId"},
+        "relative_path": {"$ref": "#/$defs/relativePosixPath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "required_authority": {"enum": ["official", "synthetic"]}
+      }
+    },
+    "evidenceFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "role",
+        "relative_path",
+        "required",
+        "expected_source_id"
+      ],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/stableId"},
+        "role": {
+          "enum": [
+            "builder",
+            "fetcher",
+            "implementation",
+            "normalizer",
+            "parser",
+            "raw_manifest",
+            "review_record",
+            "source_config",
+            "validator"
+          ]
+        },
+        "relative_path": {"$ref": "#/$defs/relativePosixPath"},
+        "required": {"type": "boolean"},
+        "expected_source_id": {
+          "oneOf": [
+            {"$ref": "#/$defs/stableId"},
+            {"type": "null"}
+          ]
+        },
+        "inventory_id": {
+          "$ref": "#/$defs/stableId"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"role": {"const": "raw_manifest"}},
+            "required": ["role"]
+          },
+          "then": {
+            "properties": {
+              "expected_source_id": {"$ref": "#/$defs/stableId"}
+            }
+          }
+        }
+      ]
+    },
+    "rawInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventory_id",
+        "relative_path",
+        "suffixes",
+        "expected_min_files"
+      ],
+      "properties": {
+        "inventory_id": {"$ref": "#/$defs/stableId"},
+        "relative_path": {"$ref": "#/$defs/relativePosixPath"},
+        "suffixes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^\\..*$"
+          }
+        },
+        "expected_min_files": {"type": "integer", "minimum": 1}
+      }
+    },
+    "derivedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "relative_path",
+        "record_pointer",
+        "expected_min_records",
+        "expected_source"
+      ],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/stableId"},
+        "relative_path": {"$ref": "#/$defs/relativePosixPath"},
+        "record_pointer": {"$ref": "#/$defs/recordPointer"},
+        "expected_min_records": {"type": "integer", "minimum": 1},
+        "expected_source": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "null"}
+          ]
+        },
+        "lineage_requirements": {"$ref": "#/$defs/lineageRequirements"},
+        "lineage_gap_hint": {"$ref": "#/$defs/lineageGapHint"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["lineage_requirements"]},
+          "then": {
+            "properties": {
+              "lineage_gap_hint": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "lineageRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_artifact_ids",
+        "transform_artifact_ids",
+        "expected_lineage_hash"
+      ],
+      "properties": {
+        "source_artifact_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/stableId"}
+        },
+        "transform_artifact_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/stableId"}
+        },
+        "expected_lineage_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "lineageGapHint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason_codes",
+        "parent_refs",
+        "unregistered_paths",
+        "runtime_dependencies"
+      ],
+      "properties": {
+        "reason_codes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "cross_route_parent_unsupported",
+              "derived_parent_unsupported",
+              "direct_source_config_unsupported",
+              "multi_stage_in_place_output",
+              "unregistered_input",
+              "unregistered_transform",
+              "unmanifested_intermediate",
+              "runtime_dependency_unpinned"
+            ]
+          }
+        },
+        "parent_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/parentArtifactRef"}
+        },
+        "unregistered_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/relativePosixPath"}
+        },
+        "runtime_dependencies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/stableId"}
+        }
+      }
+    },
+    "parentArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route_id", "artifact_id"],
+      "properties": {
+        "route_id": {"$ref": "#/$defs/stableId"},
+        "artifact_id": {"$ref": "#/$defs/stableId"}
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_id",
+        "root_kind",
+        "source_kind",
+        "semantic_authority",
+        "source_ids",
+        "locators",
+        "policy_id",
+        "candidate_roles",
+        "evidence_files",
+        "raw_inventories",
+        "derived_artifacts"
+      ],
+      "properties": {
+        "route_id": {"$ref": "#/$defs/stableId"},
+        "root_kind": {"enum": ["repository", "legacy"]},
+        "source_kind": {"$ref": "#/$defs/stableId"},
+        "semantic_authority": {
+          "enum": [
+            "champions_official",
+            "general_official",
+            "third_party_reference",
+            "local_implementation",
+            "private_observation"
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/stableId"}
+        },
+        "locators": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/locator"}
+        },
+        "policy_id": {"$ref": "#/$defs/stableId"},
+        "candidate_roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/stableId"}
+        },
+        "evidence_files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/evidenceFile"}
+        },
+        "raw_inventories": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/rawInventory"}
+        },
+        "derived_artifacts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/derivedArtifact"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "semantic_authority": {
+                "enum": [
+                  "champions_official",
+                  "general_official",
+                  "third_party_reference"
+                ]
+              }
+            },
+            "required": ["semantic_authority"]
+          },
+          "then": {
+            "properties": {
+              "evidence_files": {
+                "allOf": [
+                  {
+                    "contains": {
+                      "properties": {
+                        "role": {"const": "raw_manifest"},
+                        "required": {"const": true}
+                      },
+                      "required": ["role", "required"]
+                    }
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "role": {"const": "source_config"},
+                        "required": {"const": true}
+                      },
+                      "required": ["role", "required"]
+                    }
+                  }
+                ]
+              },
+              "raw_inventories": {"minItems": 1},
+              "derived_artifacts": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "semantic_authority": {"const": "private_observation"}
+            },
+            "required": ["semantic_authority"]
+          },
+          "then": {
+            "properties": {
+              "evidence_files": {
+                "contains": {
+                  "properties": {
+                    "role": {"const": "raw_manifest"},
+                    "required": {"const": true}
+                  },
+                  "required": ["role", "required"]
+                }
+              },
+              "raw_inventories": {"minItems": 1},
+              "derived_artifacts": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "semantic_authority": {"const": "local_implementation"}
+            },
+            "required": ["semantic_authority"]
+          },
+          "then": {
+            "properties": {
+              "evidence_files": {
+                "allOf": [
+                  {
+                    "contains": {
+                      "properties": {
+                        "role": {"const": "implementation"},
+                        "required": {"const": true}
+                      },
+                      "required": ["role", "required"]
+                    }
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "role": {"const": "review_record"},
+                        "required": {"const": true}
+                      },
+                      "required": ["role", "required"]
+                    }
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "role": {"const": "validator"},
+                        "required": {"const": true}
+                      },
+                      "required": ["role", "required"]
+                    }
+                  }
+                ]
+              },
+              "derived_artifacts": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

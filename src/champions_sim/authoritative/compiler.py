@@ -44,8 +44,11 @@ from .models import (
 )
 
 
-ACQUISITION_PLAN_SCHEMA_VERSION = "1.0.0"
+ACQUISITION_PLAN_SCHEMA_VERSION = "2.0.0"
 SOURCE_POLICY_SCHEMA_VERSION = "1.0.0"
+_STABLE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$")
+_LOCATOR_PATTERN = re.compile(r"[^\x00-\x1f\x7f]+")
+_RECORD_POINTER_PATTERN = re.compile(r"(?:|(?:/(?:[^~/]|~[01])*)+)")
 
 _PLAN_KEYS = {
     "schema_version",
@@ -92,6 +95,7 @@ _EVIDENCE_FILE_KEYS = {
     "required",
     "expected_source_id",
 }
+_EVIDENCE_FILE_OPTIONAL_KEYS = {"inventory_id"}
 _EVIDENCE_ROLES = frozenset(
     {
         "builder",
@@ -121,6 +125,31 @@ _DERIVED_KEYS = {
     "expected_min_records",
     "expected_source",
 }
+_DERIVED_OPTIONAL_KEYS = {"lineage_requirements", "lineage_gap_hint"}
+_LINEAGE_REQUIREMENT_KEYS = {
+    "expected_lineage_hash",
+    "source_artifact_ids",
+    "transform_artifact_ids",
+}
+_LINEAGE_GAP_HINT_KEYS = {
+    "reason_codes",
+    "parent_refs",
+    "unregistered_paths",
+    "runtime_dependencies",
+}
+_LINEAGE_GAP_REASON_CODES = frozenset(
+    {
+        "cross_route_parent_unsupported",
+        "derived_parent_unsupported",
+        "direct_source_config_unsupported",
+        "multi_stage_in_place_output",
+        "unregistered_input",
+        "unregistered_transform",
+        "unmanifested_intermediate",
+        "runtime_dependency_unpinned",
+    }
+)
+_DERIVED_TRANSFORM_ROLES = frozenset({"builder", "normalizer", "parser"})
 _POLICY_ENTRY_KEYS = {
     "policy_id",
     "source_group",
@@ -190,12 +219,66 @@ def load_source_acquisition_plan(path: Path | str) -> dict[str, Any]:
     if not routes:
         raise AuthoritativeIntakeError("acquisition plan requires routes")
     route_ids: list[str] = []
+    artifact_path_owners: dict[tuple[str, str], str] = {}
+    inventory_path_owners: dict[tuple[str, str], str] = {}
     for index, value in enumerate(routes):
         route = _object(value, f"routes[{index}]")
         _validate_route(route, index)
         route_ids.append(route["route_id"])
+        root_kind = route["root_kind"]
+        declarations = [
+            *( (item, "evidence") for item in route["evidence_files"] ),
+            *( (item, "derived") for item in route["derived_artifacts"] ),
+        ]
+        for declaration, declaration_kind in declarations:
+            key = (root_kind, declaration["relative_path"])
+            owner = f"{route['route_id']}:{declaration_kind}:{declaration['artifact_id']}"
+            prior_owner = artifact_path_owners.get(key)
+            if prior_owner is not None:
+                raise AuthoritativeIntakeError(
+                    "evidence and derived relative paths must be globally "
+                    f"role-independent: {prior_owner} and {owner}"
+                )
+            artifact_path_owners[key] = owner
+        for declaration in route["raw_inventories"]:
+            key = (root_kind, declaration["relative_path"])
+            owner = f"{route['route_id']}:inventory:{declaration['inventory_id']}"
+            prior_owner = inventory_path_owners.get(key)
+            if prior_owner is not None:
+                raise AuthoritativeIntakeError(
+                    "raw inventory relative paths must be globally unique: "
+                    f"{prior_owner} and {owner}"
+                )
+            inventory_path_owners[key] = owner
     if route_ids != sorted(route_ids) or len(route_ids) != len(set(route_ids)):
         raise AuthoritativeIntakeError("routes must be unique and sorted by route_id")
+    declared_artifact_refs = {
+        (route["route_id"], declaration["artifact_id"])
+        for route in routes
+        for declaration in [
+            *route["evidence_files"],
+            *route["derived_artifacts"],
+        ]
+    }
+    for route in routes:
+        for declaration in route["derived_artifacts"]:
+            hint = declaration.get("lineage_gap_hint")
+            if hint is None:
+                continue
+            child_ref = (route["route_id"], declaration["artifact_id"])
+            parent_refs = {
+                (value["route_id"], value["artifact_id"])
+                for value in hint["parent_refs"]
+            }
+            if child_ref in parent_refs:
+                raise AuthoritativeIntakeError(
+                    "lineage gap hint cannot name the child as its own parent"
+                )
+            unknown_refs = sorted(parent_refs - declared_artifact_refs)
+            if unknown_refs:
+                raise AuthoritativeIntakeError(
+                    f"lineage gap hint references unknown parent artifacts: {unknown_refs}"
+                )
     claimed = _string(raw["plan_hash"], "plan_hash")
     require_sha256(claimed, "plan_hash")
     derived = canonical_sha256({key: value for key, value in raw.items() if key != "plan_hash"})
@@ -432,6 +515,9 @@ def _build_source_review(
     total_raw_files = 0
     total_raw_bytes = 0
     total_derived = 0
+    artifact_file_owners: dict[tuple[int, int], str] = {}
+    artifact_hashes: set[str] = set()
+    artifact_role_by_hash: dict[str, str] = {}
     for route in plan["routes"]:
         route_id = route["route_id"]
         root_kind = route["root_kind"]
@@ -447,7 +533,25 @@ def _build_source_review(
         route_blockers: list[IntakeBlocker] = []
         observed_source_ids: set[str] = set()
         artifacts: list[ArtifactIdentity] = []
+        artifact_by_id: dict[str, ArtifactIdentity] = {}
         manifest_audits: list[dict[str, Any]] = []
+        manifest_audit_by_id: dict[str, dict[str, Any]] = {}
+        manifest_expected_source_by_id: dict[str, str | None] = {}
+        inventory_declaration_by_id = {
+            value["inventory_id"]: value for value in route["raw_inventories"]
+        }
+        manifest_paths_by_inventory_id: dict[str, set[str]] = {}
+        for evidence in route["evidence_files"]:
+            if evidence["role"] != "raw_manifest":
+                continue
+            manifest_expected_source_by_id[evidence["artifact_id"]] = evidence[
+                "expected_source_id"
+            ]
+            inventory_id = evidence.get("inventory_id")
+            if inventory_id is not None:
+                manifest_paths_by_inventory_id.setdefault(inventory_id, set()).add(
+                    evidence["relative_path"]
+                )
         for evidence in route["evidence_files"]:
             path = _try_resolve_path(root, evidence["relative_path"])
             if path is None or not path.is_file():
@@ -463,11 +567,29 @@ def _build_source_review(
                     )
                 continue
             _reject_symlink_path(root, path)
-            identity, payload = _snapshot_file_identity(
+            identity, payload, file_key = _snapshot_file_identity(
                 evidence["artifact_id"], root_kind, root, path, evidence["role"]
             )
+            owner = f"{route_id}:evidence:{evidence['artifact_id']}"
+            prior_owner = artifact_file_owners.get(file_key)
+            if prior_owner is not None:
+                raise AuthoritativeIntakeError(
+                    "one opened file cannot satisfy multiple evidence or derived "
+                    f"artifacts: {prior_owner} and {owner}"
+                )
+            prior_role = artifact_role_by_hash.get(identity.sha256)
+            if identity.sha256 in artifact_hashes:
+                raise AuthoritativeIntakeError(
+                    "identical bytes cannot satisfy multiple evidence or derived "
+                    f"artifacts: {prior_role or 'raw_payload'} and {identity.role}"
+                )
+            artifact_file_owners[file_key] = owner
+            artifact_hashes.add(identity.sha256)
+            artifact_role_by_hash[identity.sha256] = identity.role
             artifacts.append(identity)
+            artifact_by_id[identity.artifact_id] = identity
             source_identity_matches = True
+            raw_manifest_integrity_verified = False
             if evidence["role"] in {"source_config", "raw_manifest"}:
                 parsed = _parse_json_object(payload, evidence["role"])
                 expected_source = evidence["expected_source_id"]
@@ -484,36 +606,120 @@ def _build_source_review(
                         )
                     )
                 if evidence["role"] == "raw_manifest":
+                    inventory_id = evidence.get("inventory_id")
                     audit, blockers = _audit_raw_manifest(
+                        artifact_id=evidence["artifact_id"],
                         route_id=route_id,
                         root=root,
                         root_kind=root_kind,
                         manifest=parsed,
+                        manifest_relative_path=evidence["relative_path"],
                         expected_source_id=expected_source,
-                        inventory_declarations=route["raw_inventories"],
+                        inventory_id=inventory_id,
+                        inventory_declaration=(
+                            inventory_declaration_by_id.get(inventory_id)
+                            if inventory_id is not None
+                            else None
+                        ),
                     )
                     manifest_audits.append(audit)
+                    manifest_audit_by_id[evidence["artifact_id"]] = audit
                     route_blockers.extend(blockers)
+                    raw_manifest_integrity_verified = (
+                        audit["integrity_status"] == "verified"
+                    )
             expected_source = evidence["expected_source_id"]
+            evidence_integrity_verified = (
+                raw_manifest_integrity_verified
+                if evidence["role"] == "raw_manifest"
+                else True
+            )
             if (
+                evidence["role"] != "raw_manifest"
+                and
                 expected_source is not None
                 and source_identity_matches
+                and evidence_integrity_verified
                 and evidence["role"] in source_covering_roles
             ):
                 observed_source_ids.add(expected_source)
 
         inventories: list[dict[str, Any]] = []
         for declaration in route["raw_inventories"]:
+            bound_manifest_ids = sorted(
+                evidence["artifact_id"]
+                for evidence in route["evidence_files"]
+                if evidence["role"] == "raw_manifest"
+                and evidence.get("inventory_id") == declaration["inventory_id"]
+            )
+            if not bound_manifest_ids:
+                route_blockers.append(
+                    _blocker(
+                        "acquisition",
+                        "raw_inventory_manifest_binding_missing",
+                        _stable_subject(route_id, declaration["inventory_id"]),
+                        "exactly one source-specific raw manifest bound to this inventory",
+                        "bind one reviewed raw manifest to the inventory and rerun",
+                    )
+                )
+            elif len(bound_manifest_ids) > 1:
+                route_blockers.append(
+                    _blocker(
+                        "acquisition",
+                        "raw_inventory_manifest_binding_ambiguous",
+                        _stable_subject(route_id, declaration["inventory_id"]),
+                        "exactly one source-specific raw manifest bound to this inventory",
+                        "partition the inventory or issue one union manifest; bound manifests: "
+                        + ", ".join(bound_manifest_ids),
+                    )
+                )
+            excluded_manifest_paths = {
+                evidence["relative_path"]
+                for evidence in route["evidence_files"]
+                if evidence["role"] == "raw_manifest"
+                and _payload_is_declared_by_inventory(
+                    evidence["relative_path"], (declaration,)
+                )
+            }
             inventory, blockers = _inventory_raw_root(
                 route_id=route_id,
                 root=root,
                 root_kind=root_kind,
                 declaration=declaration,
+                excluded_relative_paths=(
+                    excluded_manifest_paths
+                    | manifest_paths_by_inventory_id.get(
+                        declaration["inventory_id"], set()
+                    )
+                ),
+                occupied_file_owners=artifact_file_owners,
+                occupied_hashes=artifact_hashes,
+                occupied_role_by_hash=artifact_role_by_hash,
             )
             inventories.append(inventory)
             route_blockers.extend(blockers)
             total_raw_files += inventory["file_count"]
             total_raw_bytes += inventory["byte_count"]
+
+        inventory_by_id = {
+            value["inventory_id"]: value for value in inventories
+        }
+        for audit in manifest_audits:
+            inventory_id = audit["inventory_id"]
+            if inventory_id is None or audit["inventory_binding_status"] != "verified":
+                continue
+            inventory = inventory_by_id.get(inventory_id)
+            if (
+                inventory is None
+                or audit["payload_inventory_hash"] != inventory["inventory_hash"]
+            ):
+                raise AuthoritativeIntakeError(
+                    "raw payload changed across source snapshot: "
+                    f"{route_id}:{audit['artifact_id']}:{inventory_id}"
+                )
+            expected_source = manifest_expected_source_by_id.get(audit["artifact_id"])
+            if expected_source is not None and audit["source_id"] == expected_source:
+                observed_source_ids.add(expected_source)
 
         derived: list[dict[str, Any]] = []
         for declaration in route["derived_artifacts"]:
@@ -522,14 +728,21 @@ def _build_source_review(
                 root=root,
                 root_kind=root_kind,
                 declaration=declaration,
+                semantic_authority=route["semantic_authority"],
+                evidence_by_id=artifact_by_id,
+                occupied_file_owners=artifact_file_owners,
+                occupied_hashes=artifact_hashes,
+                manifest_audit_by_id=manifest_audit_by_id,
             )
             if item is not None:
+                artifact_role_by_hash[item["sha256"]] = "derived_artifact"
                 derived.append(item)
                 total_derived += 1
                 expected_source = declaration["expected_source"]
                 if (
                     expected_source is not None
                     and item["actual_source"] == expected_source
+                    and item["lineage_status"] == "snapshot_bound"
                 ):
                     observed_source_ids.add(expected_source)
             route_blockers.extend(blockers)
@@ -553,7 +766,7 @@ def _build_source_review(
         route_blockers = _sorted_unique_blockers(route_blockers)
         all_blockers.extend(route_blockers)
         evidence_status = (
-            "complete"
+            "snapshot_bound"
             if not any(value.stage == "acquisition" for value in route_blockers)
             else "partial"
         )
@@ -614,8 +827,11 @@ def _build_source_review(
         "acquisition_integrity_counts": dict(sorted(route_status_counts.items())),
         "policy_review_status_counts": dict(sorted(permission_counts.items())),
         "policy_resolved_for_production_route_count": resolved_route_count,
-        "acquisition_route_integrity_rate_ppm": (
-            route_status_counts["complete"] * 1_000_000 // len(routes)
+        # V2 can prove only snapshot binding.  Causal acquisition replay needs
+        # an execution-evidence contract and is reserved for a later version.
+        "acquisition_route_integrity_rate_ppm": 0,
+        "snapshot_bound_route_rate_ppm": (
+            route_status_counts["snapshot_bound"] * 1_000_000 // len(routes)
         ),
         "source_policy_resolution_rate_ppm": (
             resolved_route_count
@@ -1171,8 +1387,12 @@ def _build_assessment(
         "fixed_target_denominator": mapping["summary"]["target_member_count"],
         "verified_mapping_count": mapping["summary"]["verified_count"],
         "verified_catalog_field_count": catalog["summary"]["verified_field_count"],
+        "blocker_enumeration_scope": (
+            "declared_workbench_surfaces_and_known_gap_hints"
+        ),
         "blocker_enumeration_complete": True,
         "assessment_blocker_enumeration_rate_ppm": 1_000_000,
+        "undeclared_dependency_enumeration_complete": False,
         "blocker_count": len(blockers),
         "stage_blocker_counts": dict(sorted(stage_counts.items())),
         "code_blocker_counts": dict(sorted(code_counts.items())),
@@ -1285,15 +1505,49 @@ def _verify_content_addressed_output(
 
 def _audit_raw_manifest(
     *,
+    artifact_id: str,
     route_id: str,
     root: Path,
     root_kind: str,
     manifest: Mapping[str, Any],
+    manifest_relative_path: str,
     expected_source_id: str | None,
-    inventory_declarations: Sequence[Mapping[str, Any]],
+    inventory_id: str | None,
+    inventory_declaration: Mapping[str, Any] | None,
 ) -> tuple[dict[str, Any], list[IntakeBlocker]]:
     blockers: list[IntakeBlocker] = []
+    inventory_path_mismatch_count = 0
+    if inventory_id is None:
+        blockers.append(
+            _blocker(
+                "acquisition",
+                "raw_manifest_inventory_binding_missing",
+                _stable_subject(route_id, artifact_id),
+                "a source-specific raw inventory ID bound to the manifest",
+                "bind this manifest to exactly one declared raw inventory",
+            )
+        )
+    elif inventory_declaration is None:
+        blockers.append(
+            _blocker(
+                "acquisition",
+                "raw_manifest_inventory_binding_invalid",
+                _stable_subject(route_id, artifact_id),
+                "an inventory_id declared by the same source route",
+                "correct the manifest-to-inventory binding in the reviewed plan",
+            )
+        )
     source_id = manifest.get("source_id")
+    source_id_is_stable = (
+        type(source_id) is str
+        and _STABLE_ID_PATTERN.fullmatch(source_id) is not None
+    )
+    source_identity_status = (
+        "verified"
+        if source_id_is_stable
+        and source_id == expected_source_id
+        else "mismatch"
+    )
     if type(source_id) is not str or not source_id:
         source_id = expected_source_id or "unknown_source"
         blockers.append(
@@ -1305,6 +1559,10 @@ def _audit_raw_manifest(
                 "regenerate the manifest with explicit source identity",
             )
         )
+    elif not source_id_is_stable:
+        # The exact hostile value remains sealed by the manifest artifact hash;
+        # never copy an unbounded/control-bearing identifier into review output.
+        source_id = "invalid_source_id"
     values = manifest.get("results")
     if type(values) is not list:
         values = []
@@ -1333,7 +1591,10 @@ def _audit_raw_manifest(
     missing_count = 0
     byte_mismatch_count = 0
     hash_mismatch_count = 0
+    unmanifested_file_count = 0
+    duplicate_saved_path_count = 0
     identities: list[dict[str, Any]] = []
+    manifested_path_set: set[str] = set()
     for index, raw in enumerate(values):
         if type(raw) is not dict:
             blockers.append(
@@ -1375,9 +1636,28 @@ def _audit_raw_manifest(
         _reject_symlink_path(root, path)
         saved_count += 1
         canonical_relative = path.relative_to(root).as_posix()
-        if not _payload_is_declared_by_inventory(
-            canonical_relative, inventory_declarations
+        duplicate_saved_path = canonical_relative in manifested_path_set
+        if duplicate_saved_path:
+            duplicate_saved_path_count += 1
+            inventory_path_mismatch_count += 1
+            blockers.append(
+                _blocker(
+                    "acquisition",
+                    "raw_manifest_duplicate_saved_path",
+                    subject,
+                    "each canonical saved_to path appearing exactly once",
+                    "deduplicate the manifest results without changing payload bytes",
+                )
+            )
+        else:
+            manifested_path_set.add(canonical_relative)
+        if (
+            inventory_declaration is not None
+            and not _payload_is_declared_by_inventory(
+                canonical_relative, (inventory_declaration,)
+            )
         ):
+            inventory_path_mismatch_count += 1
             blockers.append(
                 _blocker(
                     "acquisition",
@@ -1390,13 +1670,14 @@ def _audit_raw_manifest(
         payload = _read_confined_bytes(root, path, f"raw payload {relative}")
         actual_bytes = len(payload)
         actual_hash = hashlib.sha256(payload).hexdigest()
-        identities.append(
-            {
-                "relative_path": canonical_relative,
-                "byte_count": actual_bytes,
-                "sha256": actual_hash,
-            }
-        )
+        if not duplicate_saved_path:
+            identities.append(
+                {
+                    "relative_path": canonical_relative,
+                    "byte_count": actual_bytes,
+                    "sha256": actual_hash,
+                }
+            )
         declared_bytes = raw.get("bytes")
         if type(declared_bytes) is int and not isinstance(declared_bytes, bool):
             if declared_bytes != actual_bytes:
@@ -1445,20 +1726,87 @@ def _audit_raw_manifest(
                     "hash and review the payload before any downstream use",
                 )
             )
+    if inventory_declaration is not None:
+        inventory_path = _try_resolve_path(
+            root, inventory_declaration["relative_path"]
+        )
+        inventory_files: set[str] = set()
+        if inventory_path is None or not inventory_path.is_dir():
+            blockers.append(
+                _blocker(
+                    "acquisition",
+                    "raw_manifest_inventory_directory_missing",
+                    _stable_subject(route_id, artifact_id),
+                    "the bound raw inventory directory",
+                    "restore the bound inventory before reviewing the manifest",
+                )
+            )
+        else:
+            _reject_symlink_path(root, inventory_path)
+            suffixes = set(inventory_declaration["suffixes"])
+            for item in sorted(
+                inventory_path.rglob("*"), key=lambda value: value.as_posix()
+            ):
+                if item.is_symlink():
+                    raise AuthoritativeIntakeError(
+                        f"raw inventory contains a symlink: {item}"
+                    )
+                if not item.is_file() or (suffixes and item.suffix not in suffixes):
+                    continue
+                relative_item = item.relative_to(root).as_posix()
+                if relative_item != manifest_relative_path:
+                    inventory_files.add(relative_item)
+        manifested_files = {
+            value["relative_path"] for value in identities
+        }
+        unmanifested_files = sorted(inventory_files - manifested_files)
+        unmanifested_file_count = len(unmanifested_files)
+        if unmanifested_files:
+            inventory_path_mismatch_count += len(unmanifested_files)
+            blockers.append(
+                _blocker(
+                    "acquisition",
+                    "raw_inventory_contains_unmanifested_payload",
+                    _stable_subject(route_id, artifact_id, "inventory_union"),
+                    "the bound inventory equal to the manifest payload set",
+                    "manifest or remove unbound payloads: "
+                    + ", ".join(unmanifested_files[:5]),
+                )
+            )
+    blockers = _sorted_unique_blockers(blockers)
+    inventory_binding_status = (
+        "missing"
+        if inventory_id is None or inventory_declaration is None
+        else "mismatch"
+        if inventory_path_mismatch_count
+        else "verified"
+    )
     audit = {
+        "artifact_id": artifact_id,
         "source_id": str(source_id),
+        "expected_source_id": expected_source_id,
+        "source_identity_status": source_identity_status,
         "root_kind": root_kind,
+        "inventory_id": inventory_id,
+        "inventory_binding_status": inventory_binding_status,
+        "integrity_status": (
+            "verified"
+            if not blockers and source_identity_status == "verified"
+            else "incomplete"
+        ),
         "result_count": result_count,
         "saved_file_count": saved_count,
         "sealed_result_count": sealed_count,
         "missing_file_count": missing_count,
         "byte_mismatch_count": byte_mismatch_count,
         "hash_mismatch_count": hash_mismatch_count,
+        "duplicate_saved_path_count": duplicate_saved_path_count,
+        "unmanifested_file_count": unmanifested_file_count,
         "payload_inventory_hash": canonical_sha256(
             sorted(identities, key=lambda value: value["relative_path"])
         ),
     }
-    return audit, _sorted_unique_blockers(blockers)
+    return audit, blockers
 
 
 def _payload_is_declared_by_inventory(
@@ -1492,6 +1840,10 @@ def _inventory_raw_root(
     root: Path,
     root_kind: str,
     declaration: Mapping[str, Any],
+    excluded_relative_paths: set[str] | frozenset[str] = frozenset(),
+    occupied_file_owners: dict[tuple[int, int], str] | None = None,
+    occupied_hashes: set[str] | None = None,
+    occupied_role_by_hash: dict[str, str] | None = None,
 ) -> tuple[dict[str, Any], list[IntakeBlocker]]:
     blockers: list[IntakeBlocker] = []
     relative = declaration["relative_path"]
@@ -1517,16 +1869,42 @@ def _inventory_raw_root(
                 )
             if not item.is_file() or (suffixes and item.suffix not in suffixes):
                 continue
-            payload = _read_confined_bytes(
+            relative_item = item.relative_to(root).as_posix()
+            if relative_item in excluded_relative_paths:
+                continue
+            payload, file_key = _read_confined_snapshot(
                 root,
                 item,
-                f"raw inventory payload {item.relative_to(root).as_posix()}",
+                f"raw inventory payload {relative_item}",
             )
+            payload_hash = hashlib.sha256(payload).hexdigest()
+            if occupied_file_owners is not None:
+                prior_owner = occupied_file_owners.get(file_key)
+                owner = (
+                    f"{route_id}:raw_inventory:{declaration['inventory_id']}:"
+                    f"{relative_item}"
+                )
+                if prior_owner is not None:
+                    raise AuthoritativeIntakeError(
+                        "one opened file cannot satisfy multiple evidence, raw, or "
+                        f"derived artifacts: {prior_owner} and {owner}"
+                    )
+                occupied_file_owners[file_key] = owner
+            if occupied_role_by_hash is not None:
+                prior_role = occupied_role_by_hash.get(payload_hash)
+                if prior_role is not None and prior_role != "raw_payload":
+                    raise AuthoritativeIntakeError(
+                        "identical bytes cannot satisfy different evidence, raw, or "
+                        f"derived roles: {prior_role} and raw_payload"
+                    )
+                occupied_role_by_hash[payload_hash] = "raw_payload"
+            if occupied_hashes is not None:
+                occupied_hashes.add(payload_hash)
             identities.append(
                 {
-                    "relative_path": item.relative_to(root).as_posix(),
+                    "relative_path": relative_item,
                     "byte_count": len(payload),
-                    "sha256": hashlib.sha256(payload).hexdigest(),
+                    "sha256": payload_hash,
                 }
             )
     if len(identities) < declaration["expected_min_files"]:
@@ -1558,6 +1936,11 @@ def _audit_derived_artifact(
     root: Path,
     root_kind: str,
     declaration: Mapping[str, Any],
+    semantic_authority: str,
+    evidence_by_id: Mapping[str, ArtifactIdentity],
+    occupied_file_owners: dict[tuple[int, int], str],
+    occupied_hashes: set[str],
+    manifest_audit_by_id: Mapping[str, Mapping[str, Any]],
 ) -> tuple[dict[str, Any] | None, list[IntakeBlocker]]:
     blockers: list[IntakeBlocker] = []
     subject = _stable_subject(route_id, declaration["artifact_id"])
@@ -1573,19 +1956,35 @@ def _audit_derived_artifact(
             )
         ]
     _reject_symlink_path(root, path)
-    identity, payload = _snapshot_file_identity(
+    identity, payload, file_key = _snapshot_file_identity(
         declaration["artifact_id"],
         root_kind,
         root,
         path,
         "derived_artifact",
     )
+    prior_owner = occupied_file_owners.get(file_key)
+    if prior_owner is not None or identity.sha256 in occupied_hashes:
+        raise AuthoritativeIntakeError(
+            "derived artifact must be independent from every evidence or derived "
+            f"artifact; prior owner={prior_owner or 'identical-bytes'}"
+        )
+    occupied_file_owners[file_key] = f"{route_id}:derived:{declaration['artifact_id']}"
+    occupied_hashes.add(identity.sha256)
     raw = _parse_json_object(
         payload, f"derived artifact {declaration['artifact_id']}"
     )
     expected_source = declaration["expected_source"]
-    actual_source = raw.get("source")
-    if expected_source is not None and actual_source != expected_source:
+    observed_source = raw.get("source")
+    source_metadata_valid = observed_source is None or (
+        type(observed_source) is str
+        and _STABLE_ID_PATTERN.fullmatch(observed_source) is not None
+    )
+    actual_source = observed_source if source_metadata_valid else None
+    source_identity_matches = source_metadata_valid and (
+        expected_source is None or actual_source == expected_source
+    )
+    if not source_identity_matches:
         blockers.append(
             _blocker(
                 "acquisition",
@@ -1621,14 +2020,234 @@ def _audit_derived_artifact(
                 "restore the full derived dataset without reducing the declared minimum",
             )
         )
+    lineage, lineage_blockers = _audit_derived_lineage(
+        route_id=route_id,
+        declaration=declaration,
+        output_identity=identity,
+        record_count=record_count,
+        declared_source=expected_source,
+        actual_source=actual_source,
+        source_identity_matches=source_identity_matches,
+        semantic_authority=semantic_authority,
+        evidence_by_id=evidence_by_id,
+        manifest_audit_by_id=manifest_audit_by_id,
+    )
+    blockers.extend(lineage_blockers)
     result = {
         **identity.to_data(),
         "record_pointer": declaration["record_pointer"],
         "record_count": record_count,
         "declared_source": expected_source,
         "actual_source": actual_source,
+        **lineage,
     }
     return result, _sorted_unique_blockers(blockers)
+
+
+def _audit_derived_lineage(
+    *,
+    route_id: str,
+    declaration: Mapping[str, Any],
+    output_identity: ArtifactIdentity,
+    record_count: int,
+    declared_source: str | None,
+    actual_source: str | None,
+    source_identity_matches: bool,
+    semantic_authority: str,
+    evidence_by_id: Mapping[str, ArtifactIdentity],
+    manifest_audit_by_id: Mapping[str, Mapping[str, Any]],
+) -> tuple[dict[str, Any], list[IntakeBlocker]]:
+    artifact_id = declaration["artifact_id"]
+    subject = _stable_subject(route_id, artifact_id)
+    gap_hint = declaration.get("lineage_gap_hint")
+    gap_snapshot = (
+        {
+            "reason_codes": list(gap_hint["reason_codes"]),
+            "parent_refs": [dict(value) for value in gap_hint["parent_refs"]],
+            "unregistered_paths": list(gap_hint["unregistered_paths"]),
+            "runtime_dependencies": list(gap_hint["runtime_dependencies"]),
+        }
+        if gap_hint is not None
+        else None
+    )
+    empty_result = {
+        "lineage_status": "missing",
+        "lineage_binding_hash": None,
+        "lineage_source_artifact_ids": [],
+        "lineage_transform_artifact_ids": [],
+        "lineage_gap_hint": gap_snapshot,
+    }
+    requirements = declaration.get("lineage_requirements")
+    if requirements is None:
+        if gap_snapshot is not None:
+            parent_refs = [
+                f"{value['route_id']}:{value['artifact_id']}"
+                for value in gap_snapshot["parent_refs"]
+            ]
+            evidence_parts = [
+                "reason_codes=" + ",".join(gap_snapshot["reason_codes"])
+            ]
+            if parent_refs:
+                evidence_parts.append("parent_refs=" + ",".join(parent_refs))
+            if gap_snapshot["unregistered_paths"]:
+                evidence_parts.append(
+                    "unregistered_paths="
+                    + ",".join(gap_snapshot["unregistered_paths"])
+                )
+            if gap_snapshot["runtime_dependencies"]:
+                evidence_parts.append(
+                    "runtime_dependencies="
+                    + ",".join(gap_snapshot["runtime_dependencies"])
+                )
+            return {
+                **empty_result,
+                "lineage_status": "unrepresentable",
+            }, [
+                _blocker(
+                    "acquisition",
+                    "derived_lineage_graph_unrepresentable",
+                    subject,
+                    "route-qualified lineage DAG closure; " + "; ".join(evidence_parts),
+                    "implement the SIM-02C-B route-qualified DAG, register and hash "
+                    "every listed parent, transform, intermediate, and runtime dependency, "
+                    "then regenerate and replace this gap hint with sealed requirements",
+                )
+            ]
+        return empty_result, [
+            _blocker(
+                "acquisition",
+                "derived_lineage_requirements_missing",
+                subject,
+                "reviewed source and transform artifact IDs for the derived output",
+                "add a reviewed lineage requirement and regenerate the artifact",
+            )
+        ]
+    source_ids = list(requirements["source_artifact_ids"])
+    transform_ids = list(requirements["transform_artifact_ids"])
+    computed_lineage_hash: str | None = None
+    try:
+        if not source_identity_matches:
+            raise AuthoritativeIntakeError("derived source identity does not match")
+        source_entries: list[dict[str, Any]] = []
+        source_roles: set[str] = set()
+        for entry_id in source_ids:
+            identity = evidence_by_id.get(entry_id)
+            if identity is None:
+                raise AuthoritativeIntakeError("lineage source identity missing")
+            source_roles.add(identity.role)
+            entry = {
+                "artifact_id": identity.artifact_id,
+                "relative_path": identity.relative_path,
+                "role": identity.role,
+                "byte_count": identity.byte_count,
+                "sha256": identity.sha256,
+                "source_id": None,
+                "expected_source_id": None,
+                "inventory_id": None,
+                "payload_inventory_hash": None,
+            }
+            if identity.role == "raw_manifest":
+                audit = manifest_audit_by_id.get(entry_id)
+                if audit is None or audit["integrity_status"] != "verified":
+                    raise AuthoritativeIntakeError(
+                        "lineage raw manifest is not integrity-verified"
+                    )
+                entry["inventory_id"] = audit["inventory_id"]
+                entry["source_id"] = audit["source_id"]
+                entry["expected_source_id"] = audit["expected_source_id"]
+                entry["payload_inventory_hash"] = audit[
+                    "payload_inventory_hash"
+                ]
+            elif identity.role == "review_record":
+                pass
+            else:
+                raise AuthoritativeIntakeError(
+                    "unsupported derived lineage source role"
+                )
+            source_entries.append(entry)
+
+        transform_entries: list[dict[str, Any]] = []
+        transform_roles: set[str] = set()
+        for entry_id in transform_ids:
+            identity = evidence_by_id.get(entry_id)
+            if identity is None:
+                raise AuthoritativeIntakeError("lineage transform identity missing")
+            transform_roles.add(identity.role)
+            transform_entries.append(
+                {
+                    "artifact_id": identity.artifact_id,
+                    "relative_path": identity.relative_path,
+                    "role": identity.role,
+                    "byte_count": identity.byte_count,
+                    "sha256": identity.sha256,
+                }
+            )
+
+        if semantic_authority in _EXTERNAL_AUTHORITIES or semantic_authority == "private_observation":
+            if source_roles != {"raw_manifest"}:
+                raise AuthoritativeIntakeError(
+                    "corpus lineage sources must be raw manifests"
+                )
+            if (
+                not transform_roles <= _DERIVED_TRANSFORM_ROLES
+                or not transform_roles.intersection({"builder", "parser"})
+            ):
+                raise AuthoritativeIntakeError(
+                    "corpus lineage requires a parser or builder"
+                )
+        elif semantic_authority == "local_implementation":
+            if source_roles != {"review_record"} or not {
+                "implementation",
+                "validator",
+            } <= transform_roles:
+                raise AuthoritativeIntakeError(
+                    "local lineage requires review, implementation, and validator"
+                )
+        else:
+            raise AuthoritativeIntakeError("unsupported lineage authority profile")
+        binding = {
+            "binding_domain": "sim02c-derived-lineage-v2",
+            "schema_version": "2.0.0",
+            "route_id": route_id,
+            "output": {
+                "artifact_id": output_identity.artifact_id,
+                "relative_path": output_identity.relative_path,
+                "byte_count": output_identity.byte_count,
+                "sha256": output_identity.sha256,
+                "record_count": record_count,
+                "declared_source": declared_source,
+                "actual_source": actual_source,
+            },
+            "source_artifacts": source_entries,
+            "transform_artifacts": transform_entries,
+        }
+        computed_lineage_hash = canonical_sha256(binding)
+        if computed_lineage_hash != requirements["expected_lineage_hash"]:
+            raise AuthoritativeIntakeError("derived lineage binding hash mismatch")
+    except (AuthoritativeIntakeError, KeyError, TypeError):
+        return {
+            **empty_result,
+            "lineage_status": "invalid",
+            "lineage_binding_hash": computed_lineage_hash,
+            "lineage_source_artifact_ids": source_ids,
+            "lineage_transform_artifact_ids": transform_ids,
+        }, [
+            _blocker(
+                "acquisition",
+                "derived_lineage_invalid",
+                subject,
+                "exact source payload, manifest, inventory, and transform hashes",
+                "regenerate the artifact from the reviewed chain and reseal lineage",
+            )
+        ]
+
+    return {
+        "lineage_status": "snapshot_bound",
+        "lineage_binding_hash": computed_lineage_hash,
+        "lineage_source_artifact_ids": source_ids,
+        "lineage_transform_artifact_ids": transform_ids,
+        "lineage_gap_hint": None,
+    }, []
 
 
 def _policy_blockers(
@@ -2014,7 +2633,13 @@ def _validate_route(route: Mapping[str, Any], index: int) -> None:
             route["source_ids"], f"{label}.source_ids", allow_empty=False
         )
     )
-    _sorted_strings(route["locators"], f"{label}.locators", allow_empty=False)
+    locators = _sorted_strings(
+        route["locators"], f"{label}.locators", allow_empty=False
+    )
+    if any(_LOCATOR_PATTERN.fullmatch(value) is None for value in locators):
+        raise AuthoritativeIntakeError(
+            f"{label}.locators must not contain control characters"
+        )
     _sorted_string_ids(
         route["candidate_roles"], f"{label}.candidate_roles", allow_empty=False
     )
@@ -2025,12 +2650,20 @@ def _validate_route(route: Mapping[str, Any], index: int) -> None:
     if not evidence_values:
         raise AuthoritativeIntakeError(f"{label}.evidence_files must not be empty")
     evidence_ids: list[str] = []
+    evidence_paths: list[str] = []
+    evidence_role_by_id: dict[str, str] = {}
+    manifest_inventory_bindings: list[str] = []
     covered_source_ids: set[str] = set()
     required_evidence_count = 0
     required_roles: set[str] = set()
     for item_index, raw in enumerate(evidence_values):
         value = _object(raw, f"{label}.evidence_files[{item_index}]")
-        _exact_keys(value, _EVIDENCE_FILE_KEYS, f"{label}.evidence_files[{item_index}]")
+        _keys_with_optional(
+            value,
+            _EVIDENCE_FILE_KEYS,
+            _EVIDENCE_FILE_OPTIONAL_KEYS,
+            f"{label}.evidence_files[{item_index}]",
+        )
         identity = _string(value["artifact_id"], "artifact_id")
         require_stable_id(identity, "artifact_id")
         evidence_ids.append(identity)
@@ -2039,13 +2672,30 @@ def _validate_route(route: Mapping[str, Any], index: int) -> None:
             raise AuthoritativeIntakeError(
                 f"{label}.evidence_files[{item_index}].role is unsupported"
             )
-        _safe_relative_path(_string(value["relative_path"], "relative_path"))
+        relative_path = _string(value["relative_path"], "relative_path")
+        _safe_relative_path(relative_path)
+        evidence_paths.append(relative_path)
+        evidence_role_by_id[identity] = role
+        inventory_id = value.get("inventory_id")
+        if inventory_id is not None:
+            require_stable_id(
+                _string(inventory_id, "inventory_id"), "inventory_id"
+            )
+            if role != "raw_manifest":
+                raise AuthoritativeIntakeError(
+                    "only raw_manifest evidence may bind an inventory_id"
+                )
+            manifest_inventory_bindings.append(inventory_id)
         if type(value["required"]) is not bool:
             raise AuthoritativeIntakeError("evidence required must be boolean")
         required_evidence_count += int(value["required"])
         if value["required"]:
             required_roles.add(role)
         expected_source = value["expected_source_id"]
+        if role == "raw_manifest" and expected_source is None:
+            raise AuthoritativeIntakeError(
+                "raw_manifest evidence requires expected_source_id"
+            )
         if expected_source is not None:
             require_stable_id(_string(expected_source, "expected_source_id"), "expected_source_id")
             if expected_source not in route_source_ids:
@@ -2056,19 +2706,26 @@ def _validate_route(route: Mapping[str, Any], index: int) -> None:
                 covered_source_ids.add(expected_source)
     if evidence_ids != sorted(evidence_ids) or len(evidence_ids) != len(set(evidence_ids)):
         raise AuthoritativeIntakeError(f"{label}.evidence_files must be sorted and unique")
+    if len(evidence_paths) != len(set(evidence_paths)):
+        raise AuthoritativeIntakeError(
+            f"{label}.evidence_files relative paths must be unique across roles"
+        )
     if required_evidence_count == 0:
         raise AuthoritativeIntakeError(
             f"{label}.evidence_files requires at least one required artifact"
         )
 
     inventory_ids: list[str] = []
+    inventory_paths: list[str] = []
     for item_index, raw in enumerate(_array(route["raw_inventories"], f"{label}.raw_inventories")):
         value = _object(raw, f"{label}.raw_inventories[{item_index}]")
         _exact_keys(value, _RAW_INVENTORY_KEYS, f"{label}.raw_inventories[{item_index}]")
         identity = _string(value["inventory_id"], "inventory_id")
         require_stable_id(identity, "inventory_id")
         inventory_ids.append(identity)
-        _safe_relative_path(_string(value["relative_path"], "relative_path"))
+        inventory_path = _string(value["relative_path"], "relative_path")
+        _safe_relative_path(inventory_path)
+        inventory_paths.append(inventory_path)
         suffixes = _sorted_strings(value["suffixes"], "suffixes", allow_empty=True)
         if any(not suffix.startswith(".") for suffix in suffixes):
             raise AuthoritativeIntakeError("inventory suffixes must begin with a dot")
@@ -2076,20 +2733,43 @@ def _validate_route(route: Mapping[str, Any], index: int) -> None:
             raise AuthoritativeIntakeError("expected_min_files must be positive")
     if inventory_ids != sorted(inventory_ids) or len(inventory_ids) != len(set(inventory_ids)):
         raise AuthoritativeIntakeError(f"{label}.raw_inventories must be sorted and unique")
+    if len(inventory_paths) != len(set(inventory_paths)):
+        raise AuthoritativeIntakeError(
+            f"{label}.raw inventory relative paths must be unique"
+        )
+    unknown_inventory_bindings = sorted(
+        set(manifest_inventory_bindings) - set(inventory_ids)
+    )
+    if unknown_inventory_bindings:
+        raise AuthoritativeIntakeError(
+            f"{label} raw manifests bind unknown inventory IDs: "
+            f"{unknown_inventory_bindings}"
+        )
 
     derived_ids: list[str] = []
+    derived_paths: list[str] = []
     for item_index, raw in enumerate(_array(route["derived_artifacts"], f"{label}.derived_artifacts")):
         value = _object(raw, f"{label}.derived_artifacts[{item_index}]")
-        _exact_keys(value, _DERIVED_KEYS, f"{label}.derived_artifacts[{item_index}]")
+        _keys_with_optional(
+            value,
+            _DERIVED_KEYS,
+            _DERIVED_OPTIONAL_KEYS,
+            f"{label}.derived_artifacts[{item_index}]",
+        )
         identity = _string(value["artifact_id"], "artifact_id")
         require_stable_id(identity, "artifact_id")
         derived_ids.append(identity)
-        _safe_relative_path(_string(value["relative_path"], "relative_path"))
+        relative_path = _string(value["relative_path"], "relative_path")
+        _safe_relative_path(relative_path)
+        derived_paths.append(relative_path)
         pointer = value["record_pointer"]
-        if type(pointer) is not str:
-            raise AuthoritativeIntakeError("record_pointer must be a string")
-        if pointer and not pointer.startswith("/"):
-            raise AuthoritativeIntakeError("record_pointer must be empty or begin with /")
+        if (
+            type(pointer) is not str
+            or _RECORD_POINTER_PATTERN.fullmatch(pointer) is None
+        ):
+            raise AuthoritativeIntakeError(
+                "record_pointer must be an RFC 6901 pointer with valid ~0/~1 escapes"
+            )
         if type(value["expected_min_records"]) is not int or value["expected_min_records"] <= 0:
             raise AuthoritativeIntakeError("expected_min_records must be positive")
         expected_source = value["expected_source"]
@@ -2103,8 +2783,147 @@ def _validate_route(route: Mapping[str, Any], index: int) -> None:
             )
         if expected_source is not None:
             covered_source_ids.add(expected_source)
+        requirements = value.get("lineage_requirements")
+        gap_hint = value.get("lineage_gap_hint")
+        if requirements is not None and gap_hint is not None:
+            raise AuthoritativeIntakeError(
+                "lineage requirements and lineage_gap_hint are mutually exclusive"
+            )
+        if gap_hint is not None:
+            gap_hint = _object(gap_hint, "lineage_gap_hint")
+            _exact_keys(gap_hint, _LINEAGE_GAP_HINT_KEYS, "lineage_gap_hint")
+            reason_codes = _sorted_string_ids(
+                gap_hint["reason_codes"],
+                "lineage gap reason_codes",
+                allow_empty=False,
+            )
+            unknown_reasons = sorted(
+                set(reason_codes) - _LINEAGE_GAP_REASON_CODES
+            )
+            if unknown_reasons:
+                raise AuthoritativeIntakeError(
+                    f"unsupported lineage gap reason codes: {unknown_reasons}"
+                )
+            parent_ref_keys: list[tuple[str, str]] = []
+            for parent_index, parent_raw in enumerate(
+                _array(gap_hint["parent_refs"], "lineage gap parent_refs")
+            ):
+                parent = _object(
+                    parent_raw, f"lineage gap parent_refs[{parent_index}]"
+                )
+                _exact_keys(
+                    parent,
+                    {"route_id", "artifact_id"},
+                    f"lineage gap parent_refs[{parent_index}]",
+                )
+                parent_route_id = _string(parent["route_id"], "parent route_id")
+                parent_artifact_id = _string(
+                    parent["artifact_id"], "parent artifact_id"
+                )
+                require_stable_id(parent_route_id, "parent route_id")
+                require_stable_id(parent_artifact_id, "parent artifact_id")
+                parent_ref_keys.append((parent_route_id, parent_artifact_id))
+            if parent_ref_keys != sorted(parent_ref_keys) or len(
+                parent_ref_keys
+            ) != len(set(parent_ref_keys)):
+                raise AuthoritativeIntakeError(
+                    "lineage gap parent_refs must be sorted and unique"
+                )
+            unregistered_paths = _sorted_strings(
+                gap_hint["unregistered_paths"],
+                "lineage gap unregistered_paths",
+                allow_empty=True,
+            )
+            for gap_path in unregistered_paths:
+                _safe_relative_path(gap_path)
+            runtime_dependencies = _sorted_string_ids(
+                gap_hint["runtime_dependencies"],
+                "lineage gap runtime_dependencies",
+                allow_empty=True,
+            )
+            if not parent_ref_keys and not unregistered_paths and not runtime_dependencies:
+                raise AuthoritativeIntakeError(
+                    "lineage gap hint requires a concrete missing dependency"
+                )
+            if "cross_route_parent_unsupported" in reason_codes and not any(
+                parent_route_id != route_id
+                for parent_route_id, _parent_artifact_id in parent_ref_keys
+            ):
+                raise AuthoritativeIntakeError(
+                    "cross-route lineage gap requires a parent in another route"
+                )
+        if requirements is not None:
+            requirements = _object(requirements, "lineage_requirements")
+            _exact_keys(
+                requirements,
+                _LINEAGE_REQUIREMENT_KEYS,
+                "lineage_requirements",
+            )
+            require_sha256(
+                _string(
+                    requirements["expected_lineage_hash"],
+                    "expected_lineage_hash",
+                ),
+                "expected_lineage_hash",
+            )
+            source_artifact_ids = _sorted_string_ids(
+                requirements["source_artifact_ids"],
+                "lineage source_artifact_ids",
+                allow_empty=False,
+            )
+            transform_artifact_ids = _sorted_string_ids(
+                requirements["transform_artifact_ids"],
+                "lineage transform_artifact_ids",
+                allow_empty=False,
+            )
+            lineage_ids = set(source_artifact_ids) | set(transform_artifact_ids)
+            if len(lineage_ids) != len(source_artifact_ids) + len(
+                transform_artifact_ids
+            ):
+                raise AuthoritativeIntakeError(
+                    "lineage source and transform artifact IDs must be disjoint"
+                )
+            unknown_lineage_ids = sorted(lineage_ids - set(evidence_ids))
+            if unknown_lineage_ids:
+                raise AuthoritativeIntakeError(
+                    f"lineage requirements reference unknown evidence: "
+                    f"{unknown_lineage_ids}"
+                )
+            source_roles = {
+                evidence_role_by_id[value] for value in source_artifact_ids
+            }
+            transform_roles = {
+                evidence_role_by_id[value] for value in transform_artifact_ids
+            }
+            if authority in _EXTERNAL_AUTHORITIES or authority == "private_observation":
+                if source_roles != {"raw_manifest"} or (
+                    not transform_roles <= _DERIVED_TRANSFORM_ROLES
+                    or not transform_roles.intersection({"builder", "parser"})
+                ):
+                    raise AuthoritativeIntakeError(
+                        "corpus lineage requirements need raw manifests and a parser or builder"
+                    )
+            elif authority == "local_implementation" and (
+                source_roles != {"review_record"}
+                or not {"implementation", "validator"} <= transform_roles
+            ):
+                raise AuthoritativeIntakeError(
+                    "local lineage requirements need review, implementation, and validator"
+                )
     if derived_ids != sorted(derived_ids) or len(derived_ids) != len(set(derived_ids)):
         raise AuthoritativeIntakeError(f"{label}.derived_artifacts must be sorted and unique")
+    overlapping_artifact_ids = sorted(set(derived_ids).intersection(evidence_ids))
+    if overlapping_artifact_ids:
+        raise AuthoritativeIntakeError(
+            f"{label} evidence and derived artifact IDs must be disjoint: "
+            f"{overlapping_artifact_ids}"
+        )
+    if len(derived_paths) != len(set(derived_paths)) or set(derived_paths).intersection(
+        evidence_paths
+    ):
+        raise AuthoritativeIntakeError(
+            f"{label} evidence and derived relative paths must be role-independent"
+        )
 
     if authority in _EXTERNAL_AUTHORITIES:
         missing_roles = {"raw_manifest", "source_config"} - required_roles
@@ -2398,6 +3217,20 @@ def _exact_keys(value: Mapping[str, Any], expected: set[str], label: str) -> Non
         )
 
 
+def _keys_with_optional(
+    value: Mapping[str, Any],
+    required: set[str],
+    optional: set[str],
+    label: str,
+) -> None:
+    missing = sorted(required - set(value))
+    unexpected = sorted(set(value) - required - optional)
+    if missing or unexpected:
+        raise AuthoritativeIntakeError(
+            f"{label} key mismatch; missing={missing}; unexpected={unexpected}"
+        )
+
+
 def _string(value: Any, label: str) -> str:
     if type(value) is not str or not value:
         raise AuthoritativeIntakeError(f"{label} must be a non-empty string")
@@ -2507,8 +3340,10 @@ def _snapshot_file_identity(
     root: Path,
     path: Path,
     role: str,
-) -> tuple[ArtifactIdentity, bytes]:
-    payload = _read_confined_bytes(root, path, f"artifact {artifact_id}")
+) -> tuple[ArtifactIdentity, bytes, tuple[int, int]]:
+    payload, file_key = _read_confined_snapshot(
+        root, path, f"artifact {artifact_id}"
+    )
     identity = ArtifactIdentity(
         artifact_id=artifact_id,
         root_kind=root_kind,
@@ -2517,7 +3352,7 @@ def _snapshot_file_identity(
         byte_count=len(payload),
         sha256=hashlib.sha256(payload).hexdigest(),
     )
-    return identity, payload
+    return identity, payload, file_key
 
 
 def _read_confined_bytes(root: Path, path: Path, label: str) -> bytes:
@@ -2526,12 +3361,34 @@ def _read_confined_bytes(root: Path, path: Path, label: str) -> bytes:
     return _read_stable_bytes(path, label, confinement_root=root)
 
 
+def _read_confined_snapshot(
+    root: Path, path: Path, label: str
+) -> tuple[bytes, tuple[int, int]]:
+    root = root.resolve()
+    _reject_symlink_path(root, path)
+    return _read_stable_snapshot(path, label, confinement_root=root)
+
+
 def _read_stable_bytes(
     path: Path,
     label: str,
     *,
     confinement_root: Path | None = None,
 ) -> bytes:
+    payload, _file_key = _read_stable_snapshot(
+        path,
+        label,
+        confinement_root=confinement_root,
+    )
+    return payload
+
+
+def _read_stable_snapshot(
+    path: Path,
+    label: str,
+    *,
+    confinement_root: Path | None = None,
+) -> tuple[bytes, tuple[int, int]]:
     flags = os.O_RDONLY
     flags |= getattr(os, "O_BINARY", 0)
     flags |= getattr(os, "O_NOFOLLOW", 0)
@@ -2564,7 +3421,7 @@ def _read_stable_bytes(
         payload = b"".join(chunks)
         if len(payload) != after.st_size:
             raise AuthoritativeIntakeError(f"{label} byte count changed while it was read")
-        return payload
+        return payload, (int(after.st_dev), int(after.st_ino))
     finally:
         os.close(descriptor)
 
