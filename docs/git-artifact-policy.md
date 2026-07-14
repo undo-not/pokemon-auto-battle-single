@@ -82,3 +82,39 @@ python scripts/validate_sim01_bundle.py --usage-scope local_research
 ```
 
 `check_repo_size.py`はGitのtracked＋untracked非ignore候補を検査し、パスに`fixtures`または`golden`を含むファイルへ256 KiB上限を適用する。`validate_sim01_bundle.py`はCatalog/golden artifactのsize/hash、manifest ID、license制約を検査し、`--usage-scope distribution`では未確認licenseを拒否する。
+
+## SIM-02B / SIM-02C運用追記
+
+SIM-02Bのtest-authoritative positive E2Eと、SIM-02Cで取得するactual M-B evidenceを同じ保存scopeとして扱わない。
+
+### Git追跡可能なSIM-02B資産
+
+- v2のSchema、compiler/resolver、テストコード
+- 3 capability、development 3 scenario、external holdout 1 scenarioに限定した最小test-authoritative fixture
+- artifact本体を含まないportable source/license/use-policy manifestとcontent hash
+- 再生成可能な小さいgolden assessment、gate summary、監査report
+
+test-authoritative fixtureはpromotion経路の正当性を検証するための資産であり、実M-B Catalog/corpusの縮小コピーまたは配布経路にしない。fixture/goldenは256 KiB、その他の追跡単一ファイルは2 MiBの暫定上限を引き続き適用する。
+
+### 必ずGit外へ置くactual M-B資産
+
+- raw source payload、web/API取得結果、旧PJ由来data、生成途中のCatalog/RuleSet
+- development/external-holdout construction corpus、engine scenario corpus、Replayとprobe出力
+- BlueStacks screenshot、UI hierarchy、video、actual grounding traceの添付artifact
+- assessmentの全展開、評価run、trajectory、LLM cache、embedding、model、checkpoint
+
+これらはrepositoryのignored pathまたはアクセス制御された外部artifact storeへ置き、content-addressed keyで保存する。Git上のmanifestから、外部locator、media type、byte size、SHA-256、取得時刻、source issuer、license/use-policy、local-research/distribution制約、対象Regulation/TargetPool、parser/compiler version、親artifactとpartition lineageへ追跡できなければpromotion入力にしない。
+
+license未確認のartifactは`license_status: unverified`、`local_research_only: true`、`redistribution: prohibited`を固定する。この制約はraw dataだけでなく、当該dataを復元可能または再配布不可な派生Catalog、corpus、Replay、grounding添付にも継承する。hash一致は同一性・完全性の検査であり、source真正性や再配布権の証明には使わない。
+
+### 1週間regulation adaptation時の運用
+
+1. `t0`でRegulation/TargetPool、source manifest、license/use-policy、外部artifact locatorを凍結する。
+2. 取得artifactは直接Gitへ置かず、まずGit外storeへ保存してbyte size/hashをmanifestへ記録する。
+3. `t0 + 48h`のcandidate/NO-GO reportには入力manifest set hash、assessment hash、残存blocker、再開条件だけを集約する。
+4. developmentとexternal holdoutはsource・collection・authoring lineageを分離し、別content-addressed namespaceとaccess controlを使う。holdout raw artifactを開発側へ複製しない。
+5. `t0 + 7d`の投入判断前に`check_repo_size.py`、license/use-policy resolver、artifact再解決、Replay再検証を実行する。SLAを理由にsize、license、source、holdout gateを迂回しない。
+
+actual evidenceを削除またはpruneする場合は、対応するpromotion/readiness sealの再検証に必要かを先に確認する。昇格候補と、その候補を否定した再生成不能な反証artifactは外部storeに残し、Gitにはlocatorとhashを保持する。
+
+production trust anchorは検証対象のartifact root内へ置かない。公開検証鍵、trusted issuer ID、approved manifest/license hashのような秘密でないreview済みdescriptorだけを小さいGit管理manifestとして置ける。秘密鍵、credential、署名用tokenはGitへ置かず、OS secret storeまたはアクセス制御された外部設定から供給する。入力source manifest自身が宣言する`official`/`verified`値や同じroot内のallowlistをtrust anchorとして扱わない。

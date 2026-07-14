@@ -48,6 +48,24 @@ class ChampionsReadinessError(ValueError):
     """The compiler result cannot attest an actionable Champions bundle."""
 
 
+def validate_v1_diagnostic_compilation(
+    compilation: SourceToCapabilityCompilation,
+) -> tuple[Mapping[str, Any], tuple[Mapping[str, Any], ...]]:
+    """Recompute and validate the frozen v1 diagnostic compilation.
+
+    This is deliberately a negative-assessment boundary, not a readiness or
+    promotion API.  The exact v1 type is required and the complete report,
+    document set, artifact digests, stage lineage, counts, blockers, and gate
+    decision are recomputed by the existing validator.
+    """
+
+    if type(compilation) is not SourceToCapabilityCompilation:
+        raise ChampionsReadinessError(
+            "v1 diagnostic validation requires the exact compiler compilation"
+        )
+    return _validate_compilation_substance(compilation)
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedChampionsReadiness:
     """Content-bound attestation that retains its revalidation substance.

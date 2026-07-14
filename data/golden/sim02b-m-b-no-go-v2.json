@@ -1,0 +1,33 @@
+{
+  "schema_version": "2.0.0",
+  "regulation_id": "M-B",
+  "regulation_revision": "official-2026-06-17",
+  "evaluation_scope": "local_diagnostic_summary",
+  "source_report_hash": "2c443ea3d196efaad9c99b3f5012ffa800f093595fa87d0afdcde332914632c8",
+  "assessment_hash": "2522c71c2e0a65649f7a133bf03f9f223c6a74e8db45bd06ea45c868be438980",
+  "status": "no_go",
+  "promotion_candidate": false,
+  "champions_candidate": false,
+  "rank1_equivalence_status": "unmeasured",
+  "target_members": 235,
+  "verified_target_mapping": {
+    "numerator": 0,
+    "denominator": 235,
+    "rate_ppm": 0
+  },
+  "mapping_unresolved": 219,
+  "mapping_conflict": 16,
+  "semantic_selectors": 788,
+  "target_capability_rows": 118,
+  "execution_gaps": 118,
+  "probe_unexpected_errors": 118,
+  "silent_fallback_count": 0,
+  "development_scenario_coverage_rate_ppm": null,
+  "verified_grounding_conformance_rate_ppm": null,
+  "engine_probe_pass_rate_ppm": null,
+  "external_holdout_novel_gap_count": null,
+  "diagnostic_blocking_reason_count": 718,
+  "promotion_blocker_count": 720,
+  "production_trust_anchor_status": "not_implemented",
+  "large_assessment_storage": "gitignored_data_processed_only"
+}

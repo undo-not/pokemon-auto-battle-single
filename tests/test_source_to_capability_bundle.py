@@ -257,3 +257,35 @@ def test_cli_normalizes_sealed_source_shape_errors(
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is False
     assert payload["error"] == "sealed source structure is invalid: 'moves'"
+
+
+def test_cli_can_emit_exact_sim02b_negative_assessment_summary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    compilation = compile_source_to_capability_bundle(_config(tmp_path / "source"))
+    monkeypatch.setattr(
+        compiler_cli,
+        "compile_source_to_capability_bundle",
+        lambda _config: compilation,
+    )
+
+    exit_code = compiler_cli.main(
+        [
+            "--legacy-root",
+            str(tmp_path),
+            "--dry-run",
+            "--sim02b-assessment",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["sim02b_assessment_generated"] is True
+    assert payload["sim02b_assessment_written"] is False
+    assert payload["sim02b_assessment_blocker_count"] > 0
+    assert payload["verified_target_mapping_numerator"] == 0
+    assert payload["verified_target_mapping_denominator"] == 3
+    assert payload["verified_target_mapping_rate_ppm"] == 0
+    assert len(payload["sim02b_assessment_hash"]) == 64

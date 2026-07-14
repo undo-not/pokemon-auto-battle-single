@@ -2,10 +2,12 @@
 
 ## Status
 
-- Phase Contract: **SPECIFIED**
-- Implementation: **NOT IMPLEMENTED**
+- Phase Contract: **SPECIFIED / FROZEN FOR SIM-02B**
+- Local engineering implementation: **GO / COMPLETE**
+- Test-authoritative readiness seal: **GO / `champions_candidate: false`**
+- Production source trust anchor: **NO-GO / NOT IMPLEMENTED / production発行を明示停止**
 - 現行SIM-02B production candidate: **NO-GO**
-- Champions readiness seal: **NO-GO / 発行不可**
+- 現行M-B production readiness seal: **NO-GO / 発行不可**
 - ランク1位相当: **NO-GO / 未測定・主張禁止**
 
 ## Phase Contract
@@ -25,6 +27,8 @@
 | `done_conditions` | **Local engineering gate:** (1) v1型・resolverの診断専用挙動を不変にしたまま、exact `ProductionPromotionCompilationV2` schema/compilerと別API `resolve_champions_readiness_v2`、exact `ResolvedChampionsReadinessV2`を実装、(2) resolverがtest-only authoritative source/license/artifact fixtureを実bytesから検証するpositive end-to-end testでv2 readinessとsealを実際に発行、(3) source bytes、license、mapping、TargetPool分母、capability set、scenario corpus、partition、holdout、Catalog/RuleSet、全bound hashの個別mutationを拒否、(4) 同一入力からbyte-identical report/sealを再生成、(5) 現行M-B入力からは不足証拠と再開条件を列挙したexact `NO-GO`を再生成、(6) 全回帰・Schema・size gate合格。このgateは外部M-B evidence不足でも`ENGINEERING COMPLETE`になり得るが、production readinessを意味しない。 |
 | `production_candidate_gate` | **現行M-B data gate:** (1) 全TargetPool memberのmappingがvalidated/verified、(2) 空でないexact `TargetCapabilitySet`の全capabilityがlineage適合development scenarioとverified positive engine probeを1件以上持つ、(3) 全required groundingがverifiedでcapabilityへtrace可能、(4) 全scenarioのengine probe・Replay再実行が一致しsilent fallback 0、(5) source/license/artifact recordを実bytesへ再解決可能、(6) external holdoutがsource・収集・作成lineageでdevelopmentと分離され昇格前に封印、novel gap 0、(7) 4 rateのnumerator/denominatorと`target_pool_hash`/set/partition hashが再計算一致し全rate 1.0、(8) readiness sealが`promotion_report_hash`、`catalog_hash`、`scenario_corpus_hash`、`partition_manifest_hash`、`external_holdout_hash`、`target_capability_set_hash`、`target_pool_hash`を結合、(9) 48時間以内にcandidateまたは根拠付き`NO-GO`、残る評価・包装を含め1週間以内にprivate-match投入可否を確定。 |
 | `anti_patterns` | v1診断結果のpromotion利用、self-declared `verified`、source URLだけでartifactを検証済みとすること、license不明データの採用、推定ID/form mapping、LLM生成値の正本化、空のdevelopment corpus、train/dev/holdout間の重複・lineage漏洩、holdoutを見た後の調整、engineを通さない期待結果、report hashだけを認証とみなすこと、blocker除外による分母縮小、M-B `NO-GO`の推測解除、大容量artifactのGit登録。 |
+
+`production_candidate_gate`の前提条件0として、artifact rootと別の信頼境界にあるproduction trust anchorが、trusted issuer/authority、approved source manifest hash、license identityを検証することを要求する。これが未実装または不一致なら、他の9条件が揃っていてもproduction Compilation/readinessを発行しない。
 
 ## Promotion chain
 
@@ -51,6 +55,21 @@ resolver-backed source/license/artifact
 
 hashは同一性・完全性の識別子であり、それ単独ではsourceの真正性、license適合、Champions準拠を証明しない。resolver検証、grounding、engine probe、sealed holdout検証を再実行できることを信頼境界とする。
 
+## Normative v2 clarifications
+
+実装開始前の仕様監査で、test fixtureの成功をproduction readinessへ誤昇格させないため、以下をv2の必須契約として固定する。これはcoverage閾値や暫定係数の追加ではない。
+
+- `attestation_scope`はexactに`test_authoritative`または`production_champions`とする。`test_authoritative`はresolverがartifact bytesとtest-only source/license属性から導出する。`production_champions`はそれらに加え、artifact root外のtrusted issuer/authority attestationがapproved manifest/license identityを固定した場合だけ許可する。local manifestの`official`、`verified`、Regulationの`current`文字列はtrust anchorではなく、それだけではproduction発行しない。
+- `test_authoritative`でもlocal engineering用readiness sealは発行できる。ただし`champions_candidate: false`を固定し、production adapterや実運用入力として受理しない。
+- 現行M-Bのように必須artifactが不足する入力は`ProductionPromotionAssessmentV2`としてexact `NO-GO`を返す。blockerは少なくとも`stage`、`code`、`subject`、`evidence_required`、`restart_condition`を持つ。
+- 全promotion gateを通過した入力だけがexact `ProductionPromotionCompilationV2`を生成できる。`resolve_champions_readiness_v2`はこのCompilationだけを受理し、Assessmentやv1 bundleの暗黙変換を許可しない。
+- `ConstructionSelectionCorpus`は構築・選出の観測証拠として再利用するが、engine scenario正本にはしない。v2 scenarioは初期状態、exact choice sequence、期待event/終状態、Replay、capability witnessを結合する別型とする。
+- positive probeはcaller supplied successを採用せず、Catalog/RuleSetへ結合したReplayをengineで再実行し、各declared capabilityのcanonical primary probeとwitnessを照合して導出する。required probe分母はexact TargetCapabilitySetのdeclared capability数と一致させる。
+- `verified_grounding_conformance_rate`はassertion行数ではなく、exact TargetCapabilitySetが宣言するuniqueなrequired grounding requirement ID数を分母、resolver-validated assertionで満たされたunique requirement ID数を分子とする。
+- developmentとexternal holdoutはrecord hashだけでなく、source、collection、authoringの3 lineage集合をすべて分離し、scenario membership/hashをpartition manifestへ固定する。
+- rateのnumerator/denominatorは元snapshot hashを書き換えず、`target_pool_hash`、`target_capability_set_hash`、`partition_manifest_hash`と並べてpromotion reportへ結合する。probe結果やrateを上流snapshot hashへ逆流させない。
+- sealは上記7 hashに加え、`source_resolution_set_hash`、`ruleset_hash`、`grounding_resolution_hash`、`engine_probe_report_hash`、`attestation_scope`を結合する。
+
 ## One-week regulation adaptation gate
 
 - `t0`: 署名・hash固定済みRegulation/TargetPoolと利用可能source集合を受領した時刻。
@@ -59,6 +78,10 @@ hashは同一性・完全性の識別子であり、それ単独ではsourceの�
 
 ## Current gate decision
 
-Local engineering gateは未実装のため **NOT IMPLEMENTED**。これとは独立に、現行M-B data gateにはresolver-backed verified mapping、capability-completeな証拠付きdevelopment corpus、lineage分離済みexternal holdout、十分なgrounding、全必須capabilityのpositive engine probeが揃っていないため、Champions readinessとproduction candidateは **NO-GO** とする。v2 frameworkがengineering completeになっても、このM-B `NO-GO`は外部証拠が揃うまで解除されない。この判断を、使用率、記事、LLM推論、名前一致、旧Catalogの類似IDで解除してはならない。
+Local engineering gateは **GO / COMPLETE**。test-authoritativeな3 source manifestから3 capability（`move.damage`、`ability.rough_skin`、`item.leftovers`）、development 3 scenario、external holdout 1 scenarioをresolverで実bytesへ結合し、完全compile、engine/Replay再実行、grounding、holdout、可搬Compilation JSON、readiness seal、再コンパイルのbyte一致を確認した。source bytes、再署名後のscenario drift、source scope誤主張などのmutationはfail-closedで拒否する。test scopeは常に`champions_candidate: false`、`champions_fidelity_status: not_attested`、`rank1_equivalence_status: unmeasured`であり、production入力にはならない。
+
+これとは独立に、現行M-B data gateは **NO-GO**。exact assessmentはTargetPool 235に対してverified mapping 0、unresolved 219、conflict 16、target capability row 118、execution gap 118、diagnostic blocking reason 718、promotion blocker 720を返す。追加blockerはartifact-root外production trust anchor未実装である。resolver-backed production source/license、capability-completeなdevelopment corpus、lineage分離済みexternal holdout、十分なgrounding、全必須capabilityのpositive engine probeも揃っていないため、Champions readinessとproduction candidateを発行しない。engineering completeでも、このM-B `NO-GO`は外部証拠とtrust anchorが揃うまで解除されない。この判断を、使用率、記事、LLM推論、名前一致、旧Catalogの類似ID、local JSONのauthority文字列で解除してはならない。
+
+次の大目的は`SIM-02C Production Trust Anchor + Authoritative M-B Evidence + Executable Scenario Corpus`とする。SIM-02Bの型とgateを維持したまま、artifact-root外trust anchorを実装し、実M-B blockerをauthoritative sourceまたはactual private-match traceで解消する。48時間でcandidate/NO-GO、7日でholdout・AI-01評価・包装までの投入可否を確定する。
 
 本Phaseの完了は対戦AIの強さを示さない。ランク1位相当は、SIM-02B readinessを前提に別途、固定外部benchmarkと競争的評価で測定するまで **NO-GO / 主張禁止** とする。

@@ -50,7 +50,8 @@ Statusは次を使う。
 | `REQ-AI01-003` | 6体rosterから順序付き3体を双方同時に選ぶ | AI-01 Team Preview contract | `src/champions_sim/prebattle` | exact 6→3、commit/reveal、Catalog/RuleSet/nonce/order/roster/materialized-state、source/runtime/typed-initial-state/config identity、mapping順・alias topology・未申告state差・選出中state変化拒否、detached own-roster graph、private set非干渉、同一policy再利用・途中状態・Item Clause・種族非合法技拒否 | verified_local synthetic |
 | `REQ-AI01-004` | 部分観測だけで両seatを公平に評価する | AI-01 Arena Plan/Report Schema | `run_paired_arena`、`runner.run_battle(policy_seed=...)` | paired engine/agent seed、role-fixed RNG、side swap、fresh/exact BoundAgent、private setからpublic battle IDへの非干渉、Replay再検証100%、default evidence manifest、byte-identical report | verified_local trusted-process synthetic; process isolation/external corpus blocked |
 | `REQ-AI01-005` | 非自明な選出・行動baselineを持つ | AI-01 Phase Contract、PD-009 | `TypeCoverageTeamSelectionPolicy`、`TypeAwareDamagePolicy`、benchmark CLI | tactical type fixture、selection privacy、64 pair/128 match frozen golden、Random referenceへ正のutility | verified_local engineering baseline only |
-| `REQ-SIM02B-001` | intake診断v1とproduction promotion v2を分離し、証拠付きscenario corpusからだけreadinessを発行する | SIM-02B Phase Contract | 未実装 | resolver-backed source/license/artifact record、verified mapping、非空development、lineage分離external holdout、grounding、engine-backed probe、synthetic positive E2E、現M-B exact NO-GOが必要 | specified; not implemented |
+| `REQ-SIM02B-001` | intake診断v1とpromotion v2を分離し、証拠付きscenario corpusからだけreadinessを発行する | SIM-02B Phase Contract | `src/champions_sim/promotion` v2 compiler、`src/champions_sim/env/readiness_v2.py`、V2 compilation/report/scenario/readiness schemas | exact Compilation再解決、test-authoritative engineering seal、将来production projectionの型検査、source/Catalog/RuleSet/grounding/scenario/partition/probe/document hash mutation拒否、portable manifest/schema、resolver-backed positive E2E、現M-B exact NO-GOをfocused testsで確認 | local engineering verified; production issuance disabled pending external trust anchor/evidence |
+| `REQ-SIM02B-002` | local manifestのauthority/license/status自己申告でproduction候補を発行しない | SIM-02B trust-anchor clarification | `src/champions_sim/promotion/compiler.py`、production forgery E2E | source/license/Regulation/timingを整合再署名した完全local claimをartifact-root外trust anchor不足で拒否。assessmentへ専用blockerを追加 | verified fail-closed; external trust-anchor verifier not implemented |
 | `REQ-GROUND-004` | GroundingFrameをcapture contentとmanifest identityへ結合する | GroundingTrace/Capture Schema | `capture_id + capture_manifest_hash`、`validate_grounding_trace_against_store` | conflicting/wrong manifest hash、missing capture、artifact改竄、evidenceなしconformant traceを拒否 | verified_local resolver contract; no actual trace |
 | `REQ-OBS-001` | 瞬間観測とUI量子化・履歴memoryを分離する | SIM-01 observation contract | `BattleState.observation_for` | opponentのhp/max_hp/exact fractionを`None`、observation leakage tests。UI adapterは未実装 | verified_local snapshot, adapter pending |
 | `REQ-TYPE-001` | sparse type chartの省略pairを倍率1とする | Catalog Schema、SIM-01 type chart contract | `CatalogSnapshot.type_effectiveness` | Catalog semantic validation、engine tests | verified_local |
@@ -103,6 +104,26 @@ catalog_intake_hash
 + mechanic_coverage_matrix_hash
 ```
 
+SIM-02B v2はpositive promotionを次の一体的なportable identityへ束ねる。`test_authoritative`と`production_champions`はresolverがsource/licenseから導出し、同じCompilation内でscopeを混在させない。全documentのUTF-8 byte digestを`document_set_hash`へ、下記projectionを`compilation_hash`へ、さらにreadiness projectionへ結合する。
+
+```text
+source_resolution_set_hash + artifact_binding_hash
++ regulation_hash + target_pool_hash
++ catalog_hash + ruleset_hash + mapping_evidence_hash
++ target_pool_manifest_hash + target_capability_set_hash
++ semantic_compilation_hash + execution_compilation_hash
++ development construction/scenario corpus hash
++ external holdout scenario/verification hash
++ partition_manifest_hash
++ grounding_resolution_hash + engine_probe_report_hash
++ mechanic_coverage_matrix_hash + timing_evidence_hash
++ promotion_report_hash + document_set_hash
+-> production promotion compilation_hash
+-> scope-bound Champions readiness v2 seal_hash
+```
+
+このidentityは同一性と完全性を検査するもので、source真正性、Champions実機準拠、ランク1相当をhash単体で証明しない。resolver再解決、engine/Replay再実行、grounding、sealed holdoutを再検証できることが昇格条件である。
+
 target poolのversionが変わった場合、旧coverage reportを新しい分母へ流用しない。
 
 AI-01 Arena reportは次のidentityを追加で保存する。
@@ -135,6 +156,9 @@ published capability coverage counts/rates: null (denominator non-final)
 silent fallback count: 0
 required mega_evolution in current M-B RuleSet: unsupported
 actual BlueStacks GroundingTrace: 0
+SIM-02B diagnostic blocking reasons / promotion blockers: 718 / 720
+production source trust anchor: not implemented; issuance disabled
+SIM-02B rank1 equivalence status: unmeasured
 ```
 
 これはmember-level readinessであり、capability-level execution coverageまたは実環境採用率ではない。

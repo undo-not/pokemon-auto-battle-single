@@ -22,6 +22,9 @@ from champions_sim.compiler.bundle import (
     write_compilation_documents,
 )
 from champions_sim.intake import CatalogIntakeProfile
+from champions_sim.promotion.assessment import (
+    build_production_promotion_assessment_v2,
+)
 
 
 DEFAULT_OUTPUT_ROOT = ROOT / "data/processed/sim02/source-to-capability"
@@ -56,7 +59,50 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Return exit code 3 when the correct result is NO-GO",
     )
+    parser.add_argument(
+        "--sim02b-assessment",
+        action="store_true",
+        help=(
+            "Also derive the exact SIM-02B negative assessment from the "
+            "validated v1 diagnostic. The assessment can never promote v1."
+        ),
+    )
     return parser
+
+
+def build_default_config(legacy_root: Path) -> SourceToCapabilityConfig:
+    """Return the frozen M-B v1 diagnostic configuration used by the CLI."""
+
+    intake_profile = CatalogIntakeProfile(
+        profile_id="official_m_b_local_v1",
+        regulation_id="M-B",
+        regulation_revision="official-2026-06-17",
+        expected_target_count=235,
+        expected_usage_count=213,
+    )
+    bridge_profile = CatalogBridgeProfile(
+        profile_id="official_m_b_source_bound_v1",
+        regulation_id="M-B",
+        regulation_revision="official-2026-06-17",
+        expected_target_count=235,
+        source_manifest_id="catalog-intake-m-b-source-lock-legacy-59bf57c",
+        engine_semantics_version="sim-core-0.1",
+    )
+    return SourceToCapabilityConfig(
+        repository_root=ROOT,
+        legacy_root=legacy_root,
+        regulation_path=ROOT / "data/fixtures/regulations/m-b-current.json",
+        target_pool_path=(
+            ROOT / "data/fixtures/regulations/m-b-eligible-pokemon.json"
+        ),
+        ruleset_path=ROOT / "data/fixtures/sim01_ruleset.json",
+        manifest_dir=ROOT / "data/manifests",
+        source_lock_path=(
+            ROOT / "data/manifests/catalog-intake-m-b-source-lock.json"
+        ),
+        intake_profile=intake_profile,
+        bridge_profile=bridge_profile,
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -71,42 +117,28 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "full compiler artifacts must remain under Gitignored data/processed"
             ) from error
 
-        intake_profile = CatalogIntakeProfile(
-            profile_id="official_m_b_local_v1",
-            regulation_id="M-B",
-            regulation_revision="official-2026-06-17",
-            expected_target_count=235,
-            expected_usage_count=213,
-        )
-        bridge_profile = CatalogBridgeProfile(
-            profile_id="official_m_b_source_bound_v1",
-            regulation_id="M-B",
-            regulation_revision="official-2026-06-17",
-            expected_target_count=235,
-            source_manifest_id="catalog-intake-m-b-source-lock-legacy-59bf57c",
-            engine_semantics_version="sim-core-0.1",
-        )
         compilation = compile_source_to_capability_bundle(
-            SourceToCapabilityConfig(
-                repository_root=ROOT,
-                legacy_root=args.legacy_root,
-                regulation_path=ROOT / "data/fixtures/regulations/m-b-current.json",
-                target_pool_path=(
-                    ROOT / "data/fixtures/regulations/m-b-eligible-pokemon.json"
-                ),
-                ruleset_path=ROOT / "data/fixtures/sim01_ruleset.json",
-                manifest_dir=ROOT / "data/manifests",
-                source_lock_path=(
-                    ROOT / "data/manifests/catalog-intake-m-b-source-lock.json"
-                ),
-                intake_profile=intake_profile,
-                bridge_profile=bridge_profile,
-            )
+            build_default_config(args.legacy_root)
         )
         destination = output_root / compilation.report_hash
         written = ()
         if not args.dry_run:
             written = write_compilation_documents(compilation, destination)
+        assessment = (
+            build_production_promotion_assessment_v2(compilation)
+            if args.sim02b_assessment
+            else None
+        )
+        assessment_written = False
+        if assessment is not None and not args.dry_run:
+            destination.mkdir(parents=True, exist_ok=True)
+            assessment_path = destination / "production-assessment-v2.json"
+            assessment_path.write_text(
+                assessment.to_json() + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            assessment_written = True
         counts = compilation.report["counts"]
         summary = {
             "ok": True,
@@ -127,7 +159,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             "probe_unexpected_errors": counts["probe_unexpected_errors"],
             "silent_fallbacks": counts["silent_fallbacks"],
             "blocking_reason_count": counts["blocking_reasons"],
+            "sim02b_assessment_generated": assessment is not None,
+            "sim02b_assessment_written": assessment_written,
         }
+        if assessment is not None:
+            summary.update(
+                {
+                    "sim02b_assessment_hash": assessment.assessment_hash,
+                    "sim02b_assessment_blocker_count": len(assessment.blockers),
+                    "verified_target_mapping_numerator": (
+                        assessment.verified_target_mapping_numerator
+                    ),
+                    "verified_target_mapping_denominator": (
+                        assessment.verified_target_mapping_denominator
+                    ),
+                    "verified_target_mapping_rate_ppm": (
+                        assessment.verified_target_mapping_rate_ppm
+                    ),
+                }
+            )
         print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
         if args.require_candidate and not compilation.candidate_ready:
             return 3

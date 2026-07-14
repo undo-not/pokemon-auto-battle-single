@@ -14,6 +14,7 @@ from scripts.check_repo_size import evaluate_paths, git_candidate_files
 from scripts.validate_sim01_bundle import (
     ROOT,
     BundleValidationError,
+    load_json_object_strict,
     validate_bundle,
     validate_document_contract,
     validate_top_level_contract,
@@ -68,6 +69,112 @@ def test_recursive_schema_contract_accepts_bundle_documents() -> None:
             (ROOT / "data/schemas" / schema_name).read_text(encoding="utf-8")
         )
         validate_document_contract(document, schema, label)
+
+
+def test_schema_conditionals_and_composed_siblings_are_conjunctive() -> None:
+    conditional = {
+        "type": "object",
+        "if": {"properties": {"ready": {"const": True}}, "required": ["ready"]},
+        "then": {"required": ["seal"]},
+        "else": {"required": ["blockers"]},
+    }
+    validate_document_contract({"ready": True, "seal": "ok"}, conditional, "conditional")
+    validate_document_contract({"ready": False, "blockers": ["missing"]}, conditional, "conditional")
+    with pytest.raises(BundleValidationError, match="missing required fields"):
+        validate_document_contract({"ready": False}, conditional, "conditional")
+
+    ref_with_sibling = {
+        "$defs": {"base": {"type": "object"}},
+        "$ref": "#/$defs/base",
+        "required": ["bound"],
+    }
+    with pytest.raises(BundleValidationError, match="missing required fields"):
+        validate_document_contract({}, ref_with_sibling, "ref-sibling")
+
+    one_of_with_sibling = {
+        "oneOf": [
+            {"type": "object", "properties": {"kind": {"const": "a"}}, "required": ["kind"]},
+            {"type": "object", "properties": {"kind": {"const": "b"}}, "required": ["kind"]},
+        ],
+        "required": ["bound"],
+    }
+    with pytest.raises(BundleValidationError, match="missing required fields"):
+        validate_document_contract({"kind": "a"}, one_of_with_sibling, "one-of-sibling")
+
+
+def test_promotion_schema_mode_rejects_unknown_keywords_and_non_strict_json(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(BundleValidationError, match="unsupported schema keywords"):
+        validate_document_contract(
+            {},
+            {"type": "object", "minContains": 1},
+            "promotion",
+            fail_on_unknown_keywords=True,
+        )
+
+    duplicate = tmp_path / "duplicate.json"
+    duplicate.write_text('{"key":1,"key":2}', encoding="utf-8")
+    with pytest.raises(BundleValidationError, match="duplicate JSON key"):
+        load_json_object_strict(duplicate, "duplicate")
+
+    non_finite = tmp_path / "nan.json"
+    non_finite.write_text('{"key":NaN}', encoding="utf-8")
+    with pytest.raises(BundleValidationError, match="non-finite JSON number"):
+        load_json_object_strict(non_finite, "nan")
+
+    overflow = tmp_path / "overflow.json"
+    overflow.write_text('{"nested":[1e999,-1e999]}', encoding="utf-8")
+    with pytest.raises(BundleValidationError, match="non-finite JSON number"):
+        load_json_object_strict(overflow, "overflow")
+
+
+def test_strict_schema_preflight_visits_inactive_branches_and_meta_shapes() -> None:
+    cases = (
+        {"type": "object", "properties": {"absent": {"format": "date"}}},
+        {"$defs": {"unused": {"format": "date"}}, "type": "object"},
+        {"if": {"format": "date"}, "then": {"type": "string"}},
+        {"oneOf": [{"const": "used"}, {"format": "date"}]},
+        {"type": "array", "contains": {"format": "date"}},
+        {"type": "array", "items": {"format": "date"}},
+        {"type": "object", "additionalProperties": {"format": "date"}},
+    )
+    for schema in cases:
+        with pytest.raises(BundleValidationError, match="unsupported schema keywords"):
+            validate_document_contract(
+                {}, schema, "promotion", fail_on_unknown_keywords=True
+            )
+
+    for schema, match in (
+        ({"oneOf": {}}, "oneOf must be a non-empty array"),
+        ({"properties": []}, "properties must be an object"),
+        ({"required": "ab"}, "required must be unique strings"),
+    ):
+        with pytest.raises(BundleValidationError, match=match):
+            validate_document_contract(
+                {}, schema, "promotion", fail_on_unknown_keywords=True
+            )
+
+
+def test_schema_equality_separates_boolean_and_rejects_numeric_duplicates() -> None:
+    with pytest.raises(BundleValidationError, match="must equal"):
+        validate_document_contract(True, {"const": 1}, "const")
+    with pytest.raises(BundleValidationError, match="must be unique"):
+        validate_document_contract(
+            [1, 1.0], {"type": "array", "uniqueItems": True}, "unique"
+        )
+
+
+def test_non_progressing_schema_reference_cycle_fails_closed() -> None:
+    schema = {
+        "$defs": {
+            "a": {"$ref": "#/$defs/b"},
+            "b": {"$ref": "#/$defs/a"},
+        },
+        "$ref": "#/$defs/a",
+    }
+    with pytest.raises(BundleValidationError, match="cyclic \\$ref"):
+        validate_document_contract({}, schema, "cycle", fail_on_unknown_keywords=True)
 
 
 def test_legacy_manifest_records_six_sources_and_catalog_lineage() -> None:

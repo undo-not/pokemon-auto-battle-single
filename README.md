@@ -1,6 +1,6 @@
 # champions_sim
 
-`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装、SIM-02のRegulation/TargetPool/Coverage/Diffとsource-to-capability compiler、AI-01の6→3選出・paired arena・公開情報baselineまでローカル実装済みです。現行M-B全体の検証済みCatalog/メカニクスcoverage、actual実機grounding、学習済み/search方策、BlueStacks入力操作は未完成です。
+`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装、SIM-02のRegulation/TargetPool/Coverage/Diff、AI-01の6→3選出・paired arena・公開情報baseline、SIM-02Bのresolver-backed promotion/readiness v2までローカル実装済みです。現行M-B全体の検証済みCatalog/メカニクスcoverage、actual実機grounding、学習済み/search方策、BlueStacks入力操作は未完成です。
 
 ## 現在のスコープ
 
@@ -18,7 +18,9 @@
 - 正確なルール、合法手、乱数、リプレイをAIやUIから分離します。
 - 強化学習、LLM、探索、構築生成は、検証済みシミュレータの下流に置きます。
 - Policy-free AI adapterは内部ではsealed fixture、bundle hash、seed/RNG lineageへ結合した`reset`/`step`を提供しますが、policy-facing resultには公開identity、観測、公開履歴、合法手だけを返し、privileged lineageはReplayへ分離します。報酬と方策は定義せず、Champions candidateはcapability/grounding evidenceがverifiedになるまでactionableにしません。
-- AI-01は自己申告`VERIFIED`による迂回を再計算型readiness resolverで閉じ、6体roster→順序付き3体のsealed team preview、paired seed/side-swap arena、公開情報だけを使うtype-coverage選出＋type-aware行動baselineを実装しました。現v1 compilerはintake診断専用でcandidateを構造的に発行できないため、readinessの正経路は未実装のままfail-closedです。
+- AI-01は自己申告`VERIFIED`による迂回を再計算型readiness resolverで閉じ、6体roster→順序付き3体のsealed team preview、paired seed/side-swap arena、公開情報だけを使うtype-coverage選出＋type-aware行動baselineを実装しました。v1 compilerはintake診断専用のまま凍結し、SIM-02B v2だけがresolver検証済みsource/license/artifact、scenario、grounding、probe、holdoutを再コンパイルしてreadinessを発行できます。
+- SIM-02Bのlocal engineering gateは、test-authoritativeな独立sourceから3 capability、development 3 scenario、external holdout 1 scenarioを完全コンパイルし、決定性、Replay再実行、再解決、改ざん拒否、scope別sealまで検証済みです。このsealは`champions_candidate=false`であり、Champions準拠や強度の証明ではありません。
+- 現行M-Bを同じnegative assessmentへ通すと、mapping 0/235、unresolved 219、conflict 16、target capability row 118、execution gap 118、diagnostic blocker 718、promotion blocker 720のexact `NO-GO`です。最後の追加blockerは、ローカルJSONのauthority文字列を信頼しないための外部trust anchor不足です。集約値だけを小さなgoldenへ残し、完全assessmentはGit外に保存します。
 - AI-01 frozen synthetic benchmarkは64 pair / 128戦、Replay verification 100%、candidate 126勝0分2敗です。単一SIM-01 fixtureの工学回帰に限り、reportは常に`champions_candidate=false`、`rank1_equivalence_status=unmeasured`です。
 - 実ゲームの操作対象はプライベートマッチのフレンド戦に限定します。
 - ランクマッチ自動操作、BlueStacks入力操作、学習実験は現在の対象外です。read-only診断/captureもフレンド戦のgrounding用途に限定します。
@@ -47,6 +49,7 @@
 - [SIM-01検証レポート](docs/validation-report-sim01.md)
 - [SIM-02検証レポート](docs/validation-report-sim02.md)
 - [AI-01検証レポート](docs/validation-report-ai01.md)
+- [SIM-02B検証レポート](docs/validation-report-sim02b.md)
 - `data/schemas/`: RuleSet、Catalog、Battle fixture、Replay v2、source manifest、production Catalog input、source-to-capability report、AI-01 Arena report/evidence manifestのJSON Schema
 - `data/manifests/`: 小さな出典manifest例。元データ本体は含めない
 - `scripts/validate_sim01_bundle.py`: Schema、loader、Replay、manifest hash、license scopeの統合検査
@@ -75,6 +78,7 @@ python scripts/build_regulation_diff.py
 python scripts/diagnose_bluestacks.py
 python scripts/build_catalog_intake.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --source-lock data/manifests/catalog-intake-m-b-source-lock.json --dry-run
 python scripts/build_source_to_capability_bundle.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --dry-run
+python scripts/build_source_to_capability_bundle.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --sim02b-assessment
 python scripts/run_ai01_benchmark.py --pairs 64 --summary-only
 $env:PYTHONPATH="src"
 python -m champions_sim battle --seed 20260713
@@ -101,9 +105,11 @@ python -m pytest -q
 - SIM-02 BlueStacks actual grounding: player/HD-Adb停止、ADB ownership未検証、actual traceなしのため`NO-GO`
 - SIM-02 M-B candidate: メガ16形態、同時順、Catalog coverage、groundingが未完了のため`NO-GO`
 - SIM-02 Champions外部最終ゲート: 外部holdout、actual/sealed historical rehearsal、実機conformanceが揃うまで`NO-GO`
-- AI-01 trusted-local evaluation foundation: 6→3選出、paired arena、公開情報baseline、Replay evidenceを実装・ローカル検証済み。process isolationとreadiness正経路は未達
+- AI-01 trusted-local evaluation foundation: 6→3選出、paired arena、公開情報baseline、Replay evidenceを実装・ローカル検証済み。process isolationは未達
 - AI-01 synthetic strength: frozen regressionは成功。ただし実M-B/scenario holdout/上位層較正がないため`UNMEASURED`
-- 次の大目的 SIM-02B: production Catalog promotionとevidence-backed development/external-holdout scenario corpus。v2 resolver/compiler完成までは`SPECIFIED / NO-GO`
+- SIM-02B local engineering gate: resolver-backed production型、evidence-backed development/external-holdout scenario corpus、可搬Compilation、readiness v2を実装・ローカル検証済み。test scopeは`champions_candidate=false`
+- 現行M-B SIM-02B data gate: mapping 0/235、必須証拠不足、artifact-root外trust anchor未実装のexact `NO-GO`。production発行は明示停止し、local engineering完了で解除しない
+- 次の大目的 SIM-02C: production trust anchor + authoritative M-B evidence + executable scenario corpus。外部信頼境界、verified mapping、構造化Catalog/RuleSet、実機grounding、lineage分離holdoutを一つの大きな成果として揃える
 - ランク1相当の主張: `NO-GO`。synthetic勝率、self-play Elo、LLM評価を代替証拠にしない
 - 公式Champions準拠としての昇格: 実機照合が終わるまで`NO-GO`
 - データ・派生物の再配布: license確認が終わるまで`NO-GO`

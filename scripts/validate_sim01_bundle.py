@@ -11,9 +11,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 from dataclasses import asdict, dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -59,12 +61,43 @@ class BundleValidationReport:
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_non_finite_number,
+            parse_float=_parse_finite_float,
+        )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise BundleValidationError(f"{label} is not valid UTF-8 JSON: {path}") from error
     if not isinstance(raw, dict):
         raise BundleValidationError(f"{label} root must be an object: {path}")
     return raw
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise BundleValidationError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_non_finite_number(value: str) -> None:
+    raise BundleValidationError(f"non-finite JSON number is forbidden: {value}")
+
+
+def _parse_finite_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise BundleValidationError(f"non-finite JSON number is forbidden: {value}")
+    return parsed
+
+
+def load_json_object_strict(path: Path | str, label: str) -> dict[str, Any]:
+    """Public strict parser used by promotion/schema gates."""
+
+    return _read_object(Path(path), label)
 
 
 def validate_top_level_contract(
@@ -127,6 +160,8 @@ def validate_document_contract(
     document: Any,
     schema: Mapping[str, Any],
     label: str,
+    *,
+    fail_on_unknown_keywords: bool = False,
 ) -> None:
     """Validate the JSON Schema subset used by this repository.
 
@@ -134,7 +169,129 @@ def validate_document_contract(
     scalar keywords. Production dataclass/loaders remain the semantic validator.
     """
 
-    _validate_schema_value(document, schema, schema, f"{label}.$")
+    if fail_on_unknown_keywords:
+        validate_schema_contract(schema)
+    _validate_schema_value(
+        document,
+        schema,
+        schema,
+        f"{label}.$",
+        fail_on_unknown_keywords=fail_on_unknown_keywords,
+        active_refs=frozenset(),
+    )
+
+
+_SUPPORTED_SCHEMA_KEYWORDS = frozenset(
+    {
+        "$schema", "$id", "$defs", "$ref", "title", "description",
+        "default", "examples", "deprecated", "readOnly", "writeOnly",
+        "allOf", "oneOf", "if", "then", "else", "const", "enum",
+        "type", "minLength", "maxLength", "pattern", "minimum",
+        "maximum", "exclusiveMinimum", "minItems", "maxItems",
+        "uniqueItems", "contains", "prefixItems", "items", "required",
+        "dependentRequired", "minProperties", "propertyNames", "properties",
+        "additionalProperties",
+    }
+)
+
+
+def validate_schema_contract(schema: Mapping[str, Any]) -> None:
+    """Fail closed on unsupported keywords and malformed schema meta-shapes."""
+
+    if not isinstance(schema, Mapping):
+        raise BundleValidationError("schema root must be an object")
+    seen: set[int] = set()
+
+    def visit(node: Mapping[str, Any], path: str) -> None:
+        identity = id(node)
+        if identity in seen:
+            return
+        seen.add(identity)
+        unknown = sorted(set(node) - _SUPPORTED_SCHEMA_KEYWORDS)
+        if unknown:
+            raise BundleValidationError(
+                f"{path} uses unsupported schema keywords: {unknown}"
+            )
+
+        for key in ("allOf", "oneOf", "prefixItems"):
+            if key not in node:
+                continue
+            values = node[key]
+            if not isinstance(values, list) or not values:
+                raise BundleValidationError(f"{path}.{key} must be a non-empty array")
+            if any(not isinstance(value, Mapping) for value in values):
+                raise BundleValidationError(f"{path}.{key} entries must be schemas")
+            for index, value in enumerate(values):
+                visit(value, f"{path}.{key}[{index}]")
+        for key in ("if", "then", "else", "contains", "propertyNames"):
+            if key in node:
+                value = node[key]
+                if not isinstance(value, Mapping):
+                    raise BundleValidationError(f"{path}.{key} must be a schema")
+                visit(value, f"{path}.{key}")
+        if "items" in node:
+            value = node["items"]
+            if value is not False and not isinstance(value, Mapping):
+                raise BundleValidationError(f"{path}.items must be false or a schema")
+            if isinstance(value, Mapping):
+                visit(value, f"{path}.items")
+        if "additionalProperties" in node:
+            value = node["additionalProperties"]
+            if type(value) is not bool and not isinstance(value, Mapping):
+                raise BundleValidationError(
+                    f"{path}.additionalProperties must be boolean or a schema"
+                )
+            if isinstance(value, Mapping):
+                visit(value, f"{path}.additionalProperties")
+        for key in ("properties", "$defs"):
+            if key not in node:
+                continue
+            values = node[key]
+            if not isinstance(values, Mapping):
+                raise BundleValidationError(f"{path}.{key} must be an object")
+            if any(not isinstance(value, Mapping) for value in values.values()):
+                raise BundleValidationError(f"{path}.{key} values must be schemas")
+            for name, value in values.items():
+                visit(value, f"{path}.{key}.{name}")
+        if "$ref" in node:
+            ref = node["$ref"]
+            if not isinstance(ref, str):
+                raise BundleValidationError(f"{path}.$ref must be a string")
+            visit(_resolve_ref(schema, ref), f"{path}.$ref({ref})")
+        if "required" in node:
+            required = node["required"]
+            if (
+                not isinstance(required, list)
+                or any(type(value) is not str for value in required)
+                or len(required) != len(set(required))
+            ):
+                raise BundleValidationError(f"{path}.required must be unique strings")
+        if "dependentRequired" in node:
+            dependent = node["dependentRequired"]
+            if not isinstance(dependent, Mapping):
+                raise BundleValidationError(f"{path}.dependentRequired must be an object")
+            for name, values in dependent.items():
+                if (
+                    type(name) is not str
+                    or not isinstance(values, list)
+                    or any(type(value) is not str for value in values)
+                ):
+                    raise BundleValidationError(
+                        f"{path}.dependentRequired entries must be string arrays"
+                    )
+        if "type" in node:
+            value = node["type"]
+            valid_types = {"object", "array", "string", "integer", "number", "boolean", "null"}
+            if isinstance(value, str):
+                values = [value]
+            elif isinstance(value, list) and value and all(type(item) is str for item in value):
+                values = value
+            else:
+                raise BundleValidationError(f"{path}.type has an invalid meta-shape")
+            if not set(values) <= valid_types or len(values) != len(set(values)):
+                raise BundleValidationError(f"{path}.type contains invalid values")
+
+    visit(schema, "schema.$")
 
 
 def _validate_schema_value(
@@ -142,40 +299,91 @@ def _validate_schema_value(
     schema: Mapping[str, Any],
     root_schema: Mapping[str, Any],
     path: str,
+    *,
+    fail_on_unknown_keywords: bool = False,
+    active_refs: frozenset[tuple[str, int]] = frozenset(),
 ) -> None:
     if "$ref" in schema:
-        _validate_schema_value(value, _resolve_ref(root_schema, str(schema["$ref"])), root_schema, path)
-        return
+        ref = str(schema["$ref"])
+        ref_key = (ref, id(value))
+        if ref_key in active_refs:
+            raise BundleValidationError(f"{path} contains a non-progressing cyclic $ref: {ref}")
+        _validate_schema_value(
+            value,
+            _resolve_ref(root_schema, ref),
+            root_schema,
+            path,
+            fail_on_unknown_keywords=fail_on_unknown_keywords,
+            active_refs=active_refs | {ref_key},
+        )
 
     for subschema in schema.get("allOf", ()):
-        _validate_schema_value(value, subschema, root_schema, path)
+        _validate_schema_value(
+            value,
+            subschema,
+            root_schema,
+            path,
+            fail_on_unknown_keywords=fail_on_unknown_keywords,
+            active_refs=active_refs,
+        )
     condition = schema.get("if")
     if isinstance(condition, Mapping):
         try:
-            _validate_schema_value(value, condition, root_schema, path)
+            _validate_schema_value(
+                value,
+                condition,
+                root_schema,
+                path,
+                fail_on_unknown_keywords=fail_on_unknown_keywords,
+                active_refs=active_refs,
+            )
         except BundleValidationError:
-            pass
+            else_schema = schema.get("else")
+            if isinstance(else_schema, Mapping):
+                _validate_schema_value(
+                    value,
+                    else_schema,
+                    root_schema,
+                    path,
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
         else:
             then_schema = schema.get("then")
             if isinstance(then_schema, Mapping):
-                _validate_schema_value(value, then_schema, root_schema, path)
+                _validate_schema_value(
+                    value,
+                    then_schema,
+                    root_schema,
+                    path,
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
 
     alternatives = schema.get("oneOf")
     if isinstance(alternatives, list):
         matched = 0
         for alternative in alternatives:
             try:
-                _validate_schema_value(value, alternative, root_schema, path)
+                _validate_schema_value(
+                    value,
+                    alternative,
+                    root_schema,
+                    path,
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
             except BundleValidationError:
                 continue
             matched += 1
         if matched != 1:
             raise BundleValidationError(f"{path} must match exactly one schema, matched {matched}")
-        return
 
-    if "const" in schema and value != schema["const"]:
+    if "const" in schema and not _json_schema_equal(value, schema["const"]):
         raise BundleValidationError(f"{path} must equal {schema['const']!r}")
-    if "enum" in schema and value not in schema["enum"]:
+    if "enum" in schema and not any(
+        _json_schema_equal(value, candidate) for candidate in schema["enum"]
+    ):
         raise BundleValidationError(f"{path} is not in the allowed enum")
 
     expected_types = schema.get("type")
@@ -209,9 +417,9 @@ def _validate_schema_value(
         if "maxItems" in schema and len(value) > int(schema["maxItems"]):
             raise BundleValidationError(f"{path} has too many items")
         if schema.get("uniqueItems"):
-            canonical_items = [json.dumps(item, ensure_ascii=False, sort_keys=True) for item in value]
-            if len(canonical_items) != len(set(canonical_items)):
-                raise BundleValidationError(f"{path} items must be unique")
+            for index, item in enumerate(value):
+                if any(_json_schema_equal(item, prior) for prior in value[:index]):
+                    raise BundleValidationError(f"{path} items must be unique")
         contains_schema = schema.get("contains")
         if isinstance(contains_schema, Mapping):
             contains_match = False
@@ -222,6 +430,8 @@ def _validate_schema_value(
                         contains_schema,
                         root_schema,
                         f"{path}[{index}]",
+                        fail_on_unknown_keywords=fail_on_unknown_keywords,
+                        active_refs=active_refs,
                     )
                 except BundleValidationError:
                     continue
@@ -234,14 +444,22 @@ def _validate_schema_value(
         prefix_items = schema.get("prefixItems", ())
         for index, item_schema in enumerate(prefix_items):
             if index < len(value):
-                _validate_schema_value(value[index], item_schema, root_schema, f"{path}[{index}]")
+                _validate_schema_value(
+                    value[index], item_schema, root_schema, f"{path}[{index}]",
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
         item_schema = schema.get("items")
         start = len(prefix_items)
         if item_schema is False and len(value) > start:
             raise BundleValidationError(f"{path} contains undeclared tuple items")
         if isinstance(item_schema, Mapping):
             for index in range(start, len(value)):
-                _validate_schema_value(value[index], item_schema, root_schema, f"{path}[{index}]")
+                _validate_schema_value(
+                    value[index], item_schema, root_schema, f"{path}[{index}]",
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
 
     if isinstance(value, Mapping):
         required = set(schema.get("required", ()))
@@ -264,16 +482,55 @@ def _validate_schema_value(
         property_name_schema = schema.get("propertyNames")
         if isinstance(property_name_schema, Mapping):
             for key in value:
-                _validate_schema_value(key, property_name_schema, root_schema, f"{path}.<key>")
+                _validate_schema_value(
+                    key, property_name_schema, root_schema, f"{path}.<key>",
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
         properties = schema.get("properties", {})
         additional = schema.get("additionalProperties", True)
         for key, child in value.items():
             if key in properties:
-                _validate_schema_value(child, properties[key], root_schema, f"{path}.{key}")
+                _validate_schema_value(
+                    child, properties[key], root_schema, f"{path}.{key}",
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
             elif additional is False:
                 raise BundleValidationError(f"{path}.{key} is not declared by the schema")
             elif isinstance(additional, Mapping):
-                _validate_schema_value(child, additional, root_schema, f"{path}.{key}")
+                _validate_schema_value(
+                    child, additional, root_schema, f"{path}.{key}",
+                    fail_on_unknown_keywords=fail_on_unknown_keywords,
+                    active_refs=active_refs,
+                )
+
+
+def _json_schema_equal(left: Any, right: Any) -> bool:
+    if isinstance(left, Enum):
+        left = left.value
+    if isinstance(right, Enum):
+        right = right.value
+    if isinstance(left, bool) or isinstance(right, bool):
+        return type(left) is bool and type(right) is bool and left == right
+    if (
+        isinstance(left, (int, float))
+        and not isinstance(left, bool)
+        and isinstance(right, (int, float))
+        and not isinstance(right, bool)
+    ):
+        return left == right
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _json_schema_equal(a, b) for a, b in zip(left, right)
+        )
+    if isinstance(left, Mapping):
+        return set(left) == set(right) and all(
+            _json_schema_equal(left[key], right[key]) for key in left
+        )
+    return left == right
 
 
 def _artifact_for_path(

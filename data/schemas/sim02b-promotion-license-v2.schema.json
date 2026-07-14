@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:sim02b-promotion-license-v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "license_id",
+    "source_manifest_id",
+    "verification_status",
+    "license_identifier",
+    "license_url",
+    "use_policy"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "license_id": {"$ref": "#/$defs/stableId"},
+    "source_manifest_id": {"$ref": "#/$defs/stableId"},
+    "verification_status": {"enum": ["test_authoritative", "verified"]},
+    "license_identifier": {
+      "oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]
+    },
+    "license_url": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^https?://[^\\s]+$"
+        },
+        {"type": "null"}
+      ]
+    },
+    "use_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local_research_allowed",
+        "private_match_allowed",
+        "training_allowed",
+        "redistribution",
+        "commercial_use"
+      ],
+      "properties": {
+        "local_research_allowed": {"const": true},
+        "private_match_allowed": {"const": true},
+        "training_allowed": {"const": true},
+        "redistribution": {"enum": ["allowed", "prohibited"]},
+        "commercial_use": {"enum": ["allowed", "prohibited"]}
+      }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"
+    }
+  }
+}

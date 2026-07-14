@@ -151,4 +151,4 @@ python scripts/check_repo_size.py
 
 ## 次の大きな目的
 
-AI-01で競技評価配線を追加した後のcritical pathは`SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`である。v1を診断専用として凍結し、235 mapping、788 semantic selector、118 target capabilityのevidence backlogにauthoritative sourceまたはactual trace、構造化semantic、capability別engine-backed positive probe、非空development corpus、系譜分離external holdoutを与えるresolver-backed v2を別型で作る。途中件数では完了とせず、v2とreadiness resolverがvalidated candidate sealを発行するか、残る不足根拠を列挙したexact `NO-GO`を再生成することを完了条件とする。
+以下はSIM-02完了時点の履歴判断であり、現行状態と次目的は`docs/validation-report-sim02b.md`を正本とする。AI-01で競技評価配線を追加した後の当時のcritical pathは`SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`だった。v1を診断専用として凍結し、235 mapping、788 semantic selector、118 target capabilityのevidence backlogにauthoritative sourceまたはactual trace、構造化semantic、capability別engine-backed positive probe、非空development corpus、系譜分離external holdoutを与えるresolver-backed v2を別型で作る。途中件数では完了とせず、v2とreadiness resolverがvalidated candidate sealを発行するか、残る不足根拠を列挙したexact `NO-GO`を再生成することを完了条件とした。

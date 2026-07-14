@@ -44,6 +44,7 @@ from champions_sim.capabilities import (
     build_target_pool_manifest,
     evaluate_external_holdout,
     load_construction_selection_corpus,
+    load_grounding_assertion_set,
     load_mapping_evidence_set,
     resolve_grounding_assertions,
     run_capability_probes,
@@ -387,6 +388,90 @@ def test_grounding_unknown_claim_and_empty_expectation_cannot_pass() -> None:
 
     with pytest.raises(ValueError, match="expected event slice or state check"):
         replace(base, claimed_verdict="pass", expected_event_slice_hash=None)
+
+
+def test_grounding_assertion_loader_is_exact_and_rejects_noncanonical_values(
+    tmp_path: Path,
+) -> None:
+    _, capability_set = _built()
+    requirement = capability_set.grounding_requirements[0]
+    assertion_set = GroundingAssertionSet(
+        "1.0.0",
+        "assertions-loader",
+        capability_set.capability_set_id,
+        capability_set.capability_set_hash,
+        (
+            GroundingAssertion(
+                "assertion-loader",
+                (requirement.requirement_id,),
+                (requirement.capability_id,),
+                "official_primary",
+                "synthetic-rules",
+                capability_set.ruleset_hash,
+                capability_set.catalog_hash,
+                None,
+                None,
+                None,
+                "2" * 64,
+                "3" * 64,
+                "rng-observed",
+                None,
+                (StateCheck("/nested", {"values": (1, True, None)}),),
+                (),
+                ("ground-evidence",),
+                "pass",
+            ),
+        ),
+        ("ground-source",),
+    )
+    path = tmp_path / "grounding.json"
+    path.write_text(assertion_set.to_json(), encoding="utf-8")
+    assert load_grounding_assertion_set(path) == assertion_set
+
+    extra = json.loads(assertion_set.to_json())
+    extra["assertions"][0]["caller_verified"] = True
+    path.write_text(json.dumps(extra), encoding="utf-8")
+    with pytest.raises(ValueError, match="fields differ"):
+        load_grounding_assertion_set(path)
+
+    noncanonical = json.loads(assertion_set.to_json())
+    noncanonical["assertions"][0]["expected_state_checks"][0]["expected"] = 1.5
+    path.write_text(json.dumps(noncanonical), encoding="utf-8")
+    with pytest.raises(ValueError, match=r"invalid assertions\[0\].expected_state_checks"):
+        load_grounding_assertion_set(path)
+
+    for field, invalid in (
+        ("assertion_id", 123),
+        ("evidence_kind", 123),
+        ("ruleset_hash", True),
+    ):
+        wrong_type = json.loads(assertion_set.to_json())
+        wrong_type["assertions"][0][field] = invalid
+        path.write_text(json.dumps(wrong_type), encoding="utf-8")
+        with pytest.raises(ValueError, match=r"invalid assertions\[0\]"):
+            load_grounding_assertion_set(path)
+
+    invalid_kind = json.loads(assertion_set.to_json())
+    invalid_kind["assertions"][0]["evidence_kind"] = "caller_verified"
+    path.write_text(json.dumps(invalid_kind), encoding="utf-8")
+    with pytest.raises(ValueError, match=r"invalid assertions\[0\]"):
+        load_grounding_assertion_set(path)
+
+    bad_source_id = json.loads(assertion_set.to_json())
+    bad_source_id["source_manifest_ids"] = [123]
+    path.write_text(json.dumps(bad_source_id), encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid grounding assertion set"):
+        load_grounding_assertion_set(path)
+
+    relative_path = json.loads(assertion_set.to_json())
+    relative_path["assertions"][0]["expected_state_checks"][0]["path"] = "relative"
+    path.write_text(json.dumps(relative_path), encoding="utf-8")
+    with pytest.raises(ValueError, match=r"invalid assertions\[0\].expected_state_checks"):
+        load_grounding_assertion_set(path)
+
+    path.write_text('{"value":1e999}', encoding="utf-8")
+    with pytest.raises(ValueError, match="non-finite JSON number"):
+        load_grounding_assertion_set(path)
 
 
 def test_holdout_overlap_new_capability_and_unknown_are_fail_closed() -> None:

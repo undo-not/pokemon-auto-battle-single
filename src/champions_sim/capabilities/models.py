@@ -753,6 +753,12 @@ class GroundingAssertion:
     def __post_init__(self) -> None:
         _stable(self.assertion_id, "assertion_id")
         _stable(self.rng_condition_id, "rng_condition_id")
+        if self.evidence_kind not in {
+            "actual_bluestacks",
+            "official_primary",
+            "published_reference",
+        }:
+            raise ValueError("unsupported grounding evidence kind")
         _unique(self.requirement_ids, "assertion requirement IDs")
         _unique(self.capability_ids, "assertion capability IDs")
         _unique(self.evidence_ref_ids, "assertion evidence refs")

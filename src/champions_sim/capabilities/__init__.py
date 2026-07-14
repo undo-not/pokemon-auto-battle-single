@@ -10,6 +10,7 @@ from .holdout import evaluate_external_holdout
 from .loader import (
     CapabilityDataError,
     load_construction_selection_corpus,
+    load_grounding_assertion_set,
     load_mapping_evidence_set,
 )
 from .models import *
@@ -25,6 +26,7 @@ __all__ = [
     "build_target_pool_manifest",
     "evaluate_external_holdout",
     "load_construction_selection_corpus",
+    "load_grounding_assertion_set",
     "load_mapping_evidence_set",
     "resolve_grounding_assertions",
     "run_capability_probes",

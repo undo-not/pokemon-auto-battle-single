@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:sim02b-engine-probe-report:2",
+  "title": "SIM-02B Replay-verified Engine Probe Report V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "target_capability_set_hash",
+    "development_corpus_id",
+    "development_corpus_hash",
+    "engine_semantics_version",
+    "catalog_hash",
+    "ruleset_hash",
+    "declared_capability_ids",
+    "required_probe_count",
+    "verified_pass_probe_count",
+    "engine_probe_pass_rate_ppm",
+    "scenario_probe_count",
+    "verified_scenario_probe_count",
+    "silent_fallback_count",
+    "probes",
+    "report_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "report_id": {"$ref": "#/$defs/id"},
+    "target_capability_set_hash": {"$ref": "#/$defs/sha"},
+    "development_corpus_id": {"$ref": "#/$defs/id"},
+    "development_corpus_hash": {"$ref": "#/$defs/sha"},
+    "engine_semantics_version": {"$ref": "#/$defs/id"},
+    "catalog_hash": {"$ref": "#/$defs/sha"},
+    "ruleset_hash": {"$ref": "#/$defs/sha"},
+    "declared_capability_ids": {"$ref": "#/$defs/ids"},
+    "required_probe_count": {"type": "integer", "minimum": 1},
+    "verified_pass_probe_count": {"type": "integer", "minimum": 1},
+    "engine_probe_pass_rate_ppm": {"const": 1000000},
+    "scenario_probe_count": {"type": "integer", "minimum": 1},
+    "verified_scenario_probe_count": {"type": "integer", "minimum": 1},
+    "silent_fallback_count": {"const": 0},
+    "probes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/probe"}
+    },
+    "report_hash": {"$ref": "#/$defs/sha"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"
+    },
+    "ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "probe_id",
+        "probe_role",
+        "capability_id",
+        "scenario_id",
+        "scenario_hash",
+        "target_capability_set_hash",
+        "initial_state_hash",
+        "choice_sequence_hash",
+        "seed",
+        "rng_algorithm_id",
+        "catalog_hash",
+        "ruleset_hash",
+        "replay_hash",
+        "final_state_hash",
+        "witness_step_index",
+        "witness_event_index",
+        "witness_event_kind",
+        "witness_event_hash",
+        "observed_outcome",
+        "contract_observed",
+        "replay_verified",
+        "silent_fallback_detected",
+        "probe_hash"
+      ],
+      "properties": {
+        "probe_id": {"$ref": "#/$defs/id"},
+        "probe_role": {"enum": ["primary", "supplemental"]},
+        "capability_id": {"$ref": "#/$defs/id"},
+        "scenario_id": {"$ref": "#/$defs/id"},
+        "scenario_hash": {"$ref": "#/$defs/sha"},
+        "target_capability_set_hash": {"$ref": "#/$defs/sha"},
+        "initial_state_hash": {"$ref": "#/$defs/sha"},
+        "choice_sequence_hash": {"$ref": "#/$defs/sha"},
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "rng_algorithm_id": {"const": "splitmix64-v1"},
+        "catalog_hash": {"$ref": "#/$defs/sha"},
+        "ruleset_hash": {"$ref": "#/$defs/sha"},
+        "replay_hash": {"$ref": "#/$defs/sha"},
+        "final_state_hash": {"$ref": "#/$defs/sha"},
+        "witness_step_index": {"type": "integer", "minimum": 0},
+        "witness_event_index": {"type": "integer", "minimum": 0},
+        "witness_event_kind": {"$ref": "#/$defs/id"},
+        "witness_event_hash": {"$ref": "#/$defs/sha"},
+        "observed_outcome": {"const": "success"},
+        "contract_observed": {"const": true},
+        "replay_verified": {"const": true},
+        "silent_fallback_detected": {"const": false},
+        "probe_hash": {"$ref": "#/$defs/sha"}
+      }
+    }
+  }
+}

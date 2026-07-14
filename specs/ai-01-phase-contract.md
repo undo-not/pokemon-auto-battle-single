@@ -2,6 +2,8 @@
 
 ## Status
 
+> 履歴注記（2026-07-14）: 本文はAI-01完了時点のphase snapshotであり、`v2未実装`や`次の大目的はSIM-02B`という記述は当時の判断を示す。SIM-02B後の現行状態と次目的は`specs/sim-02b-phase-contract.md`を正本とする。
+
 - Trusted-local evaluation contract: **IMPLEMENTED / VERIFIED LOCAL**
 - Champions readiness positive issuance: **NO-GO / NOT IMPLEMENTED**
 - Policy process isolation: **NO-GO / NOT IMPLEMENTED**
@@ -28,7 +30,7 @@
 
 ## Gate decision
 
-AI-01のうち、信頼済み同一process・単一synthetic fixtureでの選出／対戦／Replay評価配線は **ENGINEERING COMPLETE / LOCAL GO** とする。readiness正経路、process-isolated policy、実M-B scenario corpus、実RL/LLM学習、BlueStacks入力、実機conformance、戦略強度昇格、ランク1相当の宣言は完了条件に含めず **NO-GO** のままである。次の大目的は`SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`とする。
+AI-01のうち、信頼済み同一process・単一synthetic fixtureでの選出／対戦／Replay評価配線は **ENGINEERING COMPLETE / LOCAL GO** とする。readiness正経路、process-isolated policy、実M-B scenario corpus、実RL/LLM学習、BlueStacks入力、実機conformance、戦略強度昇格、ランク1相当の宣言は完了条件に含めず **NO-GO** のままである。AI-01完了時点の次の大目的は`SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`とした。現行の次目的は`specs/sim-02b-phase-contract.md`を参照する。
 
 ## Rank-1 readiness model
 

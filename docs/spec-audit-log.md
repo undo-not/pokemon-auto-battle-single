@@ -334,8 +334,8 @@
 - `mitigation`: AI-01完了範囲をtrusted-local synthetic evaluationへ限定し、readiness positive issuanceを`NO-GO / NOT IMPLEMENTED`へ修正した。
 - `suggested_action`: `SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`を次の大目的として実装する。
 - `evidence`: `src/champions_sim/compiler/bridge_models.py`、`src/champions_sim/compiler/bundle.py`、`src/champions_sim/env/readiness.py`、`specs/sim-02b-phase-contract.md`
-- `status`: open
-- `resolution`:
+- `status`: superseded
+- `resolution`: `AUD-SIM02B-001`が別型v2のtest-authoritative positive pathを実装し、本項の到達不能問題を後続契約で置換した。actual M-B production issuanceの不足は`AUD-SIM02B-003`と`AUD-SIM02B-006`で独立に追跡する。
 
 ### AUD-AI01-008
 
@@ -433,7 +433,7 @@
 
 - Requirement/Phase Contract: **GO / SPECIFIED**
 - Fail-closed readiness forgery rejection: **IMPLEMENTED / VERIFIED LOCALLY**
-- Champions readiness positive issuance: **NO-GO / NOT IMPLEMENTED** — `AUD-AI01-007`
+- Champions readiness positive issuance: v1は **NO-GO / DIAGNOSTIC ONLY**、後続SIM-02B v2のtest-authoritative positive pathは **RESOLVED / ENGINEERING ONLY** — `AUD-AI01-007`、`AUD-SIM02B-001`
 - 6→3 sealed team preview: **IMPLEMENTED / VERIFIED LOCALLY**
 - Paired-seat arena、report、Replay verification: **IMPLEMENTED / VERIFIED LOCALLY**
 - Public-information selection/battle baseline: **IMPLEMENTED / SYNTHETIC GOLDEN PASS**
@@ -442,4 +442,116 @@
 - SIM-02 M-B candidate: **NO-GOのまま**
 - Rank-1 equivalence: **UNMEASURED / CLAIM FORBIDDEN** — `AUD-AI01-004/005`
 - RL/LLM/searchの強度昇格: 実M-B executable bundleとpartitioned scenario corpusまで **NO-GO**
-- 次の大目的: **SIM-02B SPECIFIED / NOT IMPLEMENTED** — `specs/sim-02b-phase-contract.md`
+- 次の大目的: **SIM-02C Production Trust Anchor + Authoritative M-B Evidence + Executable Scenario Corpus** — SIM-02B local engineering完了後もactual M-B data gateはNO-GO
+
+## SIM-02B実装完了監査 — 2026-07-14
+
+### AUD-SIM02B-001
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02B / CHAMPIONS-READINESS
+- `category`: unreachable_positive_path
+- `problem`: `AUD-AI01-007`で、v1診断compilerから正規readiness sealを発行するpositive経路が構造的に到達不能と判明した。
+- `expected`: v1を診断専用のまま維持し、source/license/artifact、mapping、Catalog/RuleSet、development scenario、external holdout、grounding、engine-backed probeを実体から再解決する別型v2でpositive E2Eを閉じる。
+- `impact`: refusal-only contractをproduction readiness実装済みと誤読し、未検証環境をAI評価へ渡す。
+- `evidence`: `src/champions_sim/promotion`、`src/champions_sim/env/readiness_v2.py`、`tests/_sim02b_fixture.py`、`tests/test_promotion_compiler_e2e_v2.py`、`tests/test_champions_readiness_v2.py`
+- `status`: resolved
+- `resolution`: test-authoritativeな3 source manifestから3 capability、development 3 scenario、lineage分離済みexternal holdout 1 scenarioを実bytesへ結合し、positive engine/Replay probe、grounding、promotion report、可搬Compilation、readiness sealを発行する別型v2を実装した。同一入力の再コンパイルと保持済みCompilation再検証を行い、artifact byte drift、再署名後scenario drift、synthetic regulationのproduction claimをfail-closedで拒否する。test scopeは`champions_candidate: false`と`rank1_equivalence_status: unmeasured`を固定する。本項のresolutionを`AUD-AI01-007`の後続解決記録とする。
+
+### AUD-SIM02B-002
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02B / M-B DATA GATE
+- `category`: scope_conflation
+- `problem`: test-authoritative positive E2Eの成功を、現行M-Bのproduction readinessまたはChampions fidelityへ読み替える余地があった。
+- `expected`: local engineering gateとactual M-B data gateを別判定にし、source scopeから`champions_candidate`をresolverが導出する。
+- `impact`: synthetic fixture成功だけでprivate-match candidateを発行し、誤ったCatalog/RuleSetをAIへ渡す。
+- `evidence`: `specs/sim-02b-phase-contract.md`、`data/golden/sim02b-m-b-no-go-v2.json`、`docs/validation-report-sim02b.md`
+- `status`: resolved
+- `resolution`: local gateは`GO / ENGINEERING COMPLETE`、test readinessは`engineering_sealed`かつ`champions_candidate: false`、actual M-Bは独立した`NO-GO`と固定した。現M-B assessmentはmapping 0/235、unresolved 219、conflict 16、target capability row 118、execution gap 118、diagnostic blocker 718、promotion assessment blocker 720を返す。
+
+### AUD-SIM02B-003
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02C / M-B DATA GATE
+- `category`: missing_authoritative_evidence
+- `problem`: 現行M-Bのverified mappingは0/235で、resolver-backed production source/license、capability-complete development corpus、lineage分離済みsealed holdout、actual grounding、全必須capabilityのpositive engine probeがない。
+- `expected`: 全235 memberと全declared capabilityをauthoritative source recordまたはactual private-match traceへ結合し、4 rate 1.0、holdout novel gap 0、silent fallback 0を再計算する。
+- `impact`: production readiness sealを発行できず、MCTS/RL/LLMをChampions candidateとして評価できない。
+- `mitigation`: 不足member/capabilityを分母から除外せず、exact assessmentと再開条件をcontent-addressed reportへ固定する。LLM推論、名前一致、使用率、旧Catalogの類似IDで解除しない。
+- `suggested_action`: `SIM-02C Production Trust Anchor + Authoritative M-B Evidence + Executable Scenario Corpus`で720 blockerをtrust anchor、証拠取得、engine-backed scenarioにより解消する。
+- `evidence`: `data/golden/sim02b-m-b-no-go-v2.json`、`specs/sim-02b-phase-contract.md`、`docs/validation-report-sim02b.md`
+- `status`: open
+- `resolution`:
+
+### AUD-SIM02B-004
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: SIM-02B / SIM-02C
+- `category`: artifact_governance
+- `problem`: 実M-Bのsource payload、corpus、Replay、capture、grounding添付、評価runは大容量化し、license未確認データや機微情報を含み得る。
+- `expected`: 大容量・raw・機微artifactをcontent-addressedなGit外storeへ置き、GitにはSchema、小fixture、manifest、hash、license/use-policy、lineage、集約結果だけを置く。
+- `impact`: repository肥大化、再配布権違反、captureからの情報漏えい、再現lineageの喪失。
+- `evidence`: `docs/git-artifact-policy.md`、`.gitignore`、`scripts/check_repo_size.py`
+- `status`: resolved
+- `resolution`: SIM-02B/SIM-02C専用のGit外artifact運用を追記し、test fixtureを実M-B corpusの格納先にしないこと、license未確認派生物も公開しないこと、1週間適応中もsize/license/source gateを迂回しないことを固定した。
+
+### AUD-SIM02B-005
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: SIM-02C / REGULATION ADAPTATION
+- `category`: operational_validation_gap
+- `problem`: 48時間candidate/NO-GOと7日private-match投入判断は契約化されたが、actual/sealed-historical regulationでのend-to-end wall-clock実測がない。
+- `expected`: `t0`を署名・hash固定済みRegulation/TargetPool受領時刻として記録し、48時間でexact candidate/NO-GO、7日でholdout・AI-01評価・回帰・包装までを実測する。
+- `impact`: コードが正しくても新regulation投入SLAを満たせず、blocker発見と取得作業の優先順位が不明になる。
+- `mitigation`: `NO-GO`を工程SLA達成と投入成功に分離し、時刻・外部待ち・手作業・compute時間をassessmentへ記録する。
+- `suggested_action`: SIM-02Cの最初の現行またはsealed-historical M-B runを1週間adaptation rehearsalとして扱う。
+- `evidence`: `specs/sim-02b-phase-contract.md`、`docs/validation-report-sim02b.md`
+- `status`: open
+- `resolution`:
+
+### AUD-SIM02B-006
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02B / PRODUCTION TRUST BOUNDARY
+- `category`: self_attested_production_scope
+- `problem`: source manifestのauthority/source kind、license verification、Regulation status、timing measurementをartifact root内で整合的に書き換えると、外部真正性検証なしで`production_champions`、`production_candidate`、`champions_candidate: true`を発行できた。
+- `expected`: production scopeはartifact rootと別の信頼境界にあるtrust anchorがtrusted issuer/authorityとapproved manifest/license identityを固定した場合だけ発行する。local JSONの`official`/`verified`文字列を信頼しない。
+- `impact`: synthetic fixtureまたは任意local dataをChampions準拠candidateへ自己昇格でき、SIM-02B全gateと下流AI評価を迂回する。
+- `mitigation`: artifact-root外trust-anchor verifierが未実装（`trust_anchor_status: not_implemented`）の間、current/verifiedを含むproduction claimをcompilerで常にfail-closed拒否する。現M-B assessmentへ`production_trust_anchor_missing`を追加し、production blockerを720へ更新した。test-authoritative engineering pathは維持する。
+- `evidence`: `tests/test_promotion_compiler_e2e_v2.py::test_untrusted_local_claims_cannot_issue_production_candidate`、`src/champions_sim/promotion/compiler.py::_validate_scope`
+- `status`: open
+- `resolution`:
+
+### AUD-SIM02B-007
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: SIM-02B / SOURCE RESOLUTION
+- `category`: split_resolution_snapshot
+- `problem`: compile前半でmanifest/artifactを解決してbound bytesを読み、mapping/construction reference取得後に同じmanifest集合をもう一度解決していた。途中でsource treeが変化すると、前半のCatalog等と後半のsource resolution setが別snapshotになり得た。
+- `expected`: 1 compileにつき各source manifestを1回だけ解決し、後から判明するrecord referenceは最初のresolved artifact snapshotへattachして検証する。
+- `impact`: 一時的に異なるsource identityとcomponent bytesを同じpromotion reportへ束ね、compile単体のcontent lineageを曖昧にする。
+- `evidence`: `src/champions_sim/promotion/compiler.py::_attach_record_references_to_source_set`、`tests/test_promotion_compiler_e2e_v2.py::test_compile_resolves_each_source_manifest_once`
+- `status`: resolved
+- `resolution`: manifest/artifact snapshotを再利用してrecord JSON pointer/hashだけを追加検証する経路へ変更した。E2Eで3 manifestが各1回だけ解決されることを固定し、artifact再読時のsize/hash検査は維持した。
+
+## SIM-02B Gate判定
+
+- Phase Contract: **SPECIFIED / FROZEN FOR SIM-02B**
+- v2 local engineering implementation: **GO / ENGINEERING COMPLETE**
+- test-authoritative positive E2E: **GO** — 3 capability、development 3 scenario、external holdout 1 scenario、再コンパイル・再検証・改変拒否
+- test-authoritative readiness seal: **GO / `champions_candidate: false`**
+- actual M-B data gate: **NO-GO** — 0/235 verified mapping、118/118 target row/execution gap、718 diagnostic blockers、720 promotion blockers
+- production source trust anchor: **NO-GO / NOT IMPLEMENTED / issuance disabled** — `AUD-SIM02B-006`
+- actual M-B production readiness seal: **NO-GO / 発行不可** — `AUD-SIM02B-003`
+- one-week actual adaptation rehearsal: **NO-GO / UNMEASURED** — `AUD-SIM02B-005`
+- Rank-1 equivalence: **UNMEASURED / CLAIM FORBIDDEN** — `AUD-AI01-004/005`
+- Full regression: **454 passed in 43.17s**
+- 次の大目的: **SIM-02C Production Trust Anchor + Authoritative M-B Evidence + Executable Scenario Corpus**

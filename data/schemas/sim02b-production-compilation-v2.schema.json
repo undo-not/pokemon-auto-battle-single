@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:sim02b-production-compilation-v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "compilation_id",
+    "compiler_id",
+    "attestation_scope",
+    "promotion_status",
+    "champions_candidate",
+    "rank1_equivalence_status",
+    "regulation_id",
+    "regulation_revision",
+    "source_set_id",
+    "promotion_report_id",
+    "promotion_report_hash",
+    "component_hashes",
+    "documents",
+    "document_set_hash",
+    "compilation_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "compilation_id": {
+      "type": "string",
+      "pattern": "^production-promotion-compilation-[0-9a-f]{64}$"
+    },
+    "compiler_id": {"const": "production-promotion-v2"},
+    "attestation_scope": {
+      "enum": ["test_authoritative", "production_champions"]
+    },
+    "promotion_status": {
+      "enum": ["engineering_candidate", "production_candidate"]
+    },
+    "champions_candidate": {"type": "boolean"},
+    "rank1_equivalence_status": {"const": "unmeasured"},
+    "regulation_id": {"$ref": "#/$defs/stableId"},
+    "regulation_revision": {"$ref": "#/$defs/stableId"},
+    "source_set_id": {"$ref": "#/$defs/stableId"},
+    "promotion_report_id": {
+      "type": "string",
+      "pattern": "^promotion-report-[0-9a-f]{64}$"
+    },
+    "promotion_report_hash": {"$ref": "#/$defs/sha256"},
+    "component_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_resolution_set_hash",
+        "artifact_binding_hash",
+        "regulation_hash",
+        "target_pool_hash",
+        "catalog_hash",
+        "ruleset_hash",
+        "mapping_evidence_hash",
+        "target_pool_manifest_hash",
+        "semantic_compilation_hash",
+        "target_capability_set_hash",
+        "execution_compilation_hash",
+        "construction_corpus_hash",
+        "scenario_corpus_hash",
+        "external_holdout_scenario_corpus_hash",
+        "partition_manifest_hash",
+        "external_holdout_hash",
+        "grounding_resolution_hash",
+        "engine_probe_report_hash",
+        "mechanic_coverage_matrix_hash",
+        "timing_evidence_hash"
+      ],
+      "properties": {
+        "source_resolution_set_hash": {"$ref": "#/$defs/sha256"},
+        "artifact_binding_hash": {"$ref": "#/$defs/sha256"},
+        "regulation_hash": {"$ref": "#/$defs/sha256"},
+        "target_pool_hash": {"$ref": "#/$defs/sha256"},
+        "catalog_hash": {"$ref": "#/$defs/sha256"},
+        "ruleset_hash": {"$ref": "#/$defs/sha256"},
+        "mapping_evidence_hash": {"$ref": "#/$defs/sha256"},
+        "target_pool_manifest_hash": {"$ref": "#/$defs/sha256"},
+        "semantic_compilation_hash": {"$ref": "#/$defs/sha256"},
+        "target_capability_set_hash": {"$ref": "#/$defs/sha256"},
+        "execution_compilation_hash": {"$ref": "#/$defs/sha256"},
+        "construction_corpus_hash": {"$ref": "#/$defs/sha256"},
+        "scenario_corpus_hash": {"$ref": "#/$defs/sha256"},
+        "external_holdout_scenario_corpus_hash": {"$ref": "#/$defs/sha256"},
+        "partition_manifest_hash": {"$ref": "#/$defs/sha256"},
+        "external_holdout_hash": {"$ref": "#/$defs/sha256"},
+        "grounding_resolution_hash": {"$ref": "#/$defs/sha256"},
+        "engine_probe_report_hash": {"$ref": "#/$defs/sha256"},
+        "mechanic_coverage_matrix_hash": {"$ref": "#/$defs/sha256"},
+        "timing_evidence_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/documentDigest"}
+    },
+    "document_set_hash": {"$ref": "#/$defs/sha256"},
+    "compilation_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "attestation_scope": {"const": "test_authoritative"}
+        },
+        "required": ["attestation_scope"]
+      },
+      "then": {
+        "properties": {
+          "promotion_status": {"const": "engineering_candidate"},
+          "champions_candidate": {"const": false}
+        }
+      },
+      "else": {
+        "properties": {
+          "promotion_status": {"const": "production_candidate"},
+          "champions_candidate": {"const": true}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "documentDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_name", "sha256", "byte_count"],
+      "properties": {
+        "file_name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/\\\\]+$"
+        },
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byte_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

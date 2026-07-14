@@ -26,12 +26,20 @@ from .readiness import (
     ResolvedChampionsReadiness,
     resolve_champions_readiness,
 )
+from .readiness_v2 import (
+    CHAMPIONS_READINESS_V2_SCHEMA_VERSION,
+    ChampionsReadinessV2Error,
+    ResolvedChampionsReadinessV2,
+    resolve_champions_readiness_v2,
+)
 
 __all__ = [
     "AI_ENV_ADAPTER_SCHEMA_VERSION",
     "AI_ENV_ADAPTER_VERSION",
     "CHAMPIONS_READINESS_SCHEMA_VERSION",
+    "CHAMPIONS_READINESS_V2_SCHEMA_VERSION",
     "ChampionsReadinessError",
+    "ChampionsReadinessV2Error",
     "DeterministicBattleEnv",
     "EnvironmentNotActionable",
     "EnvironmentStateError",
@@ -47,9 +55,11 @@ __all__ = [
     "ResetInfo",
     "ResetResult",
     "ResolvedChampionsReadiness",
+    "ResolvedChampionsReadinessV2",
     "SealedEnvironmentFixture",
     "SealedEnvironmentInput",
     "StepResult",
     "TransitionInfo",
     "resolve_champions_readiness",
+    "resolve_champions_readiness_v2",
 ]

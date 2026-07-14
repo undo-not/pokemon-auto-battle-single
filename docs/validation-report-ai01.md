@@ -137,6 +137,6 @@ Terminal utilityはwin=`+1`、draw=`0`、loss=`-1`、shapingなしである。re
 
 ## 次の大きな目的
 
-`SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`を次段とする。
+以下はAI-01完了時点の履歴判断であり、現行状態と次目的は`docs/validation-report-sim02b.md`を正本とする。AI-01時点では`SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`を次段とした。
 
 v1を診断専用として凍結し、235 mapping、788 semantic selector、118 execution gapをauthoritative sourceまたはactual traceから再検証するv2 promotion compilerを別型で作る。その同じversion/hash identityから非空development corpusと系譜分離したexternal-holdout scenario corpusを生成し、engine-backed positive probe、grounding、promotion/catalog/scenario/partition/holdout hashまでreadinessへ結合する。resolver sealが発行できるまでは、MCTS/RL/LLMへChampions candidateを渡さない。
