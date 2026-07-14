@@ -60,8 +60,19 @@ def run_battle(
     initial_state: BattleState,
     *,
     seed: int,
+    policy_seed: int | None = None,
     policies: Mapping[PlayerId, Policy] | None = None,
+    policy_rng_labels: Mapping[PlayerId, str] | None = None,
 ) -> BattleRun:
+    """Run one deterministic battle.
+
+    ``policy_rng_labels`` decouples policy random streams from seats.  By
+    default the streams retain the historical ``policy:p1`` and ``policy:p2``
+    branches.  A paired-seat evaluator can instead assign role labels such as
+    ``candidate`` and ``opponent`` to whichever player controls each role in a
+    leg, keeping each role's stream fixed when the seats are swapped.
+    """
+
     initial_rng = ExplicitRNG.seeded(seed)
     initialized = engine.initialize(initial_state, initial_rng)
     state = initialized.state
@@ -72,9 +83,11 @@ def run_battle(
         PlayerId.P1: RandomLegalPolicy(),
         PlayerId.P2: RandomLegalPolicy(),
     }
+    policy_rng_root = ExplicitRNG.seeded(seed if policy_seed is None else policy_seed)
+    resolved_policy_rng_labels = _resolve_policy_rng_labels(policy_rng_labels)
     policy_rngs = {
-        PlayerId.P1: ExplicitRNG.seeded(seed).branch("policy:p1"),
-        PlayerId.P2: ExplicitRNG.seeded(seed).branch("policy:p2"),
+        player: policy_rng_root.branch(f"policy:{resolved_policy_rng_labels[player]}")
+        for player in (PlayerId.P1, PlayerId.P2)
     }
     max_windows = engine.ruleset.max_turns * 3 + 10
     terminal = False
@@ -169,6 +182,35 @@ def run_battle(
         event_count=event_count,
         engine_rng=engine_rng,
     )
+
+
+def _resolve_policy_rng_labels(
+    labels: Mapping[PlayerId, str] | None,
+) -> dict[PlayerId, str]:
+    if labels is None:
+        return {PlayerId.P1: "p1", PlayerId.P2: "p2"}
+
+    required_players = {PlayerId.P1, PlayerId.P2}
+    supplied_players = set(labels)
+    if supplied_players != required_players:
+        missing = sorted(player.value for player in required_players - supplied_players)
+        unexpected = sorted(str(player) for player in supplied_players - required_players)
+        raise ValueError(
+            "policy_rng_labels must contain exactly p1 and p2 "
+            f"(missing={missing!r}, unexpected={unexpected!r})"
+        )
+
+    resolved: dict[PlayerId, str] = {}
+    for player in (PlayerId.P1, PlayerId.P2):
+        label = labels[player]
+        if not isinstance(label, str) or not label.strip():
+            raise ValueError(
+                f"policy_rng_labels[{player.value!r}] must be a non-empty string"
+            )
+        resolved[player] = label
+    if len(set(resolved.values())) != len(resolved):
+        raise ValueError("policy_rng_labels must be distinct for p1 and p2")
+    return resolved
 
 
 def _result_reason(events: tuple[BattleEvent, ...]) -> str:

@@ -45,12 +45,11 @@ from .models import (
     EnvironmentVersionIdentity,
     EvidenceStatus,
     JointChoice,
-    ResetInfo,
+    PublicResetInfo,
+    PublicTransitionInfo,
     ResetResult,
     SealedEnvironmentInput,
     StepResult,
-    TransitionInfo,
-    rng_state_hash,
 )
 
 
@@ -98,6 +97,14 @@ class DeterministicBattleEnv:
                 "viewer": self.viewer.value,
             }
         )
+        public_episode_digest = canonical_hash(
+            {
+                "adapter_schema_version": AI_ENV_ADAPTER_SCHEMA_VERSION,
+                "bundle_identity_hash": sealed.bundle.identity_hash,
+                "battle_id": sealed.fixture.initial_state.battle_id,
+                "viewer": self.viewer.value,
+            }
+        )
         identity = EnvironmentVersionIdentity(
             adapter_schema_version=AI_ENV_ADAPTER_SCHEMA_VERSION,
             bundle=sealed.bundle,
@@ -106,6 +113,7 @@ class DeterministicBattleEnv:
             fixture_hash=sealed.fixture.fixture_hash,
             sealed_input_hash=sealed.sealed_input_hash,
             episode_id=f"episode:{episode_digest}",
+            public_episode_id=f"public-episode:{public_episode_digest}",
             viewer=self.viewer,
             seed=initial_rng.seed,
             rng_algorithm_id=RNG_ALGORITHM_ID,
@@ -137,17 +145,14 @@ class DeterministicBattleEnv:
             schema_version=AI_ENV_ADAPTER_SCHEMA_VERSION,
             kind="reset",
             snapshot=snapshot,
-            info=ResetInfo(
-                reset_id=f"reset:{canonical_hash({'episode_id': identity.episode_id})}",
-                initial_state_hash=canonical_hash(sealed.fixture.initial_state),
-                initialized_state_hash=canonical_hash(initialized.state),
-                initial_events_hash=canonical_hash(initialized.events),
+            info=PublicResetInfo(
+                reset_id=(
+                    "reset:"
+                    + canonical_hash(
+                        {"public_episode_id": identity.public_episode_id}
+                    )
+                ),
                 public_history_hash=canonical_hash(public_history),
-                rng_seed=initial_rng.seed,
-                rng_cursor_before=initial_rng.cursor,
-                rng_cursor_after=initialized.rng.cursor,
-                rng_state_hash_before=rng_state_hash(initial_rng),
-                rng_state_hash_after=rng_state_hash(initialized.rng),
                 reward_model_id=NO_REWARD_MODEL_ID,
             ),
         )
@@ -228,12 +233,12 @@ class DeterministicBattleEnv:
 
         snapshot = self._snapshot()
         transition_payload = {
-            "episode_id": self._identity.episode_id,
+            "public_episode_id": self._identity.public_episode_id,
             "step_index": choice.step_index,
             "decision_commitment": choice.decision_commitment,
-            "choice_hash": choice.choice_hash,
-            "result_state_hash": canonical_hash(result.state),
-            "rng_cursor_after": result.rng.cursor,
+            "snapshot_hash": canonical_hash(snapshot),
+            "public_history_hash": canonical_hash(history),
+            "terminated": result.terminal,
         }
         return StepResult(
             schema_version=AI_ENV_ADAPTER_SCHEMA_VERSION,
@@ -242,19 +247,10 @@ class DeterministicBattleEnv:
             reward=None,
             terminated=result.terminal,
             truncated=False,
-            info=TransitionInfo(
+            info=PublicTransitionInfo(
                 transition_id=f"transition:{canonical_hash(transition_payload)}",
-                state_hash_before=canonical_hash(state_before),
-                state_hash_after=canonical_hash(result.state),
                 decision_commitment_before=choice.decision_commitment,
-                choice_hash=choice.choice_hash,
-                events_hash=canonical_hash(result.events),
                 public_history_hash=canonical_hash(history),
-                rng_seed=result.rng.seed,
-                rng_cursor_before=rng_before.cursor,
-                rng_cursor_after=result.rng.cursor,
-                rng_state_hash_before=rng_state_hash(rng_before),
-                rng_state_hash_after=rng_state_hash(result.rng),
                 reward_model_id=NO_REWARD_MODEL_ID,
                 provisional_decision_ids=self._identity.bundle.provisional_decision_ids,
                 source_manifest_ids=self._identity.bundle.source_manifest_ids,
@@ -316,6 +312,13 @@ class DeterministicBattleEnv:
             raise EnvironmentStateError("reset must be called before using the environment")
 
     def _validate_bundle(self, sealed: SealedEnvironmentInput) -> None:
+        if type(sealed) is not SealedEnvironmentInput:
+            raise ValueError("reset requires the exact sealed environment input contract")
+        # Do not rely on the constructor having validated the payload: a
+        # caller can bypass frozen-dataclass protection with object.__setattr__.
+        # This also reruns the Champions compiler resolver for any readiness
+        # attestation before the engine consumes the initial state.
+        sealed.validate_integrity()
         bundle = sealed.bundle
         expected_sources = tuple(
             sorted(
@@ -358,6 +361,22 @@ class DeterministicBattleEnv:
             blockers.append("capability_evidence_not_verified")
         if bundle.grounding_status is not EvidenceStatus.VERIFIED:
             blockers.append("grounding_evidence_not_verified")
+        if (
+            bundle.capability_status is EvidenceStatus.VERIFIED
+            and bundle.grounding_status is EvidenceStatus.VERIFIED
+            and sealed.readiness is None
+        ):
+            blockers.append("compiler_readiness_not_resolved")
+        if sealed.readiness is not None:
+            from .readiness import ResolvedChampionsReadiness
+
+            if type(sealed.readiness) is not ResolvedChampionsReadiness:
+                blockers.append("compiler_readiness_revalidation_failed")
+                return tuple(blockers)
+            try:
+                sealed.readiness.validate_against(bundle, sealed.fixture)
+            except ValueError:
+                blockers.append("compiler_readiness_revalidation_failed")
         return tuple(blockers)
 
     def _build_action_space(self, initial_state: BattleState) -> tuple[str, ...]:
@@ -396,7 +415,7 @@ class DeterministicBattleEnv:
         # request set here would create a dictionary oracle for hidden moves.
         return canonical_hash(
             {
-                "episode_id": self._identity.episode_id,
+                "episode_id": self._identity.public_episode_id,
                 "step_index": self._step_index,
                 "battle_id": self._state.battle_id,
                 "turn": self._state.turn,
@@ -430,7 +449,7 @@ class DeterministicBattleEnv:
             mask = LegalActionMask.from_request(viewer_request, self._action_space)
         return EnvironmentSnapshot(
             schema_version=AI_ENV_ADAPTER_SCHEMA_VERSION,
-            identity=self._identity,
+            identity=self._identity.policy_view(),
             step_index=self._step_index,
             observation=self._state.observation_for(self.viewer),
             public_history=self._public_history,

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from champions_sim.capabilities.models import RecordIdentity
 from champions_sim.core import (
     ActionSelection,
     BattleState,
@@ -152,19 +153,54 @@ class SealedEnvironmentFixture:
     fixture_id: str
     fixture_hash: str
     initial_state: BattleState
+    development_record_refs: tuple[RecordIdentity, ...] = field(
+        default=(),
+        metadata={"canonical_omit_default": True},
+    )
 
     def __post_init__(self) -> None:
         _require_stable_id(self.fixture_id, "fixture_id")
         _require_hash(self.fixture_hash, "fixture_hash")
         if canonical_hash(self.initial_state) != self.fixture_hash:
             raise ValueError("fixture_hash does not match the canonical initial state")
+        for reference in self.development_record_refs:
+            if type(reference) is not RecordIdentity:
+                raise ValueError("development record refs require exact identities")
+            reference.__post_init__()
+        record_ids = tuple(value.record_id for value in self.development_record_refs)
+        if len(set(record_ids)) != len(record_ids):
+            raise ValueError("development record refs must have unique IDs")
+        if record_ids != tuple(sorted(record_ids)):
+            raise ValueError("development record refs must be ordered by record ID")
 
     @classmethod
-    def seal(cls, fixture_id: str, initial_state: BattleState) -> "SealedEnvironmentFixture":
+    def seal(
+        cls,
+        fixture_id: str,
+        initial_state: BattleState,
+        *,
+        development_record_refs: tuple[RecordIdentity, ...] = (),
+    ) -> "SealedEnvironmentFixture":
         return cls(
             fixture_id=fixture_id,
             fixture_hash=canonical_hash(initial_state),
             initial_state=initial_state,
+            development_record_refs=tuple(
+                sorted(development_record_refs, key=lambda value: value.record_id)
+            ),
+        )
+
+    @property
+    def fixture_binding_hash(self) -> str:
+        """Bind the state to explicit construction-corpus record identities."""
+
+        return canonical_hash(
+            {
+                "domain": "champions-sim/development-scenario-fixture-binding-v1",
+                "fixture_id": self.fixture_id,
+                "fixture_hash": self.fixture_hash,
+                "development_record_refs": self.development_record_refs,
+            }
         )
 
 
@@ -173,20 +209,72 @@ class SealedEnvironmentInput:
     schema_version: str
     bundle: EnvironmentBundleIdentity
     fixture: SealedEnvironmentFixture
+    readiness: "ResolvedChampionsReadiness | None" = field(
+        default=None,
+        metadata={"canonical_omit_default": True},
+    )
 
     def __post_init__(self) -> None:
+        self.validate_integrity()
+
+    def validate_integrity(self) -> None:
+        """Recheck the complete sealed input, including resolver substance.
+
+        Frozen dataclasses prevent accidental mutation, but they are not an
+        authentication boundary: ``object.__setattr__`` can still alter them.
+        The adapter therefore calls this method again at every reset instead
+        of trusting that ``__post_init__`` once ran on the current payload.
+        """
+
         if self.schema_version != AI_ENV_ADAPTER_SCHEMA_VERSION:
             raise ValueError("unsupported sealed environment input schema")
+        if type(self.bundle) is not EnvironmentBundleIdentity:
+            raise ValueError("bundle must use the exact environment identity contract")
+        if type(self.fixture) is not SealedEnvironmentFixture:
+            raise ValueError("fixture must use the exact sealed fixture contract")
+        # Re-run the value contracts in case a frozen instance was tampered
+        # after construction.
+        self.bundle.__post_init__()
+        self.fixture.__post_init__()
         if self.fixture.initial_state.ruleset_id != self.bundle.ruleset_id:
             raise ValueError("sealed fixture ruleset differs from bundle identity")
+        if self.readiness is not None:
+            from .readiness import ResolvedChampionsReadiness
+
+            if type(self.readiness) is not ResolvedChampionsReadiness:
+                raise ValueError("readiness must be issued by the Champions resolver")
+            if self.bundle.scope is not EnvironmentScope.CHAMPIONS_CANDIDATE:
+                raise ValueError("pure simulator input cannot carry Champions readiness")
+            if self.readiness.bundle_identity_hash != self.bundle.identity_hash:
+                raise ValueError("Champions readiness is bound to another bundle")
+            if (
+                self.readiness.fixture_id != self.fixture.fixture_id
+                or self.readiness.fixture_hash != self.fixture.fixture_hash
+                or self.readiness.fixture_binding_hash
+                != self.fixture.fixture_binding_hash
+            ):
+                raise ValueError("Champions readiness is bound to another fixture")
+            self.readiness.validate_against(self.bundle, self.fixture)
 
     @property
     def sealed_input_hash(self) -> str:
-        return canonical_hash(self)
+        payload: dict[str, object] = {
+            "schema_version": self.schema_version,
+            "bundle": self.bundle,
+            "fixture": self.fixture,
+        }
+        # Preserve the v1 hash of simulator-only inputs.  Readiness was added
+        # as an optional extension, so encoding a new explicit null would
+        # silently change every existing episode identity.
+        if self.readiness is not None:
+            payload["readiness"] = self.readiness.attestation_payload()
+        return canonical_hash(payload)
 
 
 @dataclass(frozen=True, slots=True)
 class EnvironmentVersionIdentity:
+    """Privileged episode lineage; never expose this object to a policy."""
+
     adapter_schema_version: str
     bundle: EnvironmentBundleIdentity
     bundle_identity_hash: str
@@ -194,6 +282,7 @@ class EnvironmentVersionIdentity:
     fixture_hash: str
     sealed_input_hash: str
     episode_id: str
+    public_episode_id: str
     viewer: PlayerId
     seed: int
     rng_algorithm_id: str
@@ -210,15 +299,43 @@ class EnvironmentVersionIdentity:
         ):
             _require_hash(value, label)
         _require_stable_id(self.episode_id, "episode_id")
+        _require_stable_id(self.public_episode_id, "public_episode_id")
         if not 0 <= self.seed < 2**64:
             raise ValueError("seed must be an unsigned 64-bit integer")
         _require_stable_id(self.rng_algorithm_id, "rng_algorithm_id")
+
+    def policy_view(self) -> "PolicyEnvironmentIdentity":
+        return PolicyEnvironmentIdentity(
+            adapter_schema_version=self.adapter_schema_version,
+            bundle=self.bundle,
+            bundle_identity_hash=self.bundle_identity_hash,
+            episode_id=self.public_episode_id,
+            viewer=self.viewer,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyEnvironmentIdentity:
+    """Secret-independent episode identity safe for policy consumption."""
+
+    adapter_schema_version: str
+    bundle: EnvironmentBundleIdentity
+    bundle_identity_hash: str
+    episode_id: str
+    viewer: PlayerId
+
+    def __post_init__(self) -> None:
+        if self.adapter_schema_version != AI_ENV_ADAPTER_SCHEMA_VERSION:
+            raise ValueError("unsupported environment identity schema")
+        if self.bundle_identity_hash != self.bundle.identity_hash:
+            raise ValueError("bundle identity hash does not match its payload")
+        _require_stable_id(self.episode_id, "episode_id")
 
 
 @dataclass(frozen=True, slots=True)
 class EnvironmentSnapshot:
     schema_version: str
-    identity: EnvironmentVersionIdentity
+    identity: PolicyEnvironmentIdentity
     step_index: int
     observation: PlayerObservation
     public_history: tuple[PublicEvent, ...]
@@ -283,6 +400,8 @@ class JointChoice:
 
 @dataclass(frozen=True, slots=True)
 class ResetInfo:
+    """Privileged reset audit data retained for non-policy tooling only."""
+
     reset_id: str
     initial_state_hash: str
     initialized_state_hash: str
@@ -314,6 +433,8 @@ class ResetInfo:
 
 @dataclass(frozen=True, slots=True)
 class TransitionInfo:
+    """Privileged transition audit data retained for non-policy tooling only."""
+
     transition_id: str
     state_hash_before: str
     state_hash_after: str
@@ -352,11 +473,46 @@ class TransitionInfo:
 
 
 @dataclass(frozen=True, slots=True)
+class PublicResetInfo:
+    reset_id: str
+    public_history_hash: str
+    reward_model_id: str
+
+    def __post_init__(self) -> None:
+        _require_stable_id(self.reset_id, "reset_id")
+        _require_hash(self.public_history_hash, "public_history_hash")
+        if self.reward_model_id != NO_REWARD_MODEL_ID:
+            raise ValueError("AI environment contract does not define a reward model")
+
+
+@dataclass(frozen=True, slots=True)
+class PublicTransitionInfo:
+    transition_id: str
+    decision_commitment_before: str
+    public_history_hash: str
+    reward_model_id: str
+    provisional_decision_ids: tuple[str, ...]
+    source_manifest_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_stable_id(self.transition_id, "transition_id")
+        _require_hash(
+            self.decision_commitment_before,
+            "decision_commitment_before",
+        )
+        _require_hash(self.public_history_hash, "public_history_hash")
+        if self.reward_model_id != NO_REWARD_MODEL_ID:
+            raise ValueError("AI environment contract does not define a reward model")
+        _require_unique(self.provisional_decision_ids, "provisional_decision_ids")
+        _require_unique(self.source_manifest_ids, "source_manifest_ids")
+
+
+@dataclass(frozen=True, slots=True)
 class ResetResult:
     schema_version: str
     kind: str
     snapshot: EnvironmentSnapshot
-    info: ResetInfo
+    info: PublicResetInfo
 
     def __post_init__(self) -> None:
         if self.schema_version != AI_ENV_ADAPTER_SCHEMA_VERSION or self.kind != "reset":
@@ -379,7 +535,7 @@ class StepResult:
     reward: None
     terminated: bool
     truncated: bool
-    info: TransitionInfo
+    info: PublicTransitionInfo
 
     def __post_init__(self) -> None:
         if self.schema_version != AI_ENV_ADAPTER_SCHEMA_VERSION or self.kind != "step":

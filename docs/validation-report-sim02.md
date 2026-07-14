@@ -99,6 +99,7 @@ SIM-02のローカル準備基盤は実装済みであり、規制snapshot、公
 - これはAIのI/O契約であり、探索・RL・LLM方策の強さを証明しない。
 - Policy-free adapterは、sealed fixtureとCatalog/RuleSet/engine identity、seed/RNG lineageを固定し、`reset`/`step`、partial observation、public history、legal mask、Replay-compatible transition metadataを返す。報酬は未定義の`None`で、方策実装を混入しない。
 - Champions candidate scopeはcapability/grounding evidenceがverifiedでない限り`all_illegal` maskとblockerを返し、pure simulator local scopeと区別する。
+- AI-01監査で、上記statusをcallerが自己申告できる契約穴を検出・修正した。現在はsource-to-capability v1の全artifactとcandidate gateを再計算できるresolver sealがなければ、両statusを`verified`にしても`compiler_readiness_not_resolved`で非actionableになる。さらにv1自体がintake-only入力・空development corpus・emit-ineligibleを固定するため、positive seal発行は構造的に未実装である。現M-B NO-GOはsealを発行しない。
 
 ## 現在の外部blocker
 
@@ -128,7 +129,7 @@ python scripts/check_repo_size.py
 ## Final verification
 
 - generated at: `2026-07-14T07:00:17+09:00`
-- git revision / tree identity: local baseline commit on `codex/sim02-regulation-ready`（公開・pushなし。exact revisionはcurrent `HEAD`で解決）
+- git revision / tree identity: historical pre-AI01 snapshot on `codex/sim02-regulation-ready`（公開・pushなし。当時のexact treeは未記録）
 - pytest result: `163 passed in 10.62s`
 - SIM-01 bundle validator: `ok=true`、local research only、redistribution false
 - frozen baseline validator: `ok=true`、turn 15、P2 win、19 decision windows
@@ -150,4 +151,4 @@ python scripts/check_repo_size.py
 
 ## 次の大きな目的
 
-`SIM-02 Evidence Promotion and Grounding Corpus`を一つの成果として完成させる。今回固定した235 mapping、788 semantic selector、118 target capabilityのevidence backlogに対し、authoritative sourceまたはactual trace、構造化semantic、capability別positive executor、外部holdoutを追加する。途中成果の件数だけでは完了とせず、同じcompilerがvalidated candidateを出すか、残る不足根拠を列挙した`NO-GO`を再生成することを完了条件とする。
+AI-01で競技評価配線を追加した後のcritical pathは`SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`である。v1を診断専用として凍結し、235 mapping、788 semantic selector、118 target capabilityのevidence backlogにauthoritative sourceまたはactual trace、構造化semantic、capability別engine-backed positive probe、非空development corpus、系譜分離external holdoutを与えるresolver-backed v2を別型で作る。途中件数では完了とせず、v2とreadiness resolverがvalidated candidate sealを発行するか、残る不足根拠を列挙したexact `NO-GO`を再生成することを完了条件とする。

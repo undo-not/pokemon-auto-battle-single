@@ -25,8 +25,24 @@
 - `llm_cache/`
 - `videos/`
 - `screenshots/`
+- `wandb/`、`mlruns/`、`tensorboard/`、`lightning_logs/`、`tb_logs/`
+- `*.tfevents.*`
+- `*.ckpt`、`*.safetensors`、`*.pt`、`*.pth`、`*.onnx`
+- `*.npy`、`*.npz`
+- `**/artifacts/bluestacks/`
 
 元データや旧`champions` PJ全体をこのリポジトリへコピーしない。必要な資産は出典ごとにライセンスを確認し、最小限のコード、Schema、fixtureとして独立に移植する。
+
+## Retentionと昇格
+
+Gitには実験本体を置かず、再現に必要な小さなmanifest、SHA-256、生成器version、入力identity、seed、集約結果だけを追跡する。content-addressed bundleはhashが同じなら同一内容として扱い、次の方針でローカル容量を管理する。
+
+- `runs/`: 実験中のログと中間出力はローカルに保持する。集約結果を検証し、manifestから再生成できる古いrunはローカルからpruneする。
+- `replays/`: reportの検証に使うReplay一式は検証完了まで保持する。入力、seed、engine/policy identityから決定論的に再生成できる古いbundleは、対応manifestとhashを残してローカルからpruneする。
+- model/checkpoint: 中間checkpointとweightはGitへ追加しない。非昇格候補は実験終了後にpruneし、昇格候補だけを外部artifact storeへ保存する。
+- capture: BlueStacksの画像、動画、UI hierarchy等は機微情報を含み得るためGitへ追加しない。必要最小期間だけローカルに保持し、昇格候補の再検証に不可欠なcaptureだけをアクセス制御された外部artifact storeへ保存する。
+
+外部artifact storeへ保存するのは、比較・再検証・昇格の対象になった候補に限る。保存時はGit上のmanifestから外部locator、content hash、byte size、生成器version、入力lineage、ライセンス・機微情報の取扱いへ追跡できるようにする。再生成できないartifactを削除する前には、再現要件と昇格要否を明示的に確認する。
 
 ## 暫定容量上限
 
@@ -56,6 +72,7 @@ Git外artifactは少なくとも次をmanifestへ記録する。
 3. 個人情報、認証情報、画面映像が含まれないことを確認する。
 4. 大容量artifactは除外ディレクトリまたは外部artifact storeへ置く。
 5. Gitにはmanifest、checksum、集約結果だけを追加する。
+6. 再生成可能な古いcontent-addressed bundleをローカルからpruneし、昇格候補だけを外部artifact storeへ残す。
 
 ## 自動検査
 

@@ -212,6 +212,25 @@ def _validate_schema_value(
             canonical_items = [json.dumps(item, ensure_ascii=False, sort_keys=True) for item in value]
             if len(canonical_items) != len(set(canonical_items)):
                 raise BundleValidationError(f"{path} items must be unique")
+        contains_schema = schema.get("contains")
+        if isinstance(contains_schema, Mapping):
+            contains_match = False
+            for index, item in enumerate(value):
+                try:
+                    _validate_schema_value(
+                        item,
+                        contains_schema,
+                        root_schema,
+                        f"{path}[{index}]",
+                    )
+                except BundleValidationError:
+                    continue
+                contains_match = True
+                break
+            if not contains_match:
+                raise BundleValidationError(
+                    f"{path} must contain at least one item matching the contains schema"
+                )
         prefix_items = schema.get("prefixItems", ())
         for index, item_schema in enumerate(prefix_items):
             if index < len(value):
@@ -229,6 +248,17 @@ def _validate_schema_value(
         missing = sorted(required - set(value))
         if missing:
             raise BundleValidationError(f"{path} missing required fields: {missing}")
+        dependent_required = schema.get("dependentRequired", {})
+        if isinstance(dependent_required, Mapping):
+            for trigger, dependencies in dependent_required.items():
+                if trigger not in value:
+                    continue
+                missing_dependencies = sorted(set(dependencies) - set(value))
+                if missing_dependencies:
+                    raise BundleValidationError(
+                        f"{path} field {trigger!r} requires fields: "
+                        f"{missing_dependencies}"
+                    )
         if len(value) < int(schema.get("minProperties", 0)):
             raise BundleValidationError(f"{path} has too few properties")
         property_name_schema = schema.get("propertyNames")

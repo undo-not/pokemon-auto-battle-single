@@ -107,3 +107,16 @@
 - `owner`: SIM-02 release maintainer
 - `implementation_evidence`: Rehearsal Schema/Model v1を`synthetic_internal`かつ`NO-GO`専用とし、candidate hashを許可しない。Builderはsealed bundleからbefore/after coverageとdiffを再計算し、caller supplied参照の不一致・forgeryを拒否する。Synthetic fixtureは48時間内に理由付き`NO-GO`を返し、`operational_rehearsal_success: true`、`deployable_candidate_success: false`を記録する。
 - `current_limitation`: fixtureの`t0`、`t_decision`、resource値はsynthetic inputであり、実測wall-clock、外部待ち、actual regulation対応の証拠ではない。Candidate、`sealed_historical`、`live`はv1の対象外で、別version未定義である。PD-008はprovisionalのまま維持する。
+
+## PD-009: AI-01 synthetic frozen benchmark件数
+
+- `status`: provisional
+- `scope`: AI-01 synthetic regression only
+- `current_value`: 64 engine seed-pairを各2 seatで実行し、合計128戦をfrozen regressionとする。
+- `reason`: paired/side-swap、Replay再検証、report identity、公開情報baselineの非自明性を短時間で継続検査する初期工学予算である。
+- `risk`: 単一のSIM-01 synthetic rosterと64 seedは、対戦分布、レギュレーション、上位人間、ランク順位を代表しない。128戦全勝でも外部強度を示さない。
+- `uncertainty_rule`: 適用reportの`ArenaPlan.provisional_decision_ids`へ`PD-009`を保存し、`scope: synthetic_local`、`champions_candidate: false`、`rank1_equivalence_status: unmeasured`を同時に固定する。
+- `review_trigger`: 複数の証拠付きscenario corpus、developmentから隔離した外部holdout、または人間上位層との盲検評価が利用可能になった時。件数だけを増やして外部昇格しない。
+- `owner`: competitive evaluation maintainer
+- `latest_evidence`: 2026-07-14に64 pair / 128 matches、candidate 126勝0分2敗、net utility 124/128 = 968,750 ppm、Replay verification 1,000,000 ppm、illegal/error/private-state-delivery violation 0。report hash `5fe3ac9d5fda0957fc0f4d1d61e17d1994e10959d5f5b40f997d0fd5c76dc2ac`とArena evidence hash `7a7c9bba506f4545f5f48ed5c76eef30c476efc681cd3847c23e7d8d4254b8e2`を`data/golden/ai01-synthetic-benchmark-v1.json`へ固定した。
+- `completion_relation`: AI-01の配線・決定性・回帰ゲートは満たすが、Champions fidelity、汎化、ランク1相当は証明しない。

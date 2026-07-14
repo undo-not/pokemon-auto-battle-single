@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -107,6 +108,42 @@ def test_same_bundle_and_seed_are_byte_identical_across_100_runs() -> None:
 
 def test_repo_candidates_fit_provisional_size_limits() -> None:
     assert evaluate_paths(git_candidate_files()) == ()
+
+
+def test_ml_artifacts_are_ignored_without_hiding_small_sources_or_fixtures() -> None:
+    ignored = {
+        "wandb/run-1/history.jsonl",
+        "experiments/mlruns/0/meta.yaml",
+        "tensorboard/events.out.tfevents.1",
+        "lightning_logs/version_0/metrics.csv",
+        "tb_logs/train/events.out.tfevents.2",
+        "models/candidate.ckpt",
+        "models/candidate.safetensors",
+        "scratch/features.npy",
+        "scratch/features.npz",
+        "models/policy.pt",
+        "models/policy.pth",
+        "models/policy.onnx",
+    }
+    retained = {
+        "src/champions_sim/engine.py",
+        "tests/test_governance_validation.py",
+        "data/fixtures/sim01_catalog.json",
+        "data/golden/ai01-synthetic-benchmark-v1.json",
+    }
+    result = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-z", "--stdin"],
+        cwd=ROOT,
+        input=("\0".join(sorted(ignored | retained)) + "\0").encode("utf-8"),
+        check=False,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr.decode("utf-8")
+    actual = {
+        value.decode("utf-8") for value in result.stdout.split(b"\0") if value
+    }
+    assert actual == ignored
 
 
 def test_fixture_limit_is_stricter_than_general_file_limit(tmp_path: Path) -> None:

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from champions_sim import BattleEngine, load_battle_fixture, load_catalog, load_ruleset
-from champions_sim.core import PlayerId, SIMULATOR_VERSION
+from champions_sim.core import PlayerId, SIMULATOR_VERSION, canonical_hash
 from champions_sim.engine import IllegalAction
 from champions_sim.env import (
     AI_ENV_ADAPTER_SCHEMA_VERSION,
@@ -101,11 +101,17 @@ def test_reset_is_version_bound_deterministic_and_partial_observation_safe() -> 
 
     assert first.to_json() == repeated.to_json()
     assert first.snapshot.identity.bundle_identity_hash == bundle.identity_hash
-    assert first.snapshot.identity.sealed_input_hash == sealed.sealed_input_hash
+    public_payload = first.to_dict()
+    assert "sealed_input_hash" not in public_payload["snapshot"]["identity"]
+    assert "fixture_hash" not in public_payload["snapshot"]["identity"]
+    assert "initial_state_hash" not in public_payload["info"]
+    assert "initial_events_hash" not in public_payload["info"]
     assert first.snapshot.legal_action_mask.status is MaskStatus.KNOWN
     assert first.snapshot.actionable is True
     assert first.info.reward_model_id == "none"
-    assert first.info.rng_seed == 20260713
+    assert "seed" not in public_payload["snapshot"]["identity"]
+    assert "rng_algorithm_id" not in public_payload["snapshot"]["identity"]
+    assert "rng_seed" not in public_payload["info"]
     opponent_side = first.snapshot.observation.opponent_side
     opponent = next(
         value
@@ -117,6 +123,19 @@ def test_reset_is_version_bound_deterministic_and_partial_observation_safe() -> 
     assert opponent.hp_fraction_millionths is None
     assert opponent.stats is None
     assert all(not event.evidence_artifact_ids for event in first.snapshot.public_history)
+
+
+def test_optional_readiness_extension_preserves_v1_simulator_input_hash() -> None:
+    _, _, _, sealed = _loaded()
+
+    assert sealed.readiness is None
+    assert sealed.sealed_input_hash == canonical_hash(
+        {
+            "schema_version": sealed.schema_version,
+            "bundle": sealed.bundle,
+            "fixture": sealed.fixture,
+        }
+    )
 
 
 def test_same_seed_and_joint_choice_produce_byte_identical_step_and_replay_lineage() -> None:
@@ -138,8 +157,58 @@ def test_same_seed_and_joint_choice_produce_byte_identical_step_and_replay_linea
     assert step1.to_json() == step2.to_json()
     assert step1.reward is None
     assert step1.truncated is False
-    assert step1.info.rng_cursor_after >= step1.info.rng_cursor_before
     assert step1.info.source_manifest_ids == sealed.bundle.source_manifest_ids
+    public_info = step1.to_dict()["info"]
+    assert "state_hash_before" not in public_info
+    assert "state_hash_after" not in public_info
+    assert "events_hash" not in public_info
+    assert "choice_hash" not in public_info
+    assert "rng_state_hash_after" not in public_info
+
+
+def test_policy_results_do_not_oracle_opponent_private_bench_data() -> None:
+    engine, _, _, sealed = _loaded()
+    state = sealed.fixture.initial_state
+    opponent = state.side(PlayerId.P2)
+    hidden = opponent.team[1]
+    changed_hidden = replace(
+        hidden,
+        item_id=None,
+        stats=replace(hidden.stats, attack=hidden.stats.attack + 1),
+        moves=tuple(reversed(hidden.moves)),
+    )
+    changed_state = replace(
+        state,
+        sides=(
+            state.side(PlayerId.P1),
+            replace(opponent, team=(opponent.team[0], changed_hidden, *opponent.team[2:])),
+        ),
+    )
+    changed_sealed = replace(
+        sealed,
+        fixture=SealedEnvironmentFixture.seal(
+            "sim01-private-bench-variant",
+            changed_state,
+        ),
+    )
+    assert changed_sealed.sealed_input_hash != sealed.sealed_input_hash
+
+    original = DeterministicBattleEnv(engine, PlayerId.P1).reset(
+        seed=20260713,
+        sealed=sealed,
+    )
+    engine2, _, _, _ = _loaded()
+    changed = DeterministicBattleEnv(engine2, PlayerId.P1).reset(
+        seed=20260714,
+        sealed=changed_sealed,
+    )
+
+    assert original.snapshot.observation == changed.snapshot.observation
+    assert original.to_json() == changed.to_json()
+    public_identity = original.to_dict()["snapshot"]["identity"]
+    assert "fixture_id" not in public_identity
+    assert "seed" not in public_identity
+    assert "rng_algorithm_id" not in public_identity
 
 
 def test_stale_cross_episode_and_illegal_choices_are_rejected() -> None:

@@ -1,6 +1,6 @@
 # champions_sim
 
-`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装に加え、SIM-02のRegulation/TargetPool/Coverage/Diff、source-to-capability compiler、synthetic 48時間rehearsal、read-only BlueStacks capture基盤、GroundingTrace、AI Env、generic mega contractまでローカル実装済みです。現行M-B全体の検証済みCatalog/メカニクスcoverage、actual実機grounding、AI方策、BlueStacks入力操作は未完成です。
+`champions_sim`は、Pokémon Championsのシングルバトルを対象とする、再現可能な対戦シミュレータとAI研究基盤です。最終的にはフレンド戦で使う強い意思決定系を目指します。SIM-01の決定論的3対3参照実装、SIM-02のRegulation/TargetPool/Coverage/Diffとsource-to-capability compiler、AI-01の6→3選出・paired arena・公開情報baselineまでローカル実装済みです。現行M-B全体の検証済みCatalog/メカニクスcoverage、actual実機grounding、学習済み/search方策、BlueStacks入力操作は未完成です。
 
 ## 現在のスコープ
 
@@ -17,7 +17,9 @@
 - BlueStacks read-only診断は5.22.51.1038と4 instanceを検出しました。player/HD-Adb停止に加え、ADB clientのdaemon side effectを排除するownership supervisorが未実装のためcaptureは実行せず、actual GroundingTraceはまだありません。CaptureStore、resolver-backed GroundingTrace、AI Envはsynthetic payloadと改竄攻撃で契約検証済みです。
 - 正確なルール、合法手、乱数、リプレイをAIやUIから分離します。
 - 強化学習、LLM、探索、構築生成は、検証済みシミュレータの下流に置きます。
-- Policy-free AI adapterはsealed fixtureとbundle hash、seed/RNG lineageを持つ`reset`/`step`を提供し、報酬と方策は定義しません。Champions candidateはcapability/grounding evidenceがverifiedになるまでactionableにしません。
+- Policy-free AI adapterは内部ではsealed fixture、bundle hash、seed/RNG lineageへ結合した`reset`/`step`を提供しますが、policy-facing resultには公開identity、観測、公開履歴、合法手だけを返し、privileged lineageはReplayへ分離します。報酬と方策は定義せず、Champions candidateはcapability/grounding evidenceがverifiedになるまでactionableにしません。
+- AI-01は自己申告`VERIFIED`による迂回を再計算型readiness resolverで閉じ、6体roster→順序付き3体のsealed team preview、paired seed/side-swap arena、公開情報だけを使うtype-coverage選出＋type-aware行動baselineを実装しました。現v1 compilerはintake診断専用でcandidateを構造的に発行できないため、readinessの正経路は未実装のままfail-closedです。
+- AI-01 frozen synthetic benchmarkは64 pair / 128戦、Replay verification 100%、candidate 126勝0分2敗です。単一SIM-01 fixtureの工学回帰に限り、reportは常に`champions_candidate=false`、`rank1_equivalence_status=unmeasured`です。
 - 実ゲームの操作対象はプライベートマッチのフレンド戦に限定します。
 - ランクマッチ自動操作、BlueStacks入力操作、学習実験は現在の対象外です。read-only診断/captureもフレンド戦のgrounding用途に限定します。
 
@@ -35,6 +37,8 @@
 - [Requirement Contract](specs/requirement-contract.md)
 - [SIM-01 Phase Contract](specs/sim-01-phase-contract.md)
 - [SIM-02 Phase Contract](specs/sim-02-phase-contract.md)
+- [AI-01 Phase Contract](specs/ai-01-phase-contract.md)
+- [SIM-02B Phase Contract](specs/sim-02b-phase-contract.md)
 - [仕様監査規則](specs/spec-audit.md)
 - [暫定判断台帳](docs/provisional-decisions.md)
 - [仕様監査ログ](docs/spec-audit-log.md)
@@ -42,7 +46,8 @@
 - [Git・成果物容量方針](docs/git-artifact-policy.md)
 - [SIM-01検証レポート](docs/validation-report-sim01.md)
 - [SIM-02検証レポート](docs/validation-report-sim02.md)
-- `data/schemas/`: RuleSet、Catalog、Battle fixture、Replay v2、source manifest、production Catalog input、source-to-capability reportのJSON Schema
+- [AI-01検証レポート](docs/validation-report-ai01.md)
+- `data/schemas/`: RuleSet、Catalog、Battle fixture、Replay v2、source manifest、production Catalog input、source-to-capability report、AI-01 Arena report/evidence manifestのJSON Schema
 - `data/manifests/`: 小さな出典manifest例。元データ本体は含めない
 - `scripts/validate_sim01_bundle.py`: Schema、loader、Replay、manifest hash、license scopeの統合検査
 - `scripts/check_repo_size.py`: `PD-001/002`のGit候補ファイル容量検査
@@ -70,6 +75,7 @@ python scripts/build_regulation_diff.py
 python scripts/diagnose_bluestacks.py
 python scripts/build_catalog_intake.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --source-lock data/manifests/catalog-intake-m-b-source-lock.json --dry-run
 python scripts/build_source_to_capability_bundle.py --legacy-root "C:\Users\hogeh\Desktop\Git\Pokemon\champions" --dry-run
+python scripts/run_ai01_benchmark.py --pairs 64 --summary-only
 $env:PYTHONPATH="src"
 python -m champions_sim battle --seed 20260713
 python -m champions_sim verify-replay --replay replays/example.json
@@ -78,6 +84,8 @@ python -m pytest -q
 ```
 
 `build_source_to_capability_bundle.py`は同じsealed sourceから同じreport hashを生成します。成果物はcontent-addressedな`data/processed/sim02/source-to-capability/<report_hash>/`へだけ書き出し、Git管理外に置きます。`--require-candidate`は現証拠で理由付き`NO-GO`となるため終了コード3を返します。`--usage-scope distribution`も、旧PJ由来データのlicenseが未確認な間は意図的に失敗します。
+
+`run_ai01_benchmark.py`はsynthetic 6→3選出後に全seedを両seatで実行し、各Replayを再実行検証してからArena reportを作ります。通常はGitignored `runs/ai01/<report_hash>/`へreport、全Replay、evidence manifestを保存します。`--summary-only`だけが非永続・非検証サマリです。旧`--dry-run`と`--write-replays`は互換オプションとして残しています。この保存物はprebattle runを含まないbattle-Replay archiveであり、evidence hash単体は認証ではありません。完全な再検証には、同じTeamPreviewRun/policiesを再生成し、exact `BoundAgent`、engine、initial state、保存Replayを組み立てた`ArenaRun`を`verify_arena_run`へ渡します。
 
 ## データ管理
 
@@ -93,6 +101,10 @@ python -m pytest -q
 - SIM-02 BlueStacks actual grounding: player/HD-Adb停止、ADB ownership未検証、actual traceなしのため`NO-GO`
 - SIM-02 M-B candidate: メガ16形態、同時順、Catalog coverage、groundingが未完了のため`NO-GO`
 - SIM-02 Champions外部最終ゲート: 外部holdout、actual/sealed historical rehearsal、実機conformanceが揃うまで`NO-GO`
+- AI-01 trusted-local evaluation foundation: 6→3選出、paired arena、公開情報baseline、Replay evidenceを実装・ローカル検証済み。process isolationとreadiness正経路は未達
+- AI-01 synthetic strength: frozen regressionは成功。ただし実M-B/scenario holdout/上位層較正がないため`UNMEASURED`
+- 次の大目的 SIM-02B: production Catalog promotionとevidence-backed development/external-holdout scenario corpus。v2 resolver/compiler完成までは`SPECIFIED / NO-GO`
+- ランク1相当の主張: `NO-GO`。synthetic勝率、self-play Elo、LLM評価を代替証拠にしない
 - 公式Champions準拠としての昇格: 実機照合が終わるまで`NO-GO`
 - データ・派生物の再配布: license確認が終わるまで`NO-GO`
 

@@ -1,6 +1,11 @@
 """Public contracts for the deterministic Champions simulator core."""
 
 from .canonical import canonical_hash, canonical_json, to_canonical_data
+from .implementation import (
+    class_runtime_sha256,
+    class_source_sha256,
+    component_state_sha256,
+)
 from .errors import UnsupportedMechanic
 from .ids import (
     AbilityId,
@@ -98,6 +103,9 @@ __all__ = [
     "UnsupportedMechanic",
     "canonical_hash",
     "canonical_json",
+    "class_runtime_sha256",
+    "class_source_sha256",
+    "component_state_sha256",
     "make_player_observation",
     "to_canonical_data",
 ]

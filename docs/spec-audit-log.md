@@ -235,3 +235,211 @@
 - SIM-02 Champions外部最終ゲート: **NO-GO** — `AUD-SIM02-001`、`AUD-SIM02-002`、`AUD-SIM02-005`、`AUD-SIM02-006`、`AUD-P0-001`
 - TargetPoolManifest外の環境coverage主張: **禁止**
 - 探索・RL・LLM・構築・BlueStacksへの昇格: SIM-02の該当gateを満たすまで別途判定する
+
+## AI-01事前・完了監査 — 2026-07-14
+
+### AUD-AI01-001
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: AI-01 / RANK1-READINESS
+- `category`: objective_drift
+- `problem`: 最終目的はランク1相当だが、既存契約は遷移正確性だけを目的変数とし、勝敗utility、seat bias、方策比較、構築・選出品質を測れなかった。
+- `expected`: simulator fidelityとdecision qualityを別gateにし、後者をversion/hash/partition付きの再計算可能な目的変数で測る。
+- `impact`: evidence backlogの件数を減らしてもAIが強くなったか判断できず、RL/LLMを固定fixtureへ過適合させる。
+- `suggested_action`: AI-01 Phase Contract、paired arena、terminal outcome、frozen benchmarkを実装する。
+- `evidence`: `specs/ai-01-phase-contract.md`、`src/champions_sim/arena`、`data/schemas/ai01-arena-report.schema.json`、AI-01 tests
+- `status`: resolved
+- `resolution`: `paired_net_utility_ppm`とleg/seat/countを全match recordから再計算し、Replay verification、legality、privacy、scope blockerを同じreportへ固定した。外部強度とは分離している。
+
+### AUD-AI01-002
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01
+- `category`: contract_gap
+- `problem`: `BattlePhase.TEAM_PREVIEW`は確定済み3体を即初期化するだけで、6体構築から順序付き3体を選ぶI/O、同時性、観測、commit、Replay前identityがなかった。
+- `expected`: 既存3体kernelの外側に6→3選出を置き、双方が相手の選出を知る前にcommitし、完全setと公開previewを分離する。
+- `impact`: 実戦で大きな比重を持つ選出を評価できず、後付け実装で隠れ情報漏洩または順序driftが起きる。
+- `suggested_action`: versioned `TeamPreviewSession`とselection policy boundaryを実装する。
+- `evidence`: `src/champions_sim/prebattle`、`tests/test_prebattle_team_preview.py`、`tests/test_ai01_team_selection.py`
+- `status`: resolved
+- `resolution`: exact 6-member roster、ordered 3-member selection、128-bit以上nonce付きcommit/reveal、constant-time digest照合、opponent-safe observation、deterministic materializeを実装した。complete session hashをArenaPlanへ固定する。
+
+### AUD-AI01-003
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02-M-B / AI-01
+- `category`: contract_gap
+- `problem`: `EnvironmentBundleIdentity`の`EvidenceStatus.VERIFIED`と任意64桁hashをcallerが自己申告すると、compilerの実M-B NO-GOを解決せずChampions candidate環境をactionableにできた。
+- `expected`: descriptive identityをattestationとして信頼せず、compiler report、全artifact、stage hash lineage、candidate gateを実体から再計算したresolverだけがactionable sealを発行する。
+- `impact`: SIM-01 fixtureをM-B verified環境に偽装し、誤った環境で探索・学習・評価を開始できる。
+- `suggested_action`: resolver-backed readiness sealとforgery testsを追加する。
+- `evidence`: `src/champions_sim/env/readiness.py`、`tests/test_champions_readiness.py`
+- `status`: resolved
+- `resolution`: sealなしのself-declared VERIFIEDを`compiler_readiness_not_resolved`でall-illegalにした。resolverは全13 compiler document、report/artifact digest、counts、blockers、candidate-ready、Catalog/RuleSet/Regulation/Target/Capability/Grounding bindingを再検証する。現実NO-GOはsealを発行しない。
+
+### AUD-AI01-004
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: RANK1-EQUIVALENCE
+- `category`: missing_input
+- `problem`: 上位人間、実M-B、複数構築、未知regulationを含む開発外benchmarkと順位較正がない。
+- `expected`: 証拠付きChampions環境上で、開発から隔離した外部opponent/scenario poolと事前登録した評価契約を用い、上位層相当を盲検評価する。
+- `impact`: SIM-01 synthetic全勝や自己対戦Eloをランク1相当へ誤読する。
+- `suggested_action`: SIM-02 evidence promotion後にexternal calibration Phaseを定義する。AI-01の勝率を昇格判定へ使わない。
+- `evidence`: `data/golden/ai01-synthetic-benchmark-v1.json`、`AUD-SIM02-001/002/005/006`
+- `status`: open
+- `resolution`:
+
+### AUD-AI01-005
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-02 / STRATEGIC-PROMOTION
+- `category`: missing_input
+- `problem`: 現AI-01 corpusは凍結SIM-01の単一synthetic 6-member rosterで、実構築分布、選出多様性、未観測set belief、regulation変更を含まない。
+- `expected`: provenance付きtrain/dev/external-holdout scenario corpusを作り、record hash重複とpartition leakageを0にする。
+- `impact`: type-aware baseline、探索、RL、LLMが単一fixtureへ過適合する。
+- `suggested_action`: evidence promotionと同じidentityを使うscenario corpus compilerを次段で作る。
+- `evidence`: AI-01 Phase Contract、`PD-009`
+- `status`: open
+- `resolution`:
+
+### AUD-AI01-006
+
+- `opened_on`: 2026-07-14
+- `severity`: medium
+- `phase`: SIM-02 / AI-01
+- `category`: traceability_gap
+- `problem`: SIM-02 Phase Contractの`output_models`がsource-to-capability compiler統合後もproduction capability bundleを未実装と記載し、実装と仕様がdriftしていた。
+- `expected`: operational compiler、deployable candidate未達、readiness sealを別々に記述する。
+- `impact`: 実装済み配線を重複実装するか、NO-GOをcandidate完成と誤読する。
+- `suggested_action`: SIM-02 Phase Contract、Requirement、Traceabilityを同期する。
+- `evidence`: `specs/sim-02-phase-contract.md`、`src/champions_sim/compiler`、`src/champions_sim/env/readiness.py`
+- `status`: resolved
+- `resolution`: 後続`AUD-AI01-007`で再監査した結果、v1はproduction promotion compilerではなくintake診断compilerであり、fail-closed resolverは自己申告を拒否するがsealを正規発行できないと訂正した。positive issuanceはSIM-02B v2へ延期する。
+
+### AUD-AI01-007
+
+- `opened_on`: 2026-07-14
+- `severity`: critical
+- `phase`: SIM-02B / CHAMPIONS-READINESS
+- `category`: unreachable_positive_path
+- `problem`: `source-to-capability-bundle-v1`は`ProductionCatalogInput`のverified member/record、`denominator_final=true`、`catalog_emit_eligible=true`を型とSchemaで拒否し、compiler内部で空development corpus、空grounding、holdoutなし、probe executorなしを固定する。したがって`resolve_champions_readiness`の正規seal発行は外部証拠不足以前に構造的に到達不能だった。
+- `expected`: intake診断v1を凍結し、source/license/artifact recordを実体から解決する別型v2へverified mapping、非空development corpus、系譜分離external holdout、grounding、engine-backed positive probeを入力し、synthetic authoritative fixtureでpositive E2Eを証明する。
+- `impact`: fail-closed拒否経路をissuance-capable readiness完成と誤読し、RL/search開始条件を満たしたと誤判定する。
+- `mitigation`: AI-01完了範囲をtrusted-local synthetic evaluationへ限定し、readiness positive issuanceを`NO-GO / NOT IMPLEMENTED`へ修正した。
+- `suggested_action`: `SIM-02B Production Catalog Promotion + Evidence-backed Scenario Corpus`を次の大目的として実装する。
+- `evidence`: `src/champions_sim/compiler/bridge_models.py`、`src/champions_sim/compiler/bundle.py`、`src/champions_sim/env/readiness.py`、`specs/sim-02b-phase-contract.md`
+- `status`: open
+- `resolution`:
+
+### AUD-AI01-008
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01
+- `category`: evidence_integrity
+- `problem`: 当初のagent/prebattle identityはlive runtime code、Catalog/RuleSet内容、private-state非干渉battle ID、reportに対応する既定Replay永続化を十分に結合していなかった。
+- `expected`: exact class/source/live-runtime/config/initial state、Catalog/RuleSet、selection proof、public-only arena namespace、Replay一式を再実行可能な同一evidenceへ束ねる。
+- `impact`: binding後method差し替え、private set由来ID、report-only保存によって再現・privacy・検証境界を誤る。
+- `suggested_action`: identity/proofを拡張し、通常CLIでReplay evidence manifestをGit外へ保存し、敵対的回帰を追加する。
+- `evidence`: `src/champions_sim/core/implementation.py`、`src/champions_sim/arena`、`src/champions_sim/prebattle`、`scripts/run_ai01_benchmark.py`、AI-01 adversarial tests
+- `status`: resolved
+- `resolution`: BoundAgentとselection policyへsource/MRO-resolved runtime/class constants/config hashと、mapping順・alias topologyを保持する型付き初期instance stateを結合し、selection中のstate変化も拒否する。policy observationはsession所有rosterからdeep-detachし、session hashを実行前後に再検証する。proofへCatalog/RuleSet、arena IDへpublic namespaceだけを結合した。exact Arena/Replay/BattleState/BattleEngine型を要求し、factory実行後にもruntime identityを再検証する。通常CLIはreport・全Replay・file hash付きmanifestを保存するが、prebattle run本体は未保存なのでbattle-Replay archiveと明記し、完全再検証には選出fixtureの再生成が必要である。process globalsとprocess isolationは未解決なので必須blockerを維持する。
+
+### AUD-AI01-009
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01
+- `category`: validation_gap
+- `problem`: stdlib JSON Schema validatorが`contains`と`dependentRequired`を無視し、必須scope blockerまたはprebattle hash片側欠落をSchema上で拒否できなかった。
+- `expected`: repositoryが使用するSchema keywordを実際に評価し、dataclass契約とJSON境界を一致させる。
+- `impact`: 検証済みと表示した外部reportが必須NO-GO条件を欠落できる。
+- `evidence`: `scripts/validate_sim01_bundle.py`、`tests/test_ai01_arena.py`
+- `status`: resolved
+- `resolution`: array `contains`とmapping `dependentRequired`を実装し、必須blocker 3種とprebattle hash双方向欠落の負例を追加した。
+
+### AUD-AI01-010
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01 / AI-ENV
+- `category`: private_state_oracle
+- `problem`: policy-facing `EnvironmentSnapshot`、`ResetInfo`、`TransitionInfo`がprivate initial/current state、private event、sealed input、RNG stateのhashを返し、公開観測が同じでも相手の非公開bench setを辞書照合できた。
+- `expected`: policy-facing resultは公開観測、公開履歴、公開decision boundaryだけに依存し、full-state lineageはReplay/privileged channelだけへ置く。
+- `impact`: HPや技名を直接渡さなくても、hashが低entropyの非公開setを識別するoracleになり、partial-observation評価を無効化する。
+- `evidence`: `src/champions_sim/env/models.py`、`src/champions_sim/env/adapter.py`、`tests/test_ai_env_adapter.py`
+- `status`: resolved
+- `resolution`: privileged `EnvironmentVersionIdentity`とpolicy用`PolicyEnvironmentIdentity`、privileged audit型と`PublicResetInfo`/`PublicTransitionInfo`を分離した。公開episode/transition identityからfull-state hash、sealed hash、engine seed/algorithm、RNG state、fixture identityを除外し、公開済みbattle identityだけから導出する。相手benchのitem/stats/move順、fixture ID、engine seedを同時に変えたreset結果のbyte-identical noninterference testを追加した。full-state/RNG/event lineageは`export_replay`へ限定する。
+
+### AUD-AI01-011
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01
+- `category`: policy_identity_collision
+- `problem`: 初期policy stateの旧normalizerはmappingをJSON objectへ変換して挿入順を失い、共有objectと同値別objectのalias topologyも失った。同一class/runtime/configで異なる選択を返すstateが同じidentityになった。
+- `expected`: 方策から観測可能なcontainer型、mapping iteration順、shared-reference topologyを決定論的identityへ結合するか、表現不能stateをfail-closedで拒否する。
+- `impact`: plan/proofが実行方策のbehavior-relevant初期stateを一意に表さず、別方策stateへの差替えを検知できない。
+- `evidence`: `src/champions_sim/core/implementation.py`、`tests/test_prebattle_proof_and_initial_state.py`、`tests/test_ai01_arena.py`
+- `status`: resolved
+- `resolution`: mappingを順序付きkey/value列として正規化し、compound objectへ決定論的reference IDを割り当ててalias topologyを保持した。class runtime定数のmapping順も保持し、mapping順・shared list差・list/tuple差の負例を追加した。cycle・unordered・非canonical stateは拒否する。
+
+### AUD-AI01-012
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01
+- `category`: mutable_observation_alias
+- `problem`: `TeamPreviewObservation.own_roster`がsession所有の`PokemonState`とnested stateを参照共有し、frozen dataclassでも`object.__setattr__`により方策がcommit前にfixtureを改変できた。
+- `expected`: policy inputのobject graphをtrusted coordinator stateから分離し、方策実行の前後でsession substanceが不変であることを検証する。
+- `impact`: 方策が選出観測を通じてstats等を書換え、改変後のmaterialized battleとproofを正規結果として生成できる。
+- `evidence`: `src/champions_sim/prebattle/session.py`、`src/champions_sim/prebattle/runner.py`、`tests/test_prebattle_proof_and_initial_state.py`
+- `status`: resolved
+- `resolution`: caller sessionと各policy observationをdeep-detachし、exact session/roster contractとfresh session hashを各selectionの前後で再検証する。強制書換えがcaller session、run session、materialized battleのいずれにも伝播しない回帰を追加した。
+
+### AUD-AI01-013
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01
+- `category`: identity_introspection_bypass
+- `problem`: instance state読取がpolicy定義`__getattribute__`を通るため実slot変更を隠せた。またclass runtimeの各属性を別々に正規化したため、等値class constants間のshared-reference topologyを失った。
+- `expected`: instance storageをsubject codeを実行せず読み、method/default/closure/function attribute/class attribute全体で一つの決定論的reference graphを構成する。
+- `impact`: state mutationまたは`LEFT is RIGHT`等でbehaviorが変わってもinitial/runtime/implementation hashが不変になり、proof bindingを迂回できる。
+- `evidence`: `src/champions_sim/core/implementation.py`、`tests/test_prebattle_proof_and_initial_state.py`
+- `status`: resolved
+- `resolution`: `object.__getattribute__`と各ownerの実slot descriptorを直接使ってraw storageを読み、shadowed slotもowner別に保持する。runtime fingerprintはmethod function、code constant、default、kwdefault、closure、function attribute/annotation、behavioral class attributeを横断する単一reference tableを使う。偽`__getattribute__`によるmutation隠蔽とclass constant alias差の負例を追加した。
+
+### AUD-AI01-014
+
+- `opened_on`: 2026-07-14
+- `severity`: high
+- `phase`: AI-01
+- `category`: policy_identity_collision
+- `problem`: 初期stateとclass runtimeの正規化で、同値な`int`/`str`等の別objectとshared objectを区別できず、scalar subclassもbase valueへ縮約された。また、同じfunctionのdescriptor binding種別やdynamicに参照されるclass metadataがidentityへ入らなかった。
+- `expected`: policyから観測可能なscalar reference topology、exact scalar/container type、method descriptor binding種別、wrapper alias、stable class metadataを決定論的identityへ結合し、未対応subclassはfail-closedで拒否する。
+- `impact`: `left is right`、binding時の暗黙引数有無、dynamic `getattr`で選出が変わってもinitial/runtime/implementation hashが不変となり、proof bindingを迂回できた。
+- `evidence`: `src/champions_sim/core/implementation.py`、`tests/test_prebattle_proof_and_initial_state.py`
+- `status`: resolved
+- `resolution`: component stateとruntime constantのexact scalarにreference IDと型tagを付与し、mapping keyを含むalias topologyを保持した。scalar/container subclassを拒否し、Fraction/Enumもreference graphへ含めた。method recordへexact `descriptor_kind`、`descriptor_reference_id`、`function_reference_id`を結合した。behavior-visibleなstable class/function metadataを常時結合し、code中のexact string constantもdynamic member参照候補として収集することで、未対応metadataは省略せずfail-closedにした。shared/distinct scalar、`int` subclass、instance-methodからstaticmethodへの差替え、dynamic class doc差替え、dynamic dataclass metadata拒否を回帰テストへ追加した。
+
+## AI-01 Gate判定
+
+- Requirement/Phase Contract: **GO / SPECIFIED**
+- Fail-closed readiness forgery rejection: **IMPLEMENTED / VERIFIED LOCALLY**
+- Champions readiness positive issuance: **NO-GO / NOT IMPLEMENTED** — `AUD-AI01-007`
+- 6→3 sealed team preview: **IMPLEMENTED / VERIFIED LOCALLY**
+- Paired-seat arena、report、Replay verification: **IMPLEMENTED / VERIFIED LOCALLY**
+- Public-information selection/battle baseline: **IMPLEMENTED / SYNTHETIC GOLDEN PASS**
+- AI-01 trusted-local evaluation foundation: **GO / ENGINEERING COMPLETE**
+- Policy process isolation: **NO-GO / NOT IMPLEMENTED**
+- SIM-02 M-B candidate: **NO-GOのまま**
+- Rank-1 equivalence: **UNMEASURED / CLAIM FORBIDDEN** — `AUD-AI01-004/005`
+- RL/LLM/searchの強度昇格: 実M-B executable bundleとpartitioned scenario corpusまで **NO-GO**
+- 次の大目的: **SIM-02B SPECIFIED / NOT IMPLEMENTED** — `specs/sim-02b-phase-contract.md`

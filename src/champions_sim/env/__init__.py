@@ -10,6 +10,9 @@ from .models import (
     EnvironmentSnapshot,
     EnvironmentVersionIdentity,
     JointChoice,
+    PolicyEnvironmentIdentity,
+    PublicResetInfo,
+    PublicTransitionInfo,
     ResetInfo,
     ResetResult,
     SealedEnvironmentFixture,
@@ -17,10 +20,18 @@ from .models import (
     StepResult,
     TransitionInfo,
 )
+from .readiness import (
+    CHAMPIONS_READINESS_SCHEMA_VERSION,
+    ChampionsReadinessError,
+    ResolvedChampionsReadiness,
+    resolve_champions_readiness,
+)
 
 __all__ = [
     "AI_ENV_ADAPTER_SCHEMA_VERSION",
     "AI_ENV_ADAPTER_VERSION",
+    "CHAMPIONS_READINESS_SCHEMA_VERSION",
+    "ChampionsReadinessError",
     "DeterministicBattleEnv",
     "EnvironmentNotActionable",
     "EnvironmentStateError",
@@ -30,10 +41,15 @@ __all__ = [
     "EnvironmentSnapshot",
     "EnvironmentVersionIdentity",
     "JointChoice",
+    "PolicyEnvironmentIdentity",
+    "PublicResetInfo",
+    "PublicTransitionInfo",
     "ResetInfo",
     "ResetResult",
+    "ResolvedChampionsReadiness",
     "SealedEnvironmentFixture",
     "SealedEnvironmentInput",
     "StepResult",
     "TransitionInfo",
+    "resolve_champions_readiness",
 ]

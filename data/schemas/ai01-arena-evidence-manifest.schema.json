@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/champions-sim/ai01-arena-evidence-manifest.schema.json",
+  "title": "AI-01 Arena Evidence Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_path",
+    "report_hash",
+    "report_file_sha256",
+    "replay_hashes",
+    "replay_files",
+    "arena_evidence_hash",
+    "prebattle_evidence_mode",
+    "prebattle_session_hash",
+    "prebattle_proof_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "ai01-arena-evidence-manifest-v1"},
+    "report_path": {"const": "arena-report.json"},
+    "report_hash": {"$ref": "#/$defs/sha256"},
+    "report_file_sha256": {"$ref": "#/$defs/sha256"},
+    "replay_hashes": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "replay_files": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/replayFile"}
+    },
+    "arena_evidence_hash": {"$ref": "#/$defs/sha256"},
+    "prebattle_evidence_mode": {"const": "regeneration_required"},
+    "prebattle_session_hash": {"$ref": "#/$defs/sha256"},
+    "prebattle_proof_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "replayFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "replay_hash", "file_sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^replays/[0-9]{6}-[0-9a-f]{64}\\.json$"
+        },
+        "replay_hash": {"$ref": "#/$defs/sha256"},
+        "file_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

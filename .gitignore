@@ -37,5 +37,22 @@ llm_cache/
 videos/
 screenshots/
 
+# ML experiment trackers and training logs.
+wandb/
+mlruns/
+tensorboard/
+lightning_logs/
+tb_logs/
+*.tfevents.*
+
+# Model weights, checkpoints, and array dumps.
+*.ckpt
+*.safetensors
+*.npy
+*.npz
+*.pt
+*.pth
+*.onnx
+
 # Raw emulator captures are local-only and may contain sensitive screen data.
 **/artifacts/bluestacks/

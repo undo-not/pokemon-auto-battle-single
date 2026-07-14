@@ -25,7 +25,7 @@ Statusは次を使う。
 | `REQ-SIM02-002` | 固定分母に対する実行coverageを測る | SIM-02 objective variables、CoverageGap Schema | `build_coverage_gap_report` | 235 denominator、explicit mapped/covered 0、unmapped 235、mega unsupportedをblocker化。`n<dex>`暗黙mappingを廃止 | implemented, blocked_external |
 | `REQ-SIM02-008` | explicit mappingから合法到達capabilityを固定分母として閉包する | Target Mapping / Target Pool Manifest / Target Capability Schemas | `src/champions_sim/capabilities`、`src/champions_sim/compiler` | exact pool一致、same-signature dedupe＋origin refs、unresolved denominator fail-closed、公式235 missing拒否。実M-Bは0 resolved、219 unresolved、16 conflict、118 target rows、count/rate null | verified_local compiler integration; evidence promotion pending |
 | `REQ-SIM02-009` | 6実行次元、grounding、silent fallback、holdoutをcaller入力なしで再計算する | Execution/Grounding/MechanicCoverage/Holdout Schemas | compiler semantic/execution/probe registry、capability coverage/grounding/holdout builders | 6次元各欠落、`rng:none`、explicit unsupported、silent mutation、resolver rejection、holdout overlap/new/unknown。実M-Bはexecution gap 118、個別executor未取得118、silent fallback 0 | verified_local compiler integration; positive executors/actual evidence pending |
-| `REQ-SIM02-010` | sealed source lockからcandidateまたは理由付きNO-GOを一コマンド・content-addressed生成する | Source-to-Capability Report / Production Catalog Input Schemas | `scripts/build_source_to_capability_bundle.py`、`src/champions_sim/compiler` | 同入力のreport/doc byte一致、report/artifact改変拒否、candidate schema branch、`--require-candidate`、Gitignored output制限。現M-Bは理由付きNO-GO | verified_local operational compiler; candidate blocked_external |
+| `REQ-SIM02-010` | sealed source lockから理由付きNO-GOを一コマンド・content-addressed生成する | Source-to-Capability Report / intake-only Production Catalog Input Schemas | `scripts/build_source_to_capability_bundle.py`、`src/champions_sim/compiler` v1 | 同入力のreport/doc byte一致、report/artifact改変拒否、`--require-candidate`、Gitignored output制限。v1はverified/emit-eligibleと非空corpusを受理しないためpositive candidateは構造的に対象外 | verified_local diagnostic compiler; positive path not implemented |
 | `REQ-SIM02-003` | 全TargetCapabilityを外部groundingへtraceする | GroundingTrace/Capture Schema、SIM-02 grounding contract | capture models/store、GroundingTrace、EnvObservation | local contract/schema tests。actual実機traceとcapability completenessは未取得 | verified_local contracts, blocked_external |
 | `REQ-SIM02-004` | unknown・unsupported・unverifiedのsilent fallbackを0にする | SIM-02 silent fallback contract | coverage blocker、unknown legal mask、engine fail-closed、simultaneous mega fail-closed | regulation/grounding/mega mutation tests、synthetic report `silent_fallback_count: 0` | verified_local for implemented paths; full pool blocked |
 | `REQ-SIM02-005` | sealed inputから48時間以内にcandidateまたは正しいNO-GOを出す | SIM-02、PD-008、RehearsalReport Schema v1 | v1はsynthetic_internal NO-GO専用。coverage/diffをsealed入力から再計算 | forgery/参照不一致/candidate/live拒否、operational success、deployable false。actual/sealed historical v2未定義 | provisional, verified_local NO-GO plumbing, blocked_external |
@@ -44,7 +44,13 @@ Statusは次を使う。
 | `REQ-GROUND-002` | raw captureをGit外・content-addressed・read-only provenance付きで保存する | Capture Manifest Schema、Git policy | strict `CaptureStore` | content-derived capture ID、artifact bytes/manifest/path/unknown-key strict verify、manifest hash、tamper復旧、local-only/distribution拒否test | verified_local contract; no actual capture |
 | `REQ-GROUND-003` | BlueStacksを起動・操作せず診断し、外部所有権が保証された場合だけread-only captureする | SIM-02、Capture contract | `discover_bluestacks`、`AdbObservationCapture`、diagnostic script | generic adbをBlueStacks daemon証拠にせず、daemon side-effect riskを常時block。外部ownership supervisor未実装 | verified_local diagnostics, capture blocked_external |
 | `REQ-AIENV-001` | instant observation、public history、legal mask、grounding provenanceをAI境界で分離する | AI Env Observation Schema | `EnvObservation` draft、`ValidatedEnvObservation`、resolver-backed validation | field/event allowlist、実store/trace/evidence binding、unknown vs all-illegal、blocker/actionable排他、missing trace/capture拒否 | verified_local strict promotion gate; actual device adapter pending |
-| `REQ-AIENV-002` | version/hash/seed付きのpolicy-free `reset`/`step`環境を提供する | AI Env adapter dataclass contract | `src/champions_sim/env` | 同seed/choice byte一致、hidden HP/stats非漏洩、stale/cross-episode/illegal拒否、reset isolation、candidate evidence fail-closed | verified_local adapter; reward/policy absent by design |
+| `REQ-AIENV-002` | version/hash/seed付きのpolicy-free `reset`/`step`環境を提供する | AI Env adapter dataclass contract | `src/champions_sim/env` | 同seed/choice byte一致、hidden HP/stats非漏洩、policy/privileged lineage分離、非公開bench set・fixture ID・engine seed変更のpublic result byte非干渉、stale/cross-episode/illegal拒否、reset isolation、candidate evidence fail-closed | verified_local adapter; reward/policy absent by design |
+| `REQ-AI01-001` | simulator fidelityとdecision qualityを別目的変数で測る | AI-01 Phase Contract、Arena Report Schema | `src/champions_sim/arena/models.py` | summary再計算、pair/seat/seed完全性、改変拒否、`rank1_equivalence_status: unmeasured`固定 | verified_local; external strength blocked |
+| `REQ-AI01-002` | self-declared VERIFIEDでSIM-02 NO-GOを迂回させない | SIM-02/AI-01 readiness contract | `src/champions_sim/env/readiness.py`、sealed env binding | fake hash、candidate flag再署名、artifact欠落、SIM-01偽装、直接seal構築、fixture/record aliasを拒否。v1はintake-onlyなので正規seal発行なし | verified_local fail-closed resolver; positive issuance not implemented |
+| `REQ-AI01-003` | 6体rosterから順序付き3体を双方同時に選ぶ | AI-01 Team Preview contract | `src/champions_sim/prebattle` | exact 6→3、commit/reveal、Catalog/RuleSet/nonce/order/roster/materialized-state、source/runtime/typed-initial-state/config identity、mapping順・alias topology・未申告state差・選出中state変化拒否、detached own-roster graph、private set非干渉、同一policy再利用・途中状態・Item Clause・種族非合法技拒否 | verified_local synthetic |
+| `REQ-AI01-004` | 部分観測だけで両seatを公平に評価する | AI-01 Arena Plan/Report Schema | `run_paired_arena`、`runner.run_battle(policy_seed=...)` | paired engine/agent seed、role-fixed RNG、side swap、fresh/exact BoundAgent、private setからpublic battle IDへの非干渉、Replay再検証100%、default evidence manifest、byte-identical report | verified_local trusted-process synthetic; process isolation/external corpus blocked |
+| `REQ-AI01-005` | 非自明な選出・行動baselineを持つ | AI-01 Phase Contract、PD-009 | `TypeCoverageTeamSelectionPolicy`、`TypeAwareDamagePolicy`、benchmark CLI | tactical type fixture、selection privacy、64 pair/128 match frozen golden、Random referenceへ正のutility | verified_local engineering baseline only |
+| `REQ-SIM02B-001` | intake診断v1とproduction promotion v2を分離し、証拠付きscenario corpusからだけreadinessを発行する | SIM-02B Phase Contract | 未実装 | resolver-backed source/license/artifact record、verified mapping、非空development、lineage分離external holdout、grounding、engine-backed probe、synthetic positive E2E、現M-B exact NO-GOが必要 | specified; not implemented |
 | `REQ-GROUND-004` | GroundingFrameをcapture contentとmanifest identityへ結合する | GroundingTrace/Capture Schema | `capture_id + capture_manifest_hash`、`validate_grounding_trace_against_store` | conflicting/wrong manifest hash、missing capture、artifact改竄、evidenceなしconformant traceを拒否 | verified_local resolver contract; no actual trace |
 | `REQ-OBS-001` | 瞬間観測とUI量子化・履歴memoryを分離する | SIM-01 observation contract | `BattleState.observation_for` | opponentのhp/max_hp/exact fractionを`None`、observation leakage tests。UI adapterは未実装 | verified_local snapshot, adapter pending |
 | `REQ-TYPE-001` | sparse type chartの省略pairを倍率1とする | Catalog Schema、SIM-01 type chart contract | `CatalogSnapshot.type_effectiveness` | Catalog semantic validation、engine tests | verified_local |
@@ -81,7 +87,7 @@ regulation_snapshot_hash
 + rehearsal_report_hash
 ```
 
-`source-to-capability-bundle-v1`はcandidate前段のidentityとして次を同じreport hashへ束ねる。
+`source-to-capability-bundle-v1`はintake診断identityとして次を同じreport hashへ束ねる。v1の`ProductionCatalogInput`はverified promotion、final denominator、emit eligibilityを拒否し、compilerは空development corpusを固定するため、このlineageだけではcandidate/readinessを発行できない。
 
 ```text
 catalog_intake_hash
@@ -98,6 +104,23 @@ catalog_intake_hash
 ```
 
 target poolのversionが変わった場合、旧coverage reportを新しい分母へ流用しない。
+
+AI-01 Arena reportは次のidentityを追加で保存する。
+
+```text
+candidate agent ID/version/implementation hash/source hash/live-runtime hash/config hash
++ opponent agent ID/version/implementation hash/source hash/live-runtime hash/config hash
++ observation contract
++ Catalog/RuleSet/initial-state hash
++ prebattle Catalog/RuleSet + selection source/live-runtime/initial-state/config + complete-session hash + proof hash
++ partition + paired engine seed + independent agent seed
++ candidate seat/terminal outcome/utility
++ Replay hash + final-state hash + verification result
++ provisional_decision_ids
++ scope blockers + rank1 equivalence status
+```
+
+通常CLIはreport、全Replay、各file SHA-256を持つevidence manifestをGitignored `runs/`へ置き、GitにはSchema、小さなgolden summary、hashだけを残す。保存Replayはstrict load後にengine再実行できる。一方、manifestは6体prebattle run本体を含まず`prebattle_evidence_mode: regeneration_required`なので、standalone Arena認証bundleではない。完全な`verify_arena_run`には同一prebattle入力とexact BoundAgentの再生成が必要である。evidence hashは認証ではない。`PD-009`の64 pairは回帰予算であり昇格閾値ではない。
 
 現M-B snapshotのreadinessは次のように分離して報告する。
 

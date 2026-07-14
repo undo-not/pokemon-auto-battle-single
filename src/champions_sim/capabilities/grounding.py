@@ -26,12 +26,14 @@ _ASSERTION_TOKEN = object()
 
 @dataclass(frozen=True, slots=True, init=False)
 class ValidatedGroundingAssertionSet:
+    assertion_set_id: str
     assertion_set_hash: str
     target_capability_set_hash: str
     results: tuple[ResolvedGroundingAssertion, ...]
 
     def __init__(
         self,
+        assertion_set_id: str,
         assertion_set_hash: str,
         target_capability_set_hash: str,
         results: tuple[ResolvedGroundingAssertion, ...],
@@ -42,6 +44,7 @@ class ValidatedGroundingAssertionSet:
             raise ValueError(
                 "ValidatedGroundingAssertionSet must be created by its resolver gate"
             )
+        object.__setattr__(self, "assertion_set_id", assertion_set_id)
         object.__setattr__(self, "assertion_set_hash", assertion_set_hash)
         object.__setattr__(self, "target_capability_set_hash", target_capability_set_hash)
         object.__setattr__(self, "results", results)
@@ -114,6 +117,7 @@ def resolve_grounding_assertions(
             )
         )
     return ValidatedGroundingAssertionSet(
+        assertion_set.assertion_set_id,
         assertion_set.assertion_set_hash,
         capability_set.capability_set_hash,
         tuple(results),
