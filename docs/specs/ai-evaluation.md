@@ -42,7 +42,7 @@ Every saved match must be replay-verifiable. A summary without its resolvable pl
 
 Deterministic heuristic baselines are used to validate selection, action, observation, paired-seat, and report wiring. Synthetic fixture results are regression evidence, not estimates of real metagame performance.
 
-Policy identities bind normalized source fingerprints and live runtime fingerprints. Because the runtime fingerprint deliberately includes interpreter bytecode, exact policy, plan, proof, report, and evidence hashes are interpreter-specific down to the declared interpreter patch version. A golden benchmark declares its reference interpreter: that exact interpreter must reproduce exact hashes, while other supported interpreters must reproduce the semantic result and pass the identity/hash integrity checks. CI covers the CPython 3.10.6 reference runtime and a newer supported runtime.
+Policy identities bind normalized source fingerprints and live runtime fingerprints. Because the runtime fingerprint deliberately includes interpreter bytecode, exact policy, plan, proof, report, and evidence hashes are interpreter-specific down to the declared interpreter patch version. A golden benchmark declares its reference interpreter: that exact interpreter must reproduce exact hashes, while other supported interpreters must reproduce the semantic result and pass the identity/hash integrity checks. CI covers the runtime declared by the golden and a newer supported runtime.
 
 Legacy serialized budget ID `PD-009` remains an artifact compatibility label; ADR-0004 defines its meaning and claim boundary.
 

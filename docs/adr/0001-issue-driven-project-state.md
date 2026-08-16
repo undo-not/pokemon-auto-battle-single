@@ -25,6 +25,8 @@ Do not track status reports, roadmaps, milestone reports, next-work sections, ph
 
 Revise the frozen-baseline container schema from `1.0.0` to `2.0.0` and remove its unused `validation_report` field. This is an intentional governance-metadata break: old `1.0.0` containers are rejected by the latest loader, while the baseline ID, engine semantics, Catalog/RuleSet identities, Replay hash, final-state hash, and legacy decision IDs remain unchanged.
 
+`baseline_id` is a stable logical artifact identity, independent of the container's `schema_version`; its `sim01-frozen-v1` suffix does not declare the container schema version.
+
 Use `AGENTS.md` as the shared cross-agent contract. Let Claude Code import it from `CLAUDE.md`. Treat agent memory and chats as non-authoritative.
 
 ## Consequences

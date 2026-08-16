@@ -46,7 +46,7 @@ Branch existence does not indicate progress. Record pauses, blockers, scope chan
 
 Repository documentation uses present-tense normative language. It explains what the system is, what it must do, and why durable decisions were made.
 
-Keep tracked Markdown specifications, policies, and ADRs directly inside their respective `docs/specs/`, `docs/policies/`, and `docs/adr/` directories. Do not create nested report, archive, phase, or milestone trees.
+Keep tracked documentation files directly inside their respective `docs/specs/`, `docs/policies/`, and `docs/adr/` directories. Do not create nested report, archive, phase, or milestone trees.
 
 Do not add:
 

@@ -130,13 +130,15 @@ def forbidden_path_reason(relative: str) -> str | None:
         return "legacy specs/ tree is replaced by docs/specs/"
     if lowered in FORBIDDEN_BASENAMES:
         return f"{path.name} is a project-state document"
-    if any(fragment in lowered for fragment in FORBIDDEN_NAME_FRAGMENTS):
+    if lowered.endswith(".md") and any(
+        fragment in lowered for fragment in FORBIDDEN_NAME_FRAGMENTS
+    ):
         return f"{path.name} uses a prohibited project-state filename"
     if path.parts and path.parts[0] == "docs":
         if len(path.parts) < 3 or path.parts[1] not in {"specs", "policies", "adr"}:
             return "files under docs/ must live in specs/, policies/, or adr/"
-        if lowered.endswith(".md") and len(path.parts) != 3:
-            return "Markdown in docs/ must be a direct specification, policy, or ADR"
+        if len(path.parts) != 3:
+            return "files in docs/ must be direct specifications, policies, or ADRs"
     return None
 
 

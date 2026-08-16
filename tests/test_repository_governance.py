@@ -36,9 +36,13 @@ def test_project_state_document_names_are_rejected() -> None:
     assert forbidden_path_reason("docs/status.json") is not None
     assert forbidden_path_reason("docs/specs/archive/design.md") is not None
     assert forbidden_path_reason("docs/specs/reports/weekly-progress.md") is not None
+    assert forbidden_path_reason("docs/specs/reports/status.json") is not None
+    assert forbidden_path_reason("docs/specs/reports/weekly-notes.json") is not None
     assert forbidden_path_reason("docs/policies/archive/milestone-2026-08.md") is not None
     assert forbidden_path_reason("MILESTONES.md") is not None
     assert forbidden_path_reason("ROADMAP-2026.md") is not None
+    assert forbidden_path_reason("src/champions_sim/progression.py") is None
+    assert forbidden_path_reason("tests/test_progress_bar.py") is None
     assert forbidden_path_reason("specs/sim-phase-contract.md") is not None
     assert forbidden_path_reason("docs/specs/battle-engine.md") is None
     assert forbidden_path_reason("docs/adr/0001-example.md") is None
