@@ -18,6 +18,10 @@ Git must not track task reports or generated experiment summaries merely to pres
 
 ## External artifacts
 
+Use storage outside the repository workspace as the canonical home for bulk
+experiment data and model generations. Workspace-local ignored copies are
+disposable caches or migration inputs, not unique evidence or a store of record.
+
 Keep these paths and artifact classes outside Git:
 
 - `data/raw/`, `data/processed/`, `replays/`, and `runs/`;
@@ -27,6 +31,21 @@ Keep these paths and artifact classes outside Git:
 - credentials, private keys, signing tokens, actual enrollment registries, and ledgers.
 
 Do not copy the legacy `champions` project or third-party corpora into this repository. Read permitted local sources through explicit external locators.
+
+## Active model materialization
+
+The runtime may materialize at most one verified active model release bundle in
+an ignored workspace directory when direct external loading is impractical. One
+logical release may contain multiple role-specific models, such as policy,
+value, or belief models. All other checkpoints, generations, and experiment
+runs remain outside the workspace.
+
+`Active` means explicitly promoted and pinned, not merely the newest training
+output. Before atomic activation, its manifest must identify the release and
+model roles and pin each file's SHA-256, model and feature-interface versions,
+preprocessing identity, and runtime and numeric-precision compatibility. The
+external artifact store remains canonical after materialization, and activation
+removes the previously active workspace bundle.
 
 ## Size limits
 
