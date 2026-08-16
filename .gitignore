@@ -21,6 +21,11 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Agent-local state and isolated worktrees.
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/worktrees/
+
 # Local secrets and machine-specific settings
 .env
 .env.*

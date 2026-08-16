@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "baseline_id": "sim01-frozen-v1",
   "frozen_on": "2026-07-13",
   "simulator_version": "0.1.0",
@@ -20,6 +20,5 @@
   "source_manifest_ids": [
     "champions-wiki-damage-reference",
     "legacy-champions-59bf57c-sim01"
-  ],
-  "validation_report": "docs/validation-report-sim01.md"
+  ]
 }

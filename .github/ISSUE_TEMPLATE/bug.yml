@@ -1,0 +1,41 @@
+name: Bug
+description: Report reproducible behavior that violates a current specification.
+title: "[Bug] "
+labels:
+  - "type:bug"
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Include the smallest reproducible input and exact error or output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Link the specification, schema, invariant, or ADR that defines it.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide commands, seed, artifact identities, and environment details without secrets or restricted payloads.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and evidence boundary
+      description: State affected scopes and whether claims, data, or external systems are involved.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Fix acceptance criteria
+      placeholder: "- [ ] Regression test reproduces the failure\n- [ ] Fix satisfies the current specification"
+    validations:
+      required: true

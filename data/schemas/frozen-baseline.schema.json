@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:champions_sim:schema:frozen-baseline:1",
+  "$id": "urn:champions_sim:schema:frozen-baseline:1.1",
   "title": "Frozen simulator regression baseline",
   "type": "object",
   "additionalProperties": false,
@@ -23,11 +23,10 @@
     "turn",
     "decision_windows",
     "provisional_decision_ids",
-    "source_manifest_ids",
-    "validation_report"
+    "source_manifest_ids"
   ],
   "properties": {
-    "schema_version": {"const": "1.0.0"},
+    "schema_version": {"const": "1.1.0"},
     "baseline_id": {"const": "sim01-frozen-v1"},
     "frozen_on": {"type": "string", "format": "date"},
     "simulator_version": {"const": "0.1.0"},
@@ -53,8 +52,7 @@
       "type": "array",
       "items": {"type": "string", "minLength": 1},
       "uniqueItems": true
-    },
-    "validation_report": {"type": "string", "minLength": 1}
+    }
   },
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}

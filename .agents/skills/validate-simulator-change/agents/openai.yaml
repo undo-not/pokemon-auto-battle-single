@@ -1,0 +1,4 @@
+interface:
+  display_name: "Validate Simulator Change"
+  short_description: "Run risk-based deterministic simulator validation"
+  default_prompt: "Use $validate-simulator-change to select and run the required deterministic, schema, artifact, and regression checks for this change."

@@ -273,6 +273,6 @@ def test_fixture_limit_is_stricter_than_general_file_limit(tmp_path: Path) -> No
     )
 
     assert [(value.path, value.policy_id) for value in violations] == [
-        ("data/fixtures/too-large.json", "PD-002"),
-        ("data/golden/too-large.json", "PD-002"),
+        ("data/fixtures/too-large.json", "ADR-0002:fixture-limit"),
+        ("data/golden/too-large.json", "ADR-0002:fixture-limit"),
     ]

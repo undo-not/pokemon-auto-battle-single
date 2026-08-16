@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute GitHub Issue"
+  short_description: "Deliver one GitHub Issue through a reviewed PR"
+  default_prompt: "Use $execute-github-issue to deliver the linked GitHub Issue on an isolated branch and open a verified PR."
