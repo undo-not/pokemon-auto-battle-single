@@ -1,4 +1,4 @@
-"""Check candidate Git files against the provisional repository size policy."""
+"""Check candidate Git files against the repository artifact-size policy."""
 
 from __future__ import annotations
 
@@ -55,14 +55,18 @@ def evaluate_paths(
                     path=relative.as_posix(),
                     byte_size=size,
                     limit=limit,
-                    policy_id="PD-002" if is_fixture else "PD-001",
+                    policy_id=(
+                        "ADR-0002:fixture-limit"
+                        if is_fixture
+                        else "ADR-0002:file-limit"
+                    ),
                 )
             )
     return tuple(violations)
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Check provisional Git size limits")
+    parser = argparse.ArgumentParser(description="Check Git artifact size limits")
     parser.add_argument("--file-limit", type=int, default=DEFAULT_FILE_LIMIT)
     parser.add_argument("--fixture-limit", type=int, default=DEFAULT_FIXTURE_LIMIT)
     return parser

@@ -1,0 +1,41 @@
+name: Research
+description: Gather evidence or run an experiment without silently changing product truth.
+title: "[Research] "
+labels:
+  - "type:research"
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Research question
+      description: State a falsifiable question and the decision it may inform.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence sources and permissions
+      description: Identify authority, acquisition method, use policy, and artifact storage.
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Method and controls
+      description: Define inputs, baselines, partitions, metrics, uncertainty, and stopping conditions.
+    validations:
+      required: true
+  - type: textarea
+    id: claims
+    attributes:
+      label: Allowed and forbidden claims
+      description: State what a positive or negative result can and cannot establish.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

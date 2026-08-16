@@ -1,0 +1,56 @@
+name: Objective
+description: Define a cohesive, outcome-oriented project deliverable.
+title: "[Objective] "
+labels:
+  - "type:objective"
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: Describe the observable result, not the implementation steps.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Explain why the result matters and link relevant specifications or ADRs.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: State the included product and engineering surfaces.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State adjacent work and external effects that are not authorized.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use checkboxes for observable completion conditions.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Required evidence
+      description: List tests, artifacts, reviews, and external validation required.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and safety boundaries
+      description: Identify blockers, permissions, restricted data, and authorized external actions.
+    validations:
+      required: true

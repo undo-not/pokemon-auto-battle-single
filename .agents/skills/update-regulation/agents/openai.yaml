@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Regulation"
+  short_description: "Process a regulation change with fail-closed evidence"
+  default_prompt: "Use $update-regulation to ingest an official regulation change, rebuild evidence, and issue a candidate or reasoned NO-GO."

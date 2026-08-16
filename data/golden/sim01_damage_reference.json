@@ -5,7 +5,7 @@
   "source": {
     "label": "Champions Wiki damage formula worked example",
     "url": "https://champions.pokewiki.net/ダメージ計算式",
-    "legacy_spec_path": "specs/damage.md",
+    "legacy_spec_path": "legacy-project://specs/damage.md",
     "legacy_revision": "59bf57cc3cdcb2eaa93cbab19eb9851a6fb15c1b"
   },
   "input": {

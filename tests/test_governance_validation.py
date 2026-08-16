@@ -236,7 +236,7 @@ def test_ml_artifacts_are_ignored_without_hiding_small_sources_or_fixtures() -> 
         "src/champions_sim/engine.py",
         "tests/test_governance_validation.py",
         "data/fixtures/sim01_catalog.json",
-        "data/golden/ai01-synthetic-benchmark-v1.json",
+        "data/golden/ai01-synthetic-benchmark-v2.json",
     }
     result = subprocess.run(
         ["git", "check-ignore", "--no-index", "-z", "--stdin"],
@@ -273,6 +273,6 @@ def test_fixture_limit_is_stricter_than_general_file_limit(tmp_path: Path) -> No
     )
 
     assert [(value.path, value.policy_id) for value in violations] == [
-        ("data/fixtures/too-large.json", "PD-002"),
-        ("data/golden/too-large.json", "PD-002"),
+        ("data/fixtures/too-large.json", "ADR-0002:fixture-limit"),
+        ("data/golden/too-large.json", "ADR-0002:fixture-limit"),
     ]

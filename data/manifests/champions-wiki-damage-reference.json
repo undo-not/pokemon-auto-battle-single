@@ -27,8 +27,8 @@
       "artifact_id": "sim01-damage-golden-reference",
       "logical_path": "data/golden/sim01_damage_reference.json",
       "media_type": "application/json",
-      "byte_size": 737,
-      "sha256": "sha256:804eb62b66a92bd3dd4036aa081be90eb7fafbb97051322990bc4454f9c1c0ad",
+      "byte_size": 754,
+      "sha256": "sha256:545deddd37cee1732d98007ffc7c70ae98f9e656670831293215a2b274ee7ed9",
       "record_count": 1
     }
   ],
