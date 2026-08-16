@@ -15,6 +15,10 @@
 
 Chat, local plans, agent memory, branch names, and generated reports are never authoritative project state.
 
+Write GitHub Issue and pull-request titles, descriptions, progress comments, and
+review summaries in Japanese. Keep code identifiers, paths, commands, and quoted
+external text in their original language when translation would reduce precision.
+
 ## Issue contract
 
 Every implementation Issue must state:
