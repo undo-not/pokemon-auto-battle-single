@@ -63,8 +63,12 @@ def test_ai01_synthetic_benchmark_matches_frozen_golden() -> None:
     reference_runtime = expected["reference_runtime"]
     is_reference_runtime = (
         platform.python_implementation() == reference_runtime["implementation"]
-        and sys.version_info[:2]
-        == (reference_runtime["major"], reference_runtime["minor"])
+        and sys.version_info[:3]
+        == (
+            reference_runtime["major"],
+            reference_runtime["minor"],
+            reference_runtime["micro"],
+        )
     )
     for key in RUNTIME_BOUND_HASH_KEYS:
         assert re.fullmatch(r"[0-9a-f]{64}", actual[key]) is not None

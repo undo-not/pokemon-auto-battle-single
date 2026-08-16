@@ -3,7 +3,8 @@
   "reference_runtime": {
     "implementation": "CPython",
     "major": 3,
-    "minor": 10
+    "minor": 10,
+    "micro": 6
   },
   "scope": "synthetic_local",
   "decision": "synthetic_benchmark_complete",
