@@ -50,6 +50,7 @@ FORBIDDEN_BASENAMES = {
 FORBIDDEN_NAME_FRAGMENTS = (
     "validation-report",
     "phase-contract",
+    "phase-status",
 )
 
 FORBIDDEN_HEADINGS = {
@@ -75,6 +76,20 @@ FORBIDDEN_HEADINGS = {
     "次のゲート",
     "未達と次目的",
 }
+
+FORBIDDEN_HEADING_PREFIXES = (
+    "current gate",
+    "next ",
+    "milestone",
+    "completion status",
+    "remaining work",
+    "project progress",
+    "現在のゲート",
+    "次の",
+    "進捗 ",
+    "未達 ",
+    "残る作業",
+)
 
 FRONTMATTER_RE = re.compile(r"\A---\n(?P<body>.*?)\n---\n", re.DOTALL)
 HEADING_RE = re.compile(r"^#{1,6}\s+(?P<title>.+?)\s*#*\s*$", re.MULTILINE)
@@ -114,12 +129,9 @@ def forbidden_path_reason(relative: str) -> str | None:
         return f"{path.name} is a project-state document"
     if any(fragment in lowered for fragment in FORBIDDEN_NAME_FRAGMENTS):
         return f"{path.name} uses a prohibited project-state filename"
-    if (
-        len(path.parts) == 2
-        and path.parts[0] == "docs"
-        and lowered.endswith(".md")
-    ):
-        return "Markdown under docs/ must live in specs/, policies/, or adr/"
+    if path.parts and path.parts[0] == "docs" and lowered.endswith(".md"):
+        if len(path.parts) < 3 or path.parts[1] not in {"specs", "policies", "adr"}:
+            return "Markdown under docs/ must live in specs/, policies/, or adr/"
     return None
 
 
@@ -127,13 +139,77 @@ def forbidden_headings(text: str) -> tuple[str, ...]:
     headings: list[str] = []
     for match in HEADING_RE.finditer(text):
         title = " ".join(match.group("title").strip().lower().split())
-        if title in FORBIDDEN_HEADINGS:
+        if title in FORBIDDEN_HEADINGS or any(
+            title.startswith(prefix) for prefix in FORBIDDEN_HEADING_PREFIXES
+        ):
             headings.append(match.group("title").strip())
     return tuple(headings)
 
 
 def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _yaml_violations(root: Path, selected: Iterable[Path]) -> list[GovernanceViolation]:
+    yaml_paths = tuple(
+        path
+        for path in selected
+        if path.is_file()
+        and path.suffix.lower() in {".yml", ".yaml"}
+        and (
+            path.resolve().is_relative_to((root / ".github").resolve())
+            or path.name == "openai.yaml"
+        )
+    )
+    if not yaml_paths:
+        return []
+    try:
+        import yaml
+    except ImportError:
+        return [
+            GovernanceViolation(
+                "yaml_dependency_missing",
+                "pyproject.toml",
+                "install the dev extra to validate tracked YAML",
+            )
+        ]
+
+    violations: list[GovernanceViolation] = []
+    for path in yaml_paths:
+        relative = path.resolve().relative_to(root.resolve()).as_posix()
+        try:
+            document = yaml.load(_read_text(path), Loader=yaml.BaseLoader)
+        except yaml.YAMLError as error:
+            violations.append(
+                GovernanceViolation("invalid_yaml", relative, str(error).splitlines()[0])
+            )
+            continue
+        if not isinstance(document, dict):
+            violations.append(
+                GovernanceViolation("invalid_yaml", relative, "top level must be a mapping")
+            )
+            continue
+        if relative.startswith(".github/ISSUE_TEMPLATE/") and path.name != "config.yml":
+            required = {"name", "description", "body"}
+            missing = sorted(required - set(document))
+            if missing or not isinstance(document.get("body"), list):
+                detail = (
+                    f"missing keys: {', '.join(missing)}"
+                    if missing
+                    else "body must be a sequence"
+                )
+                violations.append(GovernanceViolation("invalid_issue_form", relative, detail))
+        if relative == ".github/workflows/ci.yml":
+            required = {"name", "on", "jobs"}
+            missing = sorted(required - set(document))
+            if missing or not isinstance(document.get("jobs"), dict):
+                detail = (
+                    f"missing keys: {', '.join(missing)}"
+                    if missing
+                    else "jobs must be a mapping"
+                )
+                violations.append(GovernanceViolation("invalid_workflow", relative, detail))
+    return violations
 
 
 def _skill_violations(root: Path, skill_name: str) -> list[GovernanceViolation]:
@@ -232,6 +308,8 @@ def evaluate_repository(
                         "broken_markdown_link", relative, f"missing target: {target}"
                     )
                 )
+
+    violations.extend(_yaml_violations(root, selected_relative.values()))
 
     claude = root / "CLAUDE.md"
     if claude.is_file() and _read_text(claude).lstrip().splitlines()[0] != "@AGENTS.md":

@@ -13,6 +13,7 @@ Inspect the complete diff and map every changed surface to the checks below. Run
 
 ```powershell
 python scripts/check_repository_governance.py
+python scripts/validate_project_skills.py
 python scripts/check_repo_size.py
 git diff --check
 python -m pytest -q
@@ -42,7 +43,7 @@ Run V2 fail-closed and V3 enrollment, signature, revocation, clock, ledger, TOCT
 
 ### Documentation, policy, ADR, or Skill
 
-Run the governance checker. Validate every changed canonical Skill with the bundled Skill validator. Confirm Claude wrappers still point to canonical Skill paths and contain no independent workflow copy.
+Run the governance checker and `python scripts/validate_project_skills.py`. During Skill authoring, also run the environment-provided standard Skill validator when available. Confirm Claude wrappers still point to canonical Skill paths and contain no independent workflow copy.
 
 ### BlueStacks or grounding
 

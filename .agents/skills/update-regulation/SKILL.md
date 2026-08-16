@@ -27,7 +27,7 @@ description: Process a Pokémon Champions singles regulation change through offi
 2. Keep development and external holdout isolated. Open the holdout only after sealing development artifacts.
 3. Obtain authorized private-match grounding for required new or changed semantics.
 4. Re-resolve source policy, artifacts, trust enrollment, signatures, time, revocation, and ledger state.
-5. Run the risk-based checks in `$validate-simulator-change`.
+5. Follow the `validate-simulator-change` project Skill and run all applicable checks.
 
 ## Decide
 

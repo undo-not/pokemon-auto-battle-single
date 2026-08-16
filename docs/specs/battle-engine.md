@@ -110,3 +110,12 @@ Verification re-resolves the referenced Catalog and RuleSet, replays every trans
 ## Validation
 
 Engine changes require focused unit tests, integration Replay verification, frozen-baseline validation, deterministic repetition, and the full test suite. Claims about Pokémon Champions behavior additionally require the grounding contract in `evidence-and-readiness.md`.
+
+For an external conformance corpus, define:
+
+```text
+verified_transition_conformance_rate
+  = matching_verified_transitions / required_verified_transitions
+```
+
+Pokémon Champions transition conformance requires `verified_transition_conformance_rate == 1.0` over the frozen required assertion denominator. Missing or unsupported assertions remain in the denominator; deterministic local tests and synthetic smoke runs do not enter the verified numerator automatically.

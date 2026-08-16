@@ -36,13 +36,13 @@ These instructions apply to the entire repository and are shared by Codex and Cl
 - Preserve deterministic output for equal versioned inputs, decisions, and seed.
 - Keep schemas strict, reject duplicate JSON keys and non-finite numbers, and preserve content-addressed identity.
 - Preserve user changes and avoid destructive Git operations.
-- Use `rg` for repository search and `apply_patch` for hand edits.
+- Prefer `rg` for repository search when available. Use the active agent's safe, reviewable patch/edit facility for hand edits.
 - Keep generated and large artifacts in ignored directories described by `docs/policies/artifacts-and-data.md`.
 
 ## Validation
 
 - Select checks by risk using `.agents/skills/validate-simulator-change/SKILL.md`.
-- Always run `python scripts/check_repository_governance.py` and `python scripts/check_repo_size.py` for a pull request.
+- Always run `python scripts/check_repository_governance.py`, `python scripts/validate_project_skills.py`, and `python scripts/check_repo_size.py` for a pull request.
 - Run focused tests while iterating and the full `python -m pytest -q` suite before handoff.
 - Run `python scripts/validate_sim01_frozen.py` when simulator, Replay, Catalog, RuleSet, or fixture behavior can change.
 - Report commands, results, skipped external checks, and residual risk in the pull request.
@@ -51,4 +51,4 @@ These instructions apply to the entire repository and are shared by Codex and Cl
 
 - Follow `docs/policies/agent-collaboration.md` when consulting or delegating to another coding agent.
 - Never let the authoring agent be the only reviewer for a high-risk change.
-- Do not use permission-bypass modes outside an explicitly authorized disposable sandbox.
+- Do not use permission-bypass modes for this repository.

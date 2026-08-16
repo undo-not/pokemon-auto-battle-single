@@ -8,7 +8,7 @@ The intended game-facing environment is private friend matches. Ranked-match aut
 
 - Python 3.10 or newer
 - Runtime dependencies: Python standard library
-- Development dependency: `pytest`
+- Development dependencies: `pytest`, `PyYAML`
 - Optional local integrations: GitHub CLI, Claude Code, BlueStacks diagnostics
 
 ## Setup
@@ -29,10 +29,22 @@ python scripts/validate_sim01_bundle.py --usage-scope local_research
 python scripts/validate_sim01_frozen.py
 python scripts/check_repo_size.py
 python scripts/check_repository_governance.py
+python scripts/validate_project_skills.py
 python -m pytest -q
 ```
 
 Commands that build source, regulation, benchmark, or grounding artifacts write to Gitignored content-addressed directories unless explicitly documented otherwise. They do not grant permission to redistribute source data and do not authorize a production candidate.
+
+## Build and diagnostic surfaces
+
+- `scripts/build_regulation_diff.py`: compare immutable Regulation and TargetPool inputs.
+- `scripts/build_catalog_intake.py`: inspect a permitted external legacy root and build a Gitignored Catalog intake candidate.
+- `scripts/build_source_to_capability_bundle.py`: compile source/mapping/mechanics diagnostics and optionally a promotion assessment.
+- `scripts/build_m_b_authoritative_intake.py`: compile the pinned M-B authoritative workbench without network acquisition.
+- `scripts/run_ai01_benchmark.py`: run the paired synthetic engineering arena and store output under `runs/` unless summary-only mode is selected.
+- `scripts/diagnose_bluestacks.py`: perform read-only process/configuration diagnostics; it must not start ADB, capture, or the player.
+
+Builder `--dry-run` modes do not persist output. A supported `--require-candidate` option exits with code 3 for a reasoned `NO-GO`. Distribution validation fails while any required source license or use permission is unresolved. External legacy-root paths are runtime inputs and never portable artifact identity.
 
 ## Repository structure
 

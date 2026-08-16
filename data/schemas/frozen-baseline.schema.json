@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:champions_sim:schema:frozen-baseline:1.1",
+  "$id": "urn:champions_sim:schema:frozen-baseline:2",
   "title": "Frozen simulator regression baseline",
   "type": "object",
   "additionalProperties": false,
@@ -26,7 +26,7 @@
     "source_manifest_ids"
   ],
   "properties": {
-    "schema_version": {"const": "1.1.0"},
+    "schema_version": {"const": "2.0.0"},
     "baseline_id": {"const": "sim01-frozen-v1"},
     "frozen_on": {"type": "string", "format": "date"},
     "simulator_version": {"const": "0.1.0"},

@@ -28,7 +28,7 @@ description: Deliver a cohesive GitHub Issue from intake through an isolated bra
 
 ## Validate and review
 
-1. Use `$validate-simulator-change` to select focused and repository-wide checks.
+1. Follow the `validate-simulator-change` project Skill to select focused and repository-wide checks.
 2. Inspect the final diff and run `git diff --check`.
 3. Request independent review for high-risk simulator, data, provenance, trust, or integration changes. Give the reviewer the diff and Issue, not the desired findings.
 4. Resolve actionable findings or explain their rejection in the pull request.

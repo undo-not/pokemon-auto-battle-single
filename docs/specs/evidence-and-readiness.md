@@ -60,6 +60,16 @@ Portable V3 output excludes volatile local paths and verification time from stab
 
 ## Readiness decision
 
+The readiness metrics and required targets are:
+
+| Metric | Definition | Candidate target |
+|---|---|---|
+| `target_pool_execution_coverage_rate` | fully supported target capabilities / declared target capabilities | `== 1.0` |
+| `verified_grounding_conformance_rate` | passed verified grounding assertions / required verified grounding assertions | `== 1.0` |
+| `silent_fallback_count` | unsupported, unknown, or unverified branches that continued without an explicit unsupported result, blocker, or `NO-GO` | `== 0` |
+
+Return a null coverage or conformance rate when its denominator is not final; never remove missing capabilities or assertions to manufacture a rate.
+
 A named-regulation environment can become a private-match candidate only when:
 
 - target mappings and required Catalog fields are verified for the complete denominator;
