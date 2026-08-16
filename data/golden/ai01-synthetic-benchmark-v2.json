@@ -1,5 +1,5 @@
 {
-  "schema_version": "ai01-synthetic-benchmark-golden-v1",
+  "schema_version": "ai01-synthetic-benchmark-golden-v2",
   "reference_runtime": {
     "implementation": "CPython",
     "major": 3,

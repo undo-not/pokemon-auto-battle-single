@@ -9,7 +9,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Sequence
 
-import yaml
+try:
+    import yaml
+except ImportError:  # pragma: no cover - exercised through a monkeypatched test
+    yaml = None
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -147,6 +150,14 @@ def _validate_openai_yaml(
 
 
 def evaluate_skills(root: Path = ROOT) -> tuple[SkillViolation, ...]:
+    if yaml is None:
+        return (
+            SkillViolation(
+                "yaml_dependency_missing",
+                "pyproject.toml",
+                "install the dev extra to validate project Skills",
+            ),
+        )
     violations: list[SkillViolation] = []
     for skill_name in CANONICAL_SKILLS:
         canonical_root = root / ".agents/skills" / skill_name

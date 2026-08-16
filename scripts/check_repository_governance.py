@@ -48,6 +48,9 @@ FORBIDDEN_BASENAMES = {
 }
 
 FORBIDDEN_NAME_FRAGMENTS = (
+    "milestone",
+    "progress",
+    "roadmap",
     "validation-report",
     "phase-contract",
     "phase-status",
@@ -129,9 +132,11 @@ def forbidden_path_reason(relative: str) -> str | None:
         return f"{path.name} is a project-state document"
     if any(fragment in lowered for fragment in FORBIDDEN_NAME_FRAGMENTS):
         return f"{path.name} uses a prohibited project-state filename"
-    if path.parts and path.parts[0] == "docs" and lowered.endswith(".md"):
+    if path.parts and path.parts[0] == "docs":
         if len(path.parts) < 3 or path.parts[1] not in {"specs", "policies", "adr"}:
-            return "Markdown under docs/ must live in specs/, policies/, or adr/"
+            return "files under docs/ must live in specs/, policies/, or adr/"
+        if lowered.endswith(".md") and len(path.parts) != 3:
+            return "Markdown in docs/ must be a direct specification, policy, or ADR"
     return None
 
 

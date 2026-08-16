@@ -7,8 +7,11 @@ import re
 import subprocess
 import sys
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
+GOLDEN = ROOT / "data/golden/ai01-synthetic-benchmark-v2.json"
 RUNTIME_BOUND_HASH_KEYS = (
     "plan_hash",
     "prebattle_proof_hash",
@@ -18,11 +21,8 @@ RUNTIME_BOUND_HASH_KEYS = (
 
 
 def test_ai01_synthetic_benchmark_matches_frozen_golden() -> None:
-    expected = json.loads(
-        (ROOT / "data/golden/ai01-synthetic-benchmark-v1.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    assert expected["schema_version"] == "ai01-synthetic-benchmark-golden-v2"
     completed = subprocess.run(
         [
             sys.executable,
@@ -77,3 +77,18 @@ def test_ai01_synthetic_benchmark_matches_frozen_golden() -> None:
 
     assert expected["rank1_equivalence_claim_allowed"] is False
     assert expected["interpretation"] == "engineering_baseline_only_not_rank_evidence"
+
+
+def test_ai01_reference_runtime_is_exercised_by_ci() -> None:
+    expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    runtime = expected["reference_runtime"]
+    reference_version = f'{runtime["major"]}.{runtime["minor"]}.{runtime["micro"]}'
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+
+    configured_versions = workflow["jobs"]["validate"]["strategy"]["matrix"][
+        "python-version"
+    ]
+    assert reference_version in configured_versions

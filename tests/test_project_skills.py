@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import scripts.validate_project_skills as validator
 from scripts.validate_project_skills import CANONICAL_SKILLS, ROOT, evaluate_skills
 
 
@@ -98,3 +99,11 @@ def test_skill_validator_rejects_openai_metadata_and_wrapper_drift(
 
     codes = {value.code for value in evaluate_skills(tmp_path)}
     assert {"invalid_openai_yaml", "missing_openai_yaml", "wrapper_drift"} <= codes
+
+
+def test_skill_validator_reports_missing_yaml_dependency(monkeypatch) -> None:
+    monkeypatch.setattr(validator, "yaml", None)
+
+    violations = validator.evaluate_skills(ROOT)
+
+    assert tuple(value.code for value in violations) == ("yaml_dependency_missing",)

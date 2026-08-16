@@ -46,6 +46,8 @@ Branch existence does not indicate progress. Record pauses, blockers, scope chan
 
 Repository documentation uses present-tense normative language. It explains what the system is, what it must do, and why durable decisions were made.
 
+Keep tracked Markdown specifications, policies, and ADRs directly inside their respective `docs/specs/`, `docs/policies/`, and `docs/adr/` directories. Do not create nested report, archive, phase, or milestone trees.
+
 Do not add:
 
 - status, progress, roadmap, milestone, or completion reports;
@@ -73,6 +75,7 @@ Required repository-level checks are:
 
 ```powershell
 python scripts/check_repository_governance.py
+python scripts/validate_project_skills.py
 python scripts/check_repo_size.py
 python -m pytest -q
 ```

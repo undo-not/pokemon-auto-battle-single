@@ -19,6 +19,7 @@ Describe the behavior or repository contract delivered by the linked Issue.
 List exact commands and outcomes. Do not paste full logs.
 
 - [ ] `python scripts/check_repository_governance.py`
+- [ ] `python scripts/validate_project_skills.py`
 - [ ] `python scripts/check_repo_size.py`
 - [ ] Focused tests
 - [ ] `python -m pytest -q`

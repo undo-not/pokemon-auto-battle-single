@@ -236,7 +236,7 @@ def test_ml_artifacts_are_ignored_without_hiding_small_sources_or_fixtures() -> 
         "src/champions_sim/engine.py",
         "tests/test_governance_validation.py",
         "data/fixtures/sim01_catalog.json",
-        "data/golden/ai01-synthetic-benchmark-v1.json",
+        "data/golden/ai01-synthetic-benchmark-v2.json",
     }
     result = subprocess.run(
         ["git", "check-ignore", "--no-index", "-z", "--stdin"],
