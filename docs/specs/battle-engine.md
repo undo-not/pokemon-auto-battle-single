@@ -1,121 +1,64 @@
-# Battle engine specification
+# Battle engine
 
-## Inputs and outputs
+## Dependency identity
 
-The battle engine consumes:
+The engine is the external Pokémon Showdown checkout resolved from `data/manifests/pokemon-showdown-champions.json`. Before starting a bridge, the resolver verifies:
 
-- an immutable, hash-addressed `Catalog`;
-- an immutable, hash-addressed `RuleSet`;
-- a validated initial battle state;
-- one legal decision per required player and decision window;
-- a non-negative RNG seed.
+- repository URL, exact commit, and Git tree;
+- MIT license bytes and selected source-file SHA-256 values;
+- Node minimum version;
+- compiled JavaScript and runtime-dependency file set, count, and aggregate fingerprint;
+- exact format ID, display name, mod, and singles game type.
 
-It produces a terminal or non-terminal battle state, ordered events, decision-window records, RNG lineage, observations, and canonical Replay identity.
+The checkout, `node_modules`, configuration copy, and `dist/` remain outside the repository. Runtime battle execution performs no network access.
 
-## Determinism
+## Bridge protocol
 
-Equal Catalog bytes, RuleSet bytes, initial state, ordered decisions, engine-semantics version, and seed must produce equal:
+Python starts one persistent Node process and communicates through protocol `1.0.0`, one JSON object per line. Requests and responses carry a monotonically increasing request ID. The startup handshake binds the normalized SHA-256 of the executed bridge source. Both sides reject duplicate keys, non-finite numbers, excessive input, unknown envelope fields, protocol drift, and malformed values.
 
-- legal-action sets;
-- RNG draws and draw positions;
-- events and event order;
-- observations at every window;
-- final state and winner;
-- canonical Replay bytes and SHA-256.
+One process may host multiple named sessions. Session IDs are unique, battle state is not shared, and commands are serialized by the Python transport. Process exit, timeout, mismatched response identity, invalid format, invalid team, or invalid choice is an error. A timeout terminates the transport so a late response cannot be consumed by a later request. No request may invoke a Python mechanics fallback.
 
-Do not use wall-clock time, process-global randomness, unordered collection iteration, environment locale, network input, or LLM output in battle transitions.
+## Battle session
 
-## State and legality
+Session creation requires:
 
-Complete state records both teams, active slots, HP, status, volatile state, stat ranks, moves and PP, field state, turn, once-per-battle resources, and RNG position required by supported mechanics.
+- the bound format ID;
+- four explicit Showdown PRNG seed integers;
+- two player names;
+- two structured teams accepted by Showdown's `TeamValidator`.
 
-The legal-action resolver is the only source of actions accepted by the engine. It validates at least:
+Team set fields are closed by the bridge contract before they reach `Teams.pack`. The engine owns species, item, ability, move, stat-point, clause, and preview legality.
 
-- active Pokémon and forced-switch state;
-- move availability and PP;
-- target legality;
-- switch target availability;
-- regulation and once-per-battle resource constraints;
-- decision-window ownership.
+At each decision window, `observe(player)` returns only that player's latest request, legal Showdown choice strings, and player-visible protocol log. Team preview enumerates ordered legal selections; move, switch, and engine-advertised transformation choices are derived from the request. Showdown remains the final legality authority when public information such as possible trapping makes a mask conditional.
 
-Illegal actions fail before state mutation and do not consume RNG.
-
-## Turn execution
-
-The engine resolves a turn through explicit stages:
-
-1. validate the decision set against one immutable pre-turn snapshot;
-2. apply supported pre-move transformations;
-3. determine action order from action class, move priority, effective Speed, and declared tie RNG;
-4. execute each still-valid action;
-5. resolve fainting and forced switches;
-6. resolve ordered end-of-turn effects;
-7. emit the next observation and legal-action set or a terminal result.
-
-Effect order, simultaneous-faint resolution, no-target behavior, and residual rounding are RuleSet semantics. ADR-0003 records the rationale and uncertainty boundary for legacy serialized decision IDs `PD-003`, `PD-004`, and `PD-007`.
-
-## RNG
-
-Every stochastic mechanic uses the battle RNG stream and records enough data to replay the draw. A mechanic that does not draw RNG records that fact rather than fabricating a draw. An action invalidated before a stochastic stage does not consume draws from later stages.
-
-Tests must cover RNG range, draw count, tie behavior, no-target behavior, and replayed draw equivalence.
+`choose(player, choice)` passes one bounded Showdown choice string to strict-choice mode. A rejected choice does not become a default action.
 
 ## Damage
 
-Damage calculation is a pure function of validated inputs and RuleSet semantics. It explicitly represents level, offensive and defensive stats, power, category, ranks, STAB, type effectiveness, critical state, random roll, and supported modifiers.
+Damage is not reimplemented in Python. `damage_sample` clones the current Showdown battle state, resolves the named move with the pinned engine, and returns the state revision, deterministic sample, HP context, clone PRNG lineage, and live PRNG values before and after inspection. It neither changes the live battle nor omits current field, status, item, ability, or transformation state.
 
-Rounding and modifier order are part of the RuleSet. Unsupported weather, terrain, screen, spread, variable-power, item, ability, or other modifiers must be named and rejected by `UnsupportedDamageMechanic`; they must not be ignored.
+A damage sample is one seeded engine result, not a complete probability distribution and not client-grounding evidence.
 
-## Structured effects
+## Determinism and Replay
 
-Moves, abilities, items, statuses, field effects, and transformations enter runtime only through registered structured-effect handlers. A handler declares triggers, targets, ordering stage, state mutation, RNG behavior, emitted events, and incompatibilities.
+For equal manifest identity, build fingerprint, Node version, format, teams, names, ordered choices, and seed, the canonical Replay and its SHA-256 must be equal. Wall-clock protocol lines are normalized and do not enter identity with their actual time.
 
-For each promoted capability, require:
+Replay `1.0.0` binds:
 
-- a source-bound structured meaning;
-- a registered handler identity;
-- at least one positive engine scenario;
-- canonical Replay evidence;
-- mutation tests for unsupported or malformed variants.
-
-Unknown, missing, or conflicting effects remain unsupported. Generic “normal damage”, “no effect”, or similar fallback is forbidden.
-
-## Mega Evolution
-
-Mega Evolution, when enabled by a RuleSet, is a once-per-battle declared transformation bound to an eligible base form, required item, target form, stats, types, and ability. It occurs at the configured pre-move stage, persists for the battle, and appears in public observations and Replay.
-
-The engine must reject ineligible species, missing or wrong items, repeated use, unknown form relations, and ungrounded simultaneous-order semantics. A generic engineering fixture does not establish regulation-specific Mega fidelity.
-
-## Observations
-
-Complete state and player observation are separate types. A player observation may contain only public team-preview information, public active state, revealed moves/items/abilities according to the RuleSet, public field state, public event history, own private information, and the player's legal actions.
-
-The engine must not deliver opponent unrevealed sets, sealed fixtures, RNG state, source lineage, holdout labels, or evaluator-only metadata to a policy.
-
-## Replay
-
-Replay binds:
-
-- schema and engine-semantics version;
-- Catalog and RuleSet hashes;
-- source and legacy decision identifiers required by the serialized version;
-- initial state;
-- every decision window and submitted decision;
-- RNG lineage and ordered events;
-- final state and winner;
+- exact engine, tree, build, runtime, license, and bridge identity;
+- format and seed;
+- normalized Showdown input log;
+- normalized public battle log;
+- terminal state, winner, turns, and score when available;
 - canonical self-hash.
 
-Verification re-resolves the referenced Catalog and RuleSet, replays every transition, and rejects identity, legality, event, observation, RNG, or final-state drift.
+The input log contains packed private teams and is an external research artifact, not a policy observation or a Git fixture. Replay verification rejects a changed self-hash or engine/bridge identity, permits only the bound start format, two validated player teams, and player-choice commands, then re-executes the log and requires the complete canonical Replay to match. A Replay proves reproducibility for its pinned engine; it does not prove official client conformance.
 
-## Validation
+## Failure and privacy invariants
 
-Engine changes require focused unit tests, integration Replay verification, frozen-baseline validation, deterministic repetition, and the full test suite. Claims about Pokémon Champions behavior additionally require the grounding contract in `evidence-and-readiness.md`.
-
-For an external conformance corpus, define:
-
-```text
-verified_transition_conformance_rate
-  = matching_verified_transitions / required_verified_transitions
-```
-
-Pokémon Champions transition conformance requires `verified_transition_conformance_rate == 1.0` over the frozen required assertion denominator. Missing or unsupported assertions remain in the denominator; deterministic local tests and synthetic smoke runs do not enter the verified numerator automatically.
+- Unknown fields and malformed teams fail before session creation.
+- Opponent private requests never appear in the other player's observation.
+- Omniscient input logs are returned only through explicit Replay export.
+- Damage inspection operates on a clone and preserves the live PRNG state.
+- Closing one session does not affect another.
+- Missing or changed external engine identity prevents startup.

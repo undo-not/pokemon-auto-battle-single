@@ -31,7 +31,7 @@ def git_candidate_files(root: Path = ROOT) -> tuple[Path, ...]:
         capture_output=True,
     )
     values = [value for value in result.stdout.decode("utf-8").split("\0") if value]
-    return tuple(root / value for value in values)
+    return tuple(path for value in values if (path := root / value).is_file())
 
 
 def evaluate_paths(

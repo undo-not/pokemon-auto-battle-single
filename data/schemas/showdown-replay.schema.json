@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:showdown-replay:1",
+  "title": "Pinned Showdown replay v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "format_id", "seed", "input_log", "public_log", "ended", "winner", "turns", "score", "engine", "replay_hash"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "format_id": {"$ref": "#/$defs/id"},
+    "seed": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "integer", "minimum": 0, "maximum": 65535}},
+    "input_log": {"type": "array", "items": {"type": "string"}},
+    "public_log": {"type": "array", "items": {"type": "string"}},
+    "ended": {"type": "boolean"},
+    "winner": {"type": ["string", "null"]},
+    "turns": {"type": "integer", "minimum": 0},
+    "score": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 0}}
+      ]
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "repository_url", "commit", "tree", "build_fingerprint_sha256", "manifest_sha256", "node_version", "license", "bridge_protocol_version", "bridge_sha256"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "repository_url": {"type": "string", "format": "uri"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "build_fingerprint_sha256": {"$ref": "#/$defs/sha256"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "node_version": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "license": {"const": "MIT"},
+        "bridge_protocol_version": {"const": "1.0.0"},
+        "bridge_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "replay_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"ended": {"const": false}}, "required": ["ended"]},
+      "then": {"properties": {"winner": {"const": null}, "score": {"const": null}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,239}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

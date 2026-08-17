@@ -27,10 +27,11 @@ Keep these paths and artifact classes outside Git:
 - `data/raw/`, `data/processed/`, `replays/`, and `runs/`;
 - checkpoints, weights, arrays, embeddings, LLM caches, and experiment-tracker output;
 - screenshots, videos, UI hierarchies, and BlueStacks capture attachments;
-- generated Catalogs, scenario corpora, expanded assessments, probes, and trajectories;
+- generated scenario corpora, expanded evaluations, probes, and trajectories;
+- Pokemon Showdown checkouts, `node_modules`, compiled output, and package-manager caches;
 - credentials, private keys, signing tokens, actual enrollment registries, and ledgers.
 
-Do not copy the legacy `champions` project or third-party corpora into this repository. Read permitted local sources through explicit external locators.
+Do not copy the legacy `champions` project, Pokémon Showdown, or third-party corpora into this repository. Resolve the pinned Showdown build through its tracked manifest and read other permitted sources through explicit external locators.
 
 ## Active model materialization
 
@@ -72,7 +73,7 @@ Resolve the artifact from bytes at use time. A matching hash proves byte identit
 
 ## Retention
 
-Use content-addressed storage for generated bundles. Retain an artifact when it is a promoted candidate, is required to reproduce a promoted candidate, or is a non-regenerable counterexample. Prune regenerable intermediate runs only after their inputs, generator identity, and checksums are preserved.
+Use content-addressed storage for generated bundles. Retain an artifact when it is an active candidate, is required to reproduce an active candidate, or is a non-regenerable counterexample. Prune regenerable intermediate runs only after their inputs, generator identity, and checksums are preserved.
 
 Development and external-holdout artifacts use distinct content namespaces and access controls. Never copy holdout raw artifacts into the development store.
 
@@ -82,13 +83,9 @@ Treat captures as potentially sensitive. Treat unverified-license material as `l
 
 A private GitHub repository does not itself grant source-data permission. Put only non-sensitive manifests and reviewable metadata in Issues and pull requests; do not attach raw restricted payloads.
 
-## Trust state
-
-Production trust roots must live outside the workspace and artifact root. Git may contain reviewed public descriptors such as issuer IDs, public verification keys, and approved manifest hashes. Git must never contain signing keys, credentials, actual registry state, or mutable ledger databases.
-
 ## Pre-commit checks
 
 ```powershell
 python scripts/check_repo_size.py
-python scripts/validate_sim01_bundle.py --usage-scope local_research
+python scripts/bootstrap_showdown.py --verify-only
 ```

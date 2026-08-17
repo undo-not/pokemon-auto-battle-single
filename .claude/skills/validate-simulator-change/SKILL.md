@@ -1,6 +1,6 @@
 ---
 name: validate-simulator-change
-description: Select and run risk-based validation for champions_sim implementation, data, schema, documentation, policy, trust, grounding, or Skill changes. Use before handoff or pull request and when diagnosing regressions.
+description: Validate the pinned Showdown identity, bridge, Replay, grounding, repository controls, and Skills before handoff or pull request.
 ---
 
 # Validate a simulator change

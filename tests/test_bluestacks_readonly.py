@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from champions_sim.grounding import (
     AdbObservationCapture,
@@ -15,7 +16,6 @@ from champions_sim.grounding import (
     parse_bluestacks_config,
 )
 from champions_sim.grounding.bluestacks import CommandResult, _bluestacks_hd_adb_running
-from scripts.validate_sim01_bundle import validate_document_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -161,7 +161,7 @@ def test_capture_store_hashes_and_verifies_gitignored_local_artifacts(tmp_path: 
     schema = json.loads(
         (ROOT / "data/schemas/capture-manifest.schema.json").read_text(encoding="utf-8")
     )
-    validate_document_contract(manifest.to_dict(), schema, "capture manifest")
+    Draft202012Validator(schema).validate(manifest.to_dict())
 
     with pytest.raises(FileExistsError):
         store.save(payload, capture_id=manifest.capture_id)

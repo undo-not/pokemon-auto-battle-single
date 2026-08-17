@@ -24,17 +24,17 @@ These instructions apply to the entire repository and are shared by Codex and Cl
 
 - Limit game-facing operation to private friend matches.
 - Do not implement ranked-match automation or unattended BlueStacks input automation.
-- Keep battle rules deterministic and versioned. Do not ask an LLM to invent rule values or expected mechanics.
+- Resolve battle rules only through the pinned Pokemon Showdown Champions build. Do not ask an LLM to invent rule values or expected mechanics.
 - Fail closed for unsupported mechanics, missing evidence, unresolved mappings, unverified permission, or invalid lineage.
-- Keep semantic authority, usage permission, artifact identity, mapping status, execution evidence, grounding, and competitive strength as separate claims.
-- Do not promote candidate data to verified because of names, IDs, hashes, popularity, model confidence, or source prestige alone.
+- Keep upstream byte identity, license, Champions fidelity, client grounding, and competitive strength as separate claims.
+- Do not treat the pinned Showdown mod as official Champions truth without authorized client grounding.
 - Do not publish source code, raw data, captures, credentials, private keys, trust registries, or model artifacts unless the Issue explicitly authorizes that exact external action.
 
 ## Implementation
 
-- Support Python 3.10 or newer and keep runtime dependencies in the standard library unless an ADR changes the rule.
-- Preserve deterministic output for equal versioned inputs, decisions, and seed.
-- Keep schemas strict, reject duplicate JSON keys and non-finite numbers, and preserve content-addressed identity.
+- Support Python 3.10 or newer. Keep Python runtime dependencies in the standard library; ADR-0007 permits only the pinned external Node/Showdown engine.
+- Preserve deterministic output for equal engine/build/runtime identity, inputs, decisions, and seed.
+- Keep schemas strict, reject duplicate JSON keys and non-finite numbers, and preserve content-addressed identity. Never vendor Showdown, `node_modules`, or build output into Git.
 - Preserve user changes and avoid destructive Git operations.
 - Prefer `rg` for repository search when available. Use the active agent's safe, reviewable patch/edit facility for hand edits.
 - Keep generated and large artifacts in ignored directories described by `docs/policies/artifacts-and-data.md`.
@@ -44,7 +44,7 @@ These instructions apply to the entire repository and are shared by Codex and Cl
 - Select checks by risk using `.agents/skills/validate-simulator-change/SKILL.md`.
 - Always run `python scripts/check_repository_governance.py`, `python scripts/validate_project_skills.py`, and `python scripts/check_repo_size.py` for a pull request.
 - Run focused tests while iterating and the full `python -m pytest -q` suite before handoff.
-- Run `python scripts/validate_sim01_frozen.py` when simulator, Replay, Catalog, RuleSet, or fixture behavior can change.
+- Run the pinned Showdown integration suite when bridge, Replay, format binding, team, legal-action, or fixture behavior can change.
 - Report commands, results, skipped external checks, and residual risk in the pull request.
 
 ## Agent collaboration

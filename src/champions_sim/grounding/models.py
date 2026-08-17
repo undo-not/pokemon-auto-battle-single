@@ -195,7 +195,6 @@ class CaptureManifest:
 
 
 class GroundingSource(str, Enum):
-    SIMULATOR = "simulator"
     SCREEN_REGION = "screen_region"
     UI_METADATA = "ui_metadata"
     PUBLIC_HISTORY = "public_history"
@@ -229,11 +228,6 @@ class GroundedField:
         if self.status is GroundingStatus.UNKNOWN:
             if self.value is not None or self.confidence_ppm != 0:
                 raise ValueError("unknown fields require null value and zero confidence")
-        elif self.source is GroundingSource.SIMULATOR:
-            if self.status is not GroundingStatus.OBSERVED or self.artifact_ids:
-                raise ValueError(
-                    "simulator fields must be observed values without capture artifacts"
-                )
         elif not self.artifact_ids:
             raise ValueError("observed, inferred, or conflicting fields require evidence artifacts")
         if self.status is GroundingStatus.INFERRED and self.source is not GroundingSource.INFERENCE:
@@ -288,8 +282,6 @@ class GroundingFrame:
             raise ValueError("observed_at is required")
         _require_unique(tuple(value.path for value in self.fields), "grounded field paths")
         _require_unique(tuple(value.path for value in self.conformance), "conformance paths")
-        if any(value.source is GroundingSource.SIMULATOR for value in self.fields):
-            raise ValueError("grounding frames cannot use simulator-only evidence")
         allowed_artifact_ids = {"screenshot", "ui-hierarchy"}
         referenced_artifact_ids = {
             artifact_id
@@ -312,7 +304,7 @@ class GroundingTrace:
 
     schema_version: str
     trace_id: str
-    ruleset_id: str
+    format_id: str
     viewer: str
     reference_replay_hash: str | None
     frames: tuple[GroundingFrame, ...]
@@ -325,7 +317,7 @@ class GroundingTrace:
         if self.schema_version != "1.0.0":
             raise ValueError("only grounding trace schema 1.0.0 is supported")
         _require_stable_id(self.trace_id, "trace_id")
-        _require_stable_id(self.ruleset_id, "ruleset_id")
+        _require_stable_id(self.format_id, "format_id")
         if self.viewer not in {"p1", "p2"}:
             raise ValueError("viewer must be p1 or p2")
         if self.reference_replay_hash is not None:

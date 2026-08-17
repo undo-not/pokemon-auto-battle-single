@@ -1,41 +1,41 @@
-name: Research
-description: Gather evidence or run an experiment without silently changing product truth.
-title: "[Research] "
+name: 調査
+description: プロダクトの真実を暗黙に変えず、証拠収集や実験を行います。
+title: "[調査] "
 labels:
   - "type:research"
 body:
   - type: textarea
     id: question
     attributes:
-      label: Research question
-      description: State a falsifiable question and the decision it may inform.
+      label: 調査課題
+      description: 検証可能な問いと、その結果が影響する判断を記載してください。
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
-      label: Evidence sources and permissions
-      description: Identify authority, acquisition method, use policy, and artifact storage.
+      label: 情報源と利用条件
+      description: 権威性、取得方法、利用方針、成果物の保管先を記載してください。
     validations:
       required: true
   - type: textarea
     id: method
     attributes:
-      label: Method and controls
-      description: Define inputs, baselines, partitions, metrics, uncertainty, and stopping conditions.
+      label: 方法と統制
+      description: 入力、baseline、partition、指標、不確実性、終了条件を記載してください。
     validations:
       required: true
   - type: textarea
     id: claims
     attributes:
-      label: Allowed and forbidden claims
-      description: State what a positive or negative result can and cannot establish.
+      label: 許可・禁止する主張
+      description: 正負の結果から何を主張でき、何を主張できないか記載してください。
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance criteria
+      label: 受け入れ条件
       placeholder: "- [ ] ..."
     validations:
       required: true

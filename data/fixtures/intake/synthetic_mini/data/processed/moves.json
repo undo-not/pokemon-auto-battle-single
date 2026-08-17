@@ -1,9 +1,0 @@
-{
-  "source": "synthetic_moves",
-  "dataset": "moves",
-  "move_ids": [1, 2],
-  "items": [
-    {"move_id": 1, "name": "わざA", "type_id": 0, "category": "物理", "power": 40, "accuracy": 100, "pp": 20, "flags": {"direct_attack": "接触"}, "effect": "synthetic text only"},
-    {"move_id": 2, "name": "わざB", "type_id": 1, "category": "変化", "power": null, "accuracy": null, "pp": 10, "flags": {"direct_attack": "×"}, "effect": "synthetic text only"}
-  ]
-}

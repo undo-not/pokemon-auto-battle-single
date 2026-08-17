@@ -14,6 +14,7 @@ venv/
 build/
 dist/
 *.egg-info/
+node_modules/
 
 # Editors and operating systems
 .idea/
@@ -55,6 +56,7 @@ tb_logs/
 *.tfevents.*
 
 # Model weights, checkpoints, and array dumps.
+/models/active/
 *.ckpt
 *.safetensors
 *.npy

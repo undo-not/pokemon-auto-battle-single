@@ -1,0 +1,337 @@
+from __future__ import annotations
+
+import json
+import os
+import queue
+import subprocess
+from copy import deepcopy
+from pathlib import Path
+
+import pytest
+from jsonschema import Draft202012Validator
+import champions_sim.showdown.resolver as resolver_module
+
+from champions_sim.core.canonical import canonical_hash, canonical_json
+from champions_sim.showdown import (
+    ShowdownBridgeError,
+    ShowdownClient,
+    ShowdownProcessError,
+    ShowdownResolutionError,
+    resolve_showdown,
+)
+
+from showdown_fixtures import legal_team, opponent_team_with_private_item
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("SHOWDOWN_INTEGRATION") != "1",
+    reason="set SHOWDOWN_INTEGRATION=1 after bootstrapping the pinned external Showdown build",
+)
+
+
+@pytest.fixture(scope="module")
+def client() -> ShowdownClient:
+    instance = ShowdownClient()
+    yield instance
+    instance.close()
+
+
+def test_dependency_identity_and_champions_format_are_verified(client: ShowdownClient) -> None:
+    resolved = client.resolved
+
+    assert resolved.head == resolved.manifest.commit
+    assert resolved.tree == resolved.manifest.tree
+    assert resolved.build_fingerprint == resolved.manifest.build.fingerprint_sha256
+    assert len(resolved.manifest_sha256) == 64
+    assert client.default_format_id == "gen9championsbssregmb"
+
+
+def test_team_validation_comes_from_showdown(client: ShowdownClient) -> None:
+    assert client.validate_team(legal_team()) == ()
+
+    invalid = legal_team()[:-1]
+    problems = client.validate_team(invalid)
+    assert problems
+    assert any("at least 6" in problem for problem in problems)
+
+    hostile = legal_team()
+    hostile[0]["invented_field"] = "ignored-by-upstream-packer"
+    with pytest.raises(ShowdownBridgeError) as captured:
+        client.validate_team(hostile)
+    assert captured.value.code == "INVALID_REQUEST"
+
+    with pytest.raises(ShowdownBridgeError) as captured:
+        client.validate_team(legal_team(), format_id="gen9customgame")
+    assert captured.value.code == "UNBOUND_FORMAT"
+
+
+def test_private_observation_legal_actions_damage_and_replay(client: ShowdownClient) -> None:
+    session = client.create_session(
+        session_id="integration-main",
+        seed=(1, 2, 3, 4),
+        p1_name="Alpha",
+        p1_team=legal_team(),
+        p2_name="Beta",
+        p2_team=opponent_team_with_private_item(),
+    )
+    try:
+        preview = session.observe("p1")
+        assert len(preview.legal_actions) == 120
+        assert "team 123" in preview.legal_actions
+        assert any(line.startswith("|poke|p2|Pikachu") for line in preview.visible_log)
+        assert "lightball" not in canonical_json(preview)
+
+        session.choose("p1", "team 123")
+        session.choose("p2", "team 123")
+        move_request = session.observe("p1", since=preview.next_sequence)
+        assert "move 1" in move_request.legal_actions
+        assert "switch 2" in move_request.legal_actions
+
+        first = session.damage_sample("p1", "Thunderbolt")
+        second = session.damage_sample("p1", "Thunderbolt")
+        assert first == second
+        assert first.damage is not None and first.damage > 0
+        assert first.clone_seed_before != first.clone_seed_after
+        assert first.live_seed_before == first.live_seed_after == first.clone_seed_before
+
+        session.choose("p1", "move 1")
+        session.choose("p2", "move 1")
+        replay = session.replay()
+        replay_document = replay.to_dict()
+        assert replay_document["engine"]["commit"] == client.resolved.manifest.commit
+        assert len(replay_document["engine"]["bridge_sha256"]) == 64
+        assert replay_document["format_id"] == client.default_format_id
+        assert replay_document["input_log"][-2:] == [
+            ">p1 move thunderbolt",
+            ">p2 move thunderbolt",
+        ]
+        assert replay_document["replay_hash"] == replay.replay_hash
+        assert "|t:|0" in replay_document["public_log"]
+        replay_schema = json.loads(
+            (ROOT / "data/schemas/showdown-replay.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        Draft202012Validator(replay_schema).validate(replay_document)
+    finally:
+        session.close()
+
+
+def test_equal_inputs_have_equal_replay_identity_and_sessions_are_isolated(
+    client: ShowdownClient,
+) -> None:
+    sessions = [
+        client.create_session(
+            session_id=f"deterministic-{index}",
+            seed=(9, 8, 7, 6),
+            p1_name="Alpha",
+            p1_team=legal_team(),
+            p2_name="Beta",
+            p2_team=legal_team(),
+        )
+        for index in range(2)
+    ]
+    try:
+        for session in sessions:
+            session.choose("p1", "team 123")
+            session.choose("p2", "team 123")
+            session.choose("p1", "move 1")
+            session.choose("p2", "move 1")
+        assert sessions[0].replay().to_dict() == sessions[1].replay().to_dict()
+        assert sessions[0].observe("p1").session_id != sessions[1].observe("p1").session_id
+    finally:
+        for session in sessions:
+            session.close()
+
+
+def _complete_battle(client: ShowdownClient, session_id: str) -> dict[str, object]:
+    session = client.create_session(
+        session_id=session_id,
+        seed=(45, 46, 47, 48),
+        p1_name="Alpha",
+        p1_team=legal_team(),
+        p2_name="Beta",
+        p2_team=legal_team(),
+    )
+    try:
+        for _decision in range(500):
+            acted = False
+            for player in ("p1", "p2"):
+                observation = session.observe(player)
+                if observation.ended:
+                    replay = session.replay().to_dict()
+                    assert replay["winner"] in {"Alpha", "Beta"}
+                    assert replay["score"] is not None
+                    return replay
+                if observation.legal_actions:
+                    preferred = next(
+                        (
+                            choice
+                            for choice in observation.legal_actions
+                            if choice in {"team 123", "move 1"}
+                        ),
+                        observation.legal_actions[0],
+                    )
+                    session.choose(player, preferred)
+                    acted = True
+            if not acted:
+                raise AssertionError("battle stalled without a legal action")
+        raise AssertionError("battle exceeded the decision budget")
+    finally:
+        session.close()
+
+
+def test_terminal_battle_is_deterministic_and_replay_is_executable(
+    client: ShowdownClient,
+) -> None:
+    first = _complete_battle(client, "complete-a")
+    second = _complete_battle(client, "complete-b")
+
+    assert first == second
+    assert client.replay_input_log(first).to_dict() == first
+
+    altered = deepcopy(first)
+    altered["public_log"][-1] = "|win|Mallory"
+    with pytest.raises(ValueError, match="replay hash"):
+        client.replay_input_log(altered)
+
+    illegal = deepcopy(first)
+    illegal["input_log"][-1] = ">p2 move 999"
+    illegal["replay_hash"] = canonical_hash(
+        {key: value for key, value in illegal.items() if key != "replay_hash"}
+    )
+    with pytest.raises(ShowdownBridgeError) as captured:
+        client.replay_input_log(illegal)
+    assert captured.value.code == "INVALID_REPLAY"
+
+
+def test_invalid_choice_fails_closed_without_killing_bridge(client: ShowdownClient) -> None:
+    session = client.create_session(
+        session_id="invalid-choice",
+        seed=(10, 20, 30, 40),
+        p1_name="Alpha",
+        p1_team=legal_team(),
+        p2_name="Beta",
+        p2_team=legal_team(),
+    )
+    try:
+        with pytest.raises(ShowdownBridgeError) as captured:
+            session.choose("p1", "move 999")
+        assert captured.value.code == "CHOICE_REJECTED"
+        assert client.validate_team(legal_team()) == ()
+    finally:
+        session.close()
+
+
+def test_bridge_parser_rejects_duplicate_keys() -> None:
+    resolved = resolve_showdown()
+    bridge = Path(__file__).resolve().parents[1] / "bridge" / "showdown-bridge.cjs"
+    process = subprocess.Popen(
+        [
+            str(resolved.node_executable),
+            str(bridge),
+            str(resolved.root),
+            resolved.manifest.default_format.id,
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+    )
+    assert process.stdin is not None
+    assert process.stdout is not None
+    try:
+        process.stdin.write(
+            '{"protocol_version":"1.0.0","request_id":0,"method":"hello",'
+            '"method":"hello","params":{}}\n'
+        )
+        process.stdin.flush()
+        response = json.loads(process.stdout.readline())
+        assert response["ok"] is False
+        assert response["error"]["code"] == "DUPLICATE_JSON_KEY"
+        process.stdin.write(
+            '{"protocol_version":"1.0.0","request_id":1,"method":"hello",'
+            '"params":{},"__proto__":{"polluted":true}}\n'
+        )
+        process.stdin.flush()
+        response = json.loads(process.stdout.readline())
+        assert response["ok"] is False
+        assert response["error"]["code"] == "INVALID_REQUEST"
+        process.stdin.write(
+            '{"protocol_version":"1.0.0","request_id":1e9999,'
+            '"method":"hello","params":{}}\n'
+        )
+        process.stdin.flush()
+        response = json.loads(process.stdout.readline())
+        assert response["ok"] is False
+        assert response["error"]["code"] == "INVALID_JSON"
+    finally:
+        process.stdin.close()
+        process.wait(timeout=5)
+
+
+def test_terminated_bridge_never_falls_back() -> None:
+    client = ShowdownClient()
+    client.process._process.kill()
+    client.process._process.wait(timeout=5)
+    try:
+        with pytest.raises(ShowdownProcessError, match="not running"):
+            client.validate_team(legal_team())
+    finally:
+        client.close()
+
+
+def test_timeout_terminates_the_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = ShowdownClient()
+
+    def time_out(*, timeout: float) -> str:
+        assert timeout == client.process.timeout_seconds
+        raise queue.Empty
+
+    monkeypatch.setattr(client.process._responses, "get", time_out)
+    try:
+        with pytest.raises(ShowdownProcessError, match="timed out"):
+            client.validate_team(legal_team())
+        assert client.process._process.poll() is not None
+    finally:
+        client.close()
+
+
+def test_manifest_identity_mismatch_fails_before_process_start(tmp_path: Path) -> None:
+    resolved = resolve_showdown()
+    document = json.loads(resolved.manifest.path.read_text(encoding="utf-8"))
+    document["runtime_dependencies"][0]["runtime_files"][
+        "node_modules/ts-chacha20/build/src/chacha20.js"
+    ] = "0" * 64
+    hostile = tmp_path / "manifest.json"
+    hostile.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(ShowdownResolutionError, match="runtime dependency hash mismatch"):
+        resolve_showdown(
+            root=resolved.root,
+            node_executable=resolved.node_executable,
+            manifest_path=hostile,
+        )
+
+
+def test_dependency_origin_mismatch_fails_before_hash_acceptance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resolved = resolve_showdown()
+    real_run = resolver_module._run
+
+    def changed_origin(arguments: list[str], *, cwd: Path | None = None) -> str:
+        if arguments[-3:] == ["remote", "get-url", "origin"]:
+            return "https://example.invalid/lookalike.git"
+        return real_run(arguments, cwd=cwd)
+
+    monkeypatch.setattr(resolver_module, "_run", changed_origin)
+    with pytest.raises(ShowdownResolutionError, match="origin mismatch"):
+        resolve_showdown(
+            root=resolved.root,
+            node_executable=resolved.node_executable,
+        )

@@ -1,41 +1,41 @@
-name: Bug
-description: Report reproducible behavior that violates a current specification.
-title: "[Bug] "
+name: バグ
+description: 現行仕様に反する再現可能な動作を報告します。
+title: "[バグ] "
 labels:
   - "type:bug"
 body:
   - type: textarea
     id: observed
     attributes:
-      label: Observed behavior
-      description: Include the smallest reproducible input and exact error or output.
+      label: 実際の動作
+      description: 最小の再現入力と、正確なエラーまたは出力を記載してください。
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
-      description: Link the specification, schema, invariant, or ADR that defines it.
+      label: 期待する動作
+      description: 根拠となる仕様、schema、不変条件、ADRを記載してください。
     validations:
       required: true
   - type: textarea
     id: reproduction
     attributes:
-      label: Reproduction
-      description: Provide commands, seed, artifact identities, and environment details without secrets or restricted payloads.
+      label: 再現方法
+      description: 秘密情報や制限付きpayloadを除き、コマンド、seed、成果物identity、環境を記載してください。
     validations:
       required: true
   - type: textarea
     id: impact
     attributes:
-      label: Impact and evidence boundary
-      description: State affected scopes and whether claims, data, or external systems are involved.
+      label: 影響と証拠境界
+      description: 影響範囲と、主張・データ・外部システムへの影響を記載してください。
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Fix acceptance criteria
-      placeholder: "- [ ] Regression test reproduces the failure\n- [ ] Fix satisfies the current specification"
+      label: 修正の受け入れ条件
+      placeholder: "- [ ] 回帰テストで不具合を再現する\n- [ ] 修正が現行仕様を満たす"
     validations:
       required: true

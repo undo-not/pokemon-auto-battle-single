@@ -2,81 +2,44 @@
 
 ## Purpose
 
-`champions_sim` provides a reproducible Pokémon Champions singles environment for rules research, team selection, decision-policy development, and private friend-match evaluation.
+`champions_sim` is a Pokémon Champions singles research environment for team selection, decision-policy development, offline evaluation, and explicitly authorized private friend-match testing.
 
-The product separates five concerns:
+The system has four independent layers:
 
-1. deterministic battle state transition;
-2. versioned regulation and Catalog data;
-3. evidence, permission, mapping, and readiness verification;
-4. public-information policy and competitive evaluation;
-5. optional read-only client grounding and explicitly authorized private-match integration.
+1. a pinned external Pokémon Showdown Champions battle engine;
+2. a Python policy and evaluation interface that exposes one player's view;
+3. external machine-learning and experiment storage;
+4. optional read-only BlueStacks observation and private-match grounding.
 
-No upper layer may weaken a lower-layer failure. Policy quality cannot compensate for missing rule evidence, and a valid artifact hash cannot compensate for missing permission.
+A result in one layer does not upgrade another. Exact upstream bytes do not prove client fidelity, deterministic battles do not prove competitive strength, and a strong model does not authorize game operation.
 
-## Game mode
+## Game-facing scope
 
-- Battle format: singles.
-- Team-preview contract: six registered Pokémon, three selected in an ordered lineup when the active regulation uses 6→3 preview.
-- Game-facing use: private friend matches only.
+- Format: singles, including 6→3 team preview when required by the bound Showdown format.
+- Allowed target: private friend matches with explicit authorization.
 - Ranked-match automation: prohibited.
 - Unattended BlueStacks input automation: prohibited.
-- Read-only capture: permitted only under the grounding and artifact policies.
+- Ordinary diagnostics: read-only and must not start ADB, the emulator, capture, or input as a side effect.
+- Captures: local research only, stored outside Git, and handled as potentially sensitive.
 
-The simulator may evaluate rank-1-level decision quality in private or offline settings, but it must not describe itself as rank-1-equivalent without the external benchmark defined in `ai-evaluation.md`.
+## Engine boundary
 
-## System boundaries
+Battle transitions, team validation, legal choices, damage, and RNG come only from the exact Showdown build in `data/manifests/pokemon-showdown-champions.json`. The repository does not maintain a second mechanics implementation or silently fall back when Showdown is unavailable.
 
-### Authoritative configuration
+The pinned Champions mod is an engineering dependency, not official Pokémon Champions truth. Material mechanics require authorized client grounding before a private-match fidelity claim.
 
-Battle rules, entity data, regulation membership, legal actions, and structured effects come from versioned `RuleSet`, `Catalog`, `RegulationSnapshot`, and `TargetPool` documents. Python code must not embed regulation membership or silently infer missing values.
+## Policy boundary
 
-### Deterministic engine
+A policy receives only its own Showdown request, legal choice strings, and its player-visible log. It must not receive the opponent's private request, omniscient battle state, future RNG, evaluator labels, external holdout data, or artifact-store credentials.
 
-The engine consumes complete state, legal decisions, immutable configuration, and an explicit RNG seed. It emits state transitions and Replay events. Unknown mechanics fail closed.
+LLMs may propose teams, matchup plans, or actions. They cannot establish rule values, engine correctness, source permission, grounding, or competitive equivalence.
 
-### Policy adapter
+## Technology and data
 
-The policy adapter exposes only information observable by the relevant player. It cannot deliver opponent private state, hidden RNG, sealed source lineage, or holdout labels.
+- Python 3.10 or newer; standard-library Python runtime adapter.
+- Node.js 22 or newer and the manifest-pinned external Showdown checkout allowed by ADR-0007.
+- Strict versioned JSON contracts with duplicate-key and non-finite-number rejection.
+- Replays, runs, models, upstream checkouts, builds, captures, and downloaded data outside Git.
+- At most one explicitly activated model bundle may be materialized in the ignored workspace location defined by the artifact policy.
 
-### Evidence and readiness
-
-Evidence compilation tracks source identity, semantic authority, use policy, namespace mapping, field meaning, executable coverage, grounding, partitions, and trust. Portable output is not authorization by itself.
-
-### Client integration
-
-Client-facing code observes authorized private-match behavior and translates verified public state. It remains outside the battle-rule oracle and cannot modify rule truth from pixels or LLM output.
-
-## Claim scopes
-
-Every report must use one explicit claim scope:
-
-- `synthetic_local`: deterministic engineering fixture only;
-- `restricted_local`: local research using data whose wider permission is unresolved;
-- `engineering_candidate`: end-to-end implementation path verified with controlled evidence;
-- `champions_grounded`: behavior checked against authorized actual-client observations;
-- `private_match_candidate`: all environment and operational gates passed for a named regulation;
-- `competitive_evaluation`: policy strength measured under the separate evaluation contract.
-
-An upstream scope never upgrades automatically because a downstream model wins games.
-
-## Quality invariants
-
-- Equal versioned inputs, decisions, and seed produce byte-identical canonical Replay.
-- Unsupported behavior produces a structured error or unsupported status, never a guessed approximation.
-- Every external value retains source, hash, version, and use-policy lineage.
-- Development and holdout evidence remain lineage-separated.
-- Large or sensitive artifacts stay outside Git.
-- Regulations can be replaced without retraining or rewriting regulation-neutral engine contracts.
-- A regulation update yields a deployable candidate or a reasoned `NO-GO`; it never lowers evidence thresholds to meet a deadline.
-
-## Technology constraints
-
-- Python 3.10 or newer.
-- Python standard library for runtime code unless an ADR changes the dependency policy.
-- `pytest` for automated tests.
-- JSON documents use strict schemas, unique keys, finite numbers, stable IDs, and canonical hashes.
-
-## Change rules
-
-Behavioral changes require specification, implementation, schema, fixture, and test updates in the same pull request. Backward-incompatible serialized changes require a new schema or semantics version. Stable historical IDs may remain in serialized formats for compatibility, but their current rationale must resolve to an ADR.
+Behavioral changes update implementation, current specs, schemas, fixtures, and tests together. Backward-incompatible serialized changes receive a new schema or bridge protocol version.
