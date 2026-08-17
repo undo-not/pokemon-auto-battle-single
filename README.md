@@ -28,7 +28,7 @@ If Node or npm is not on `PATH`, pass `--node` and `--npm`. A pinned `npm@11.6.2
 
 ```powershell
 python -m champions_sim verify-showdown
-python -m champions_sim battle --input data/fixtures/showdown-battle-script.json
+python -m champions_sim battle --input data/fixtures/showdown-battle-script.json --allow-incomplete
 python -m champions_sim damage --input data/fixtures/showdown-battle-script.json --attacker p1 --move Thunderbolt
 python -m champions_sim replay --input C:\external-artifacts\replay.json
 python scripts/diagnose_bluestacks.py

@@ -9,6 +9,7 @@ const fs = require("node:fs");
 const PROTOCOL_VERSION = "1.0.0";
 const MAX_LINE_BYTES = 1024 * 1024;
 const MAX_SESSIONS = 64;
+const MAX_PREVIEW_ACTIONS = 4096;
 const SESSION_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/;
 const PLAYER_IDS = new Set(["p1", "p2"]);
 const SODIUM_SEED = /^sodium,[0-9a-f]{64}$/;
@@ -345,13 +346,31 @@ function switchActions(request) {
   return actions;
 }
 
-function legalActions(request) {
+function permutationCount(size, chosenSize) {
+  let count = 1;
+  for (let index = 0; index < chosenSize; index++) {
+    count *= size - index;
+    if (count > MAX_PREVIEW_ACTIONS) return count;
+  }
+  return count;
+}
+
+function legalActions(request, formatId) {
   if (!request || request.wait) return [];
   if (request.teamPreview) {
     const size = request.side?.pokemon?.length;
-    const chosen = request.maxChosenTeamSize || size;
-    if (size !== 6 || chosen !== 3) {
-      throw new ProtocolError("FORMAT_DRIFT", "bound Champions format must preview exactly 6 Pokemon and choose 3");
+    const chosen = request.maxChosenTeamSize ?? size;
+    const ruleTable = Dex.formats.getRuleTable(assertFormat(formatId));
+    const minimum = ruleTable.minTeamSize;
+    const maximum = ruleTable.maxTeamSize;
+    const picked = ruleTable.pickedTeamSize ?? size;
+    if (
+      !Number.isInteger(size) || !Number.isInteger(chosen) ||
+      !Number.isInteger(minimum) || !Number.isInteger(maximum) || !Number.isInteger(picked) ||
+      size < minimum || size > maximum || chosen !== picked || chosen < 1 || chosen > size ||
+      permutationCount(size, chosen) > MAX_PREVIEW_ACTIONS
+    ) {
+      throw new ProtocolError("FORMAT_DRIFT", "team preview differs from the bound effective format constraints");
     }
     return permutations(size, chosen);
   }
@@ -463,7 +482,7 @@ function observation(session, player, since) {
     ...sessionSummary(session),
     player,
     request: session.requests[player],
-    legal_actions: legalActions(session.requests[player]),
+    legal_actions: legalActions(session.requests[player], session.formatId),
     visible_log: log.slice(since),
     next_sequence: log.length,
   };
@@ -607,8 +626,10 @@ async function dispatch(method, params) {
     const attacker = assertString(params.attacker, "attacker", 2);
     if (!PLAYER_IDS.has(attacker)) throw new ProtocolError("INVALID_REQUEST", "attacker must be p1 or p2");
     const move = assertString(params.move, "move", 128);
-    const liveSeedBefore = session.stream.battle.prng.getSeed();
-    const clone = Battle.fromJSON(session.stream.battle.toJSON());
+    const liveBattle = session.stream.battle;
+    const liveSeedBefore = liveBattle.prng.getSeed();
+    const liveStateBefore = JSON.stringify(liveBattle.toJSON());
+    const clone = Battle.fromJSON(liveStateBefore);
     const sourceSide = clone[attacker];
     const targetSide = clone[attacker === "p1" ? "p2" : "p1"];
     const source = sourceSide?.active?.[0];
@@ -618,39 +639,48 @@ async function dispatch(method, params) {
     if (!source.moveSlots.some(slot => slot.id === moveId)) {
       throw new ProtocolError("MOVE_UNAVAILABLE", `${source.name} does not know ${move}`);
     }
-    const seedBefore = clone.prng.getSeed();
-    let activeMove = clone.dex.getActiveMove(moveId);
-    const baseTarget = activeMove.target;
-    clone.setActiveMove(activeMove, source, target);
-    clone.singleEvent("ModifyType", activeMove, null, source, target, activeMove, activeMove);
-    clone.singleEvent("ModifyMove", activeMove, null, source, target, activeMove, activeMove);
-    activeMove = clone.runEvent("ModifyType", source, target, activeMove, activeMove);
-    activeMove = clone.runEvent("ModifyMove", source, target, activeMove, activeMove);
-    if (!activeMove) throw new ProtocolError("DAMAGE_UNAVAILABLE", "move modification prevented damage inspection");
-    if (activeMove.target !== baseTarget) {
-      throw new ProtocolError("DAMAGE_UNAVAILABLE", "move modification changed the target and requires full move execution");
+    let result;
+    try {
+      const seedBefore = clone.prng.getSeed();
+      let activeMove = clone.dex.getActiveMove(moveId);
+      const baseTarget = activeMove.target;
+      clone.setActiveMove(activeMove, source, target);
+      clone.singleEvent("ModifyType", activeMove, null, source, target, activeMove, activeMove);
+      clone.singleEvent("ModifyMove", activeMove, null, source, target, activeMove, activeMove);
+      activeMove = clone.runEvent("ModifyType", source, target, activeMove, activeMove);
+      activeMove = clone.runEvent("ModifyMove", source, target, activeMove, activeMove);
+      if (!activeMove) throw new ProtocolError("DAMAGE_UNAVAILABLE", "move modification prevented damage inspection");
+      if (activeMove.target !== baseTarget) {
+        throw new ProtocolError("DAMAGE_UNAVAILABLE", "move modification changed the target and requires full move execution");
+      }
+      const damage = clone.actions.getDamage(source, target, activeMove, true);
+      const normalizedDamage = typeof damage === "number" ? damage : null;
+      const damageStatus = typeof damage === "number" ? "value" : damage === false ? "blocked" : damage === null ? "silent_failure" : "non_damaging";
+      result = {
+        session_id: session.id,
+        revision: session.revision,
+        attacker,
+        source: source.species.name,
+        target: target.species.name,
+        move_id: moveId,
+        move_type: activeMove.type,
+        move_category: activeMove.category,
+        damage: normalizedDamage,
+        damage_status: damageStatus,
+        target_max_hp: target.maxhp,
+        target_current_hp: target.hp,
+        clone_seed_before: seedBefore,
+        clone_seed_after: clone.prng.getSeed(),
+        live_seed_before: liveSeedBefore,
+        live_seed_after: liveBattle.prng.getSeed(),
+      };
+    } finally {
+      if (JSON.stringify(liveBattle.toJSON()) !== liveStateBefore) {
+        session.poisoned = "damage inspection mutated the live battle state";
+        throw new ProtocolError("SESSION_POISONED", session.poisoned);
+      }
     }
-    const damage = clone.actions.getDamage(source, target, activeMove, true);
-    const normalizedDamage = typeof damage === "number" ? damage : null;
-    const damageStatus = typeof damage === "number" ? "value" : damage === false ? "blocked" : damage === null ? "silent_failure" : "non_damaging";
-    return {
-      session_id: session.id,
-      revision: session.revision,
-      attacker,
-      source: source.species.name,
-      target: target.species.name,
-      move_id: moveId,
-      move_type: activeMove.type,
-      move_category: activeMove.category,
-      damage: normalizedDamage,
-      damage_status: damageStatus,
-      target_max_hp: target.maxhp,
-      target_current_hp: target.hp,
-      clone_seed_before: seedBefore,
-      clone_seed_after: clone.prng.getSeed(),
-      live_seed_before: liveSeedBefore,
-      live_seed_after: session.stream.battle.prng.getSeed(),
-    };
+    return result;
   }
 
   if (method === "export_replay") {
@@ -697,8 +727,11 @@ async function dispatch(method, params) {
   if (method === "close_session") {
     assertObject(params, "params", ["session_id"]);
     const session = getSession(params, true);
-    await session.stream.writeEnd();
-    sessions.delete(session.id);
+    try {
+      await session.stream.writeEnd();
+    } finally {
+      sessions.delete(session.id);
+    }
     return {session_id: session.id, closed: true};
   }
 

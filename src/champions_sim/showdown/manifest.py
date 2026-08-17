@@ -143,6 +143,7 @@ class ShowdownFormat:
 class ShowdownBuild:
     algorithm: str
     include_roots: tuple[str, ...]
+    closed_roots: tuple[str, ...]
     include_files: tuple[str, ...]
     extension: str
     file_count: int
@@ -396,7 +397,15 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     build_value = _mapping(
         root["build"],
         "build",
-        {"algorithm", "include_roots", "include_files", "extension", "file_count", "fingerprint_sha256"},
+        {
+            "algorithm",
+            "include_roots",
+            "closed_roots",
+            "include_files",
+            "extension",
+            "file_count",
+            "fingerprint_sha256",
+        },
     )
 
     def paths(value: Any, label: str) -> tuple[str, ...]:
@@ -413,12 +422,13 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     build = ShowdownBuild(
         algorithm=_string(build_value["algorithm"], "build.algorithm"),
         include_roots=paths(build_value["include_roots"], "build.include_roots"),
+        closed_roots=paths(build_value["closed_roots"], "build.closed_roots"),
         include_files=paths(build_value["include_files"], "build.include_files"),
         extension=_string(build_value["extension"], "build.extension"),
         file_count=file_count,
         fingerprint_sha256=_hex(build_value["fingerprint_sha256"], "build.fingerprint_sha256", _HEX_64),
     )
-    if build.algorithm != "sha256-path-nul-sha256-lf-v1":
+    if build.algorithm != "sha256-path-nul-sha256-lf-v2":
         raise ManifestError(f"unsupported build fingerprint algorithm: {build.algorithm}")
     if _EXTENSION.fullmatch(build.extension) is None:
         raise ManifestError("build.extension must be a simple file extension")

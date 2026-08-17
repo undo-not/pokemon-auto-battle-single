@@ -29,10 +29,20 @@ def test_battle_script_fixture_and_cli(capsys: pytest.CaptureFixture[str]) -> No
     )
     Draft202012Validator(schema).validate(document)
 
-    assert main(["battle", "--input", str(fixture)]) == 0
+    assert main(["battle", "--input", str(fixture), "--allow-incomplete"]) == 0
     replay = json.loads(capsys.readouterr().out)
     assert replay["format_id"] == "gen9championsbssregmb"
     assert replay["input_log"][-1] == ">p2 move thunderbolt"
+
+
+def test_battle_cli_requires_explicit_incomplete_replay_export(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fixture = ROOT / "data/fixtures/showdown-battle-script.json"
+
+    assert main(["battle", "--input", str(fixture)]) == 2
+    error = json.loads(capsys.readouterr().err)
+    assert "REPLAY_INCOMPLETE" in error["error"]
 
 
 def test_damage_cli_uses_showdown_state(
@@ -57,7 +67,7 @@ def test_replay_cli_reexecutes_and_verifies_document(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     fixture = ROOT / "data/fixtures/showdown-battle-script.json"
-    assert main(["battle", "--input", str(fixture)]) == 0
+    assert main(["battle", "--input", str(fixture), "--allow-incomplete"]) == 0
     replay = json.loads(capsys.readouterr().out)
     replay_path = tmp_path / "replay.json"
     replay_path.write_text(json.dumps(replay, ensure_ascii=False), encoding="utf-8")
@@ -85,7 +95,15 @@ def test_cli_forces_utf8_when_parent_console_is_cp932() -> None:
     environment = os.environ.copy()
     environment["PYTHONIOENCODING"] = "cp932:strict"
     result = subprocess.run(
-        [sys.executable, "-m", "champions_sim", "battle", "--input", str(fixture)],
+        [
+            sys.executable,
+            "-m",
+            "champions_sim",
+            "battle",
+            "--input",
+            str(fixture),
+            "--allow-incomplete",
+        ],
         cwd=ROOT,
         env=environment,
         capture_output=True,

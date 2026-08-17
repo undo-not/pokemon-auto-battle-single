@@ -25,6 +25,7 @@ from champions_sim.showdown.resolver import (  # noqa: E402
     ShowdownResolutionError,
     default_showdown_root,
     resolve_showdown,
+    sanitized_git_environment,
 )
 
 
@@ -50,11 +51,17 @@ def _run(
         raise BootstrapError(f"command failed: {arguments[0]}: {error}") from error
 
 
-def _output(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
+def _output(
+    arguments: Sequence[str],
+    *,
+    cwd: Path | None = None,
+    environment: dict[str, str] | None = None,
+) -> str:
     try:
         result = subprocess.run(
             arguments,
             cwd=cwd,
+            env=environment,
             check=True,
             capture_output=True,
             text=True,
@@ -101,6 +108,7 @@ def _ensure_external(destination: Path) -> Path:
 
 def _checkout(destination: Path, git: Path, repository_url: str, commit: str) -> None:
     created = False
+    git_environment = sanitized_git_environment()
     if not destination.exists():
         destination.parent.mkdir(parents=True, exist_ok=True)
         _run(
@@ -111,25 +119,40 @@ def _checkout(destination: Path, git: Path, repository_url: str, commit: str) ->
                 "--no-checkout",
                 repository_url,
                 str(destination),
-            ]
+            ],
+            environment=git_environment,
         )
         created = True
     if not (destination / ".git").is_dir():
         raise BootstrapError(f"destination is not a Git checkout: {destination}")
     if not created and _output(
-        [str(git), "-C", str(destination), "status", "--porcelain", "--untracked-files=no"]
+        [str(git), "-C", str(destination), "status", "--porcelain", "--untracked-files=no"],
+        environment=git_environment,
     ):
         raise BootstrapError("external Showdown checkout has tracked modifications")
-    origin = _output([str(git), "-C", str(destination), "remote", "get-url", "origin"])
+    origin = _output(
+        [str(git), "-C", str(destination), "remote", "get-url", "origin"],
+        environment=git_environment,
+    )
     if origin.rstrip("/") not in {repository_url.rstrip("/"), repository_url.removesuffix(".git").rstrip("/")}:
         raise BootstrapError(f"unexpected Showdown origin: {origin}")
     try:
-        _run([str(git), "-C", str(destination), "cat-file", "-e", f"{commit}^{{commit}}"])
+        _run(
+            [str(git), "-C", str(destination), "cat-file", "-e", f"{commit}^{{commit}}"],
+            environment=git_environment,
+        )
     except BootstrapError:
-        _run([str(git), "-C", str(destination), "fetch", "--depth", "1", "origin", commit])
-    _run([str(git), "-C", str(destination), "checkout", "--detach", commit])
+        _run(
+            [str(git), "-C", str(destination), "fetch", "--depth", "1", "origin", commit],
+            environment=git_environment,
+        )
+    _run(
+        [str(git), "-C", str(destination), "checkout", "--detach", commit],
+        environment=git_environment,
+    )
     if _output(
-        [str(git), "-C", str(destination), "status", "--porcelain", "--untracked-files=no"]
+        [str(git), "-C", str(destination), "status", "--porcelain", "--untracked-files=no"],
+        environment=git_environment,
     ):
         raise BootstrapError("external Showdown checkout is not clean after checkout")
 

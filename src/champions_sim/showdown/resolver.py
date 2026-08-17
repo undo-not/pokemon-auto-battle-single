@@ -96,6 +96,21 @@ def sanitized_node_environment() -> dict[str, str]:
     return {key: value for key, value in os.environ.items() if key.upper() in allowed}
 
 
+def sanitized_git_environment() -> dict[str, str]:
+    environment = sanitized_node_environment()
+    for key, value in os.environ.items():
+        if key.upper() in {"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"}:
+            environment[key] = value
+    environment.update(
+        {
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_TERMINAL_PROMPT": "0",
+        }
+    )
+    return environment
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     try:
@@ -124,18 +139,38 @@ def _safe_file(root: Path, relative: str) -> Path:
 
 def build_fingerprint(root: Path, manifest: ShowdownManifest) -> tuple[int, str]:
     files: dict[str, Path] = {}
-    for relative_root in manifest.build.include_roots:
+    dependency_root = root.resolve(strict=True)
+
+    def build_root(relative_root: str) -> Path:
         directory = root.joinpath(*relative_root.split("/"))
         try:
             resolved_directory = directory.resolve(strict=True)
-            resolved_directory.relative_to(root.resolve(strict=True))
+            resolved_directory.relative_to(dependency_root)
         except (OSError, ValueError) as error:
-            raise ShowdownResolutionError(f"invalid build root {relative_root}: {error}") from error
+            raise ShowdownResolutionError(
+                f"invalid build root {relative_root}: {error}"
+            ) from error
         if directory.is_symlink() or not resolved_directory.is_dir():
-            raise ShowdownResolutionError(f"build root must be a non-symlink directory: {relative_root}")
+            raise ShowdownResolutionError(
+                f"build root must be a non-symlink directory: {relative_root}"
+            )
+        return resolved_directory
+
+    for relative_root in manifest.build.include_roots:
+        resolved_directory = build_root(relative_root)
         for candidate in resolved_directory.rglob(f"*{manifest.build.extension}"):
             relative = candidate.relative_to(root).as_posix()
             files[relative] = _safe_file(root, relative)
+    for relative_root in manifest.build.closed_roots:
+        resolved_directory = build_root(relative_root)
+        for candidate in resolved_directory.rglob("*"):
+            relative = candidate.relative_to(root).as_posix()
+            if candidate.is_symlink():
+                raise ShowdownResolutionError(
+                    f"closed build root contains a symlink: {relative}"
+                )
+            if candidate.is_file():
+                files[relative] = _safe_file(root, relative)
     for relative in manifest.build.include_files:
         files[relative] = _safe_file(root, relative)
 
@@ -204,9 +239,19 @@ def resolve_showdown(
     git = shutil.which("git")
     if not git:
         raise ShowdownResolutionError("git is required to verify the external Showdown checkout")
-    head = _run([git, "-C", str(resolved_root), "rev-parse", "HEAD"])
-    tree = _run([git, "-C", str(resolved_root), "rev-parse", "HEAD^{tree}"])
-    origin = _run([git, "-C", str(resolved_root), "remote", "get-url", "origin"])
+    git_environment = sanitized_git_environment()
+    head = _run(
+        [git, "-C", str(resolved_root), "rev-parse", "HEAD"],
+        environment=git_environment,
+    )
+    tree = _run(
+        [git, "-C", str(resolved_root), "rev-parse", "HEAD^{tree}"],
+        environment=git_environment,
+    )
+    origin = _run(
+        [git, "-C", str(resolved_root), "remote", "get-url", "origin"],
+        environment=git_environment,
+    )
     normalized_origin = origin.rstrip("/").removesuffix(".git")
     normalized_expected = manifest.repository_url.rstrip("/").removesuffix(".git")
     if normalized_origin != normalized_expected:

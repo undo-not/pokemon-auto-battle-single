@@ -61,5 +61,29 @@ def opponent_team_with_private_item() -> list[dict[str, object]]:
     return team
 
 
+def pixilate_team() -> list[dict[str, object]]:
+    team = legal_team()
+    team[0] = {
+        "species": "Sylveon",
+        "ability": "Pixilate",
+        "moves": ["Hyper Voice", "Quick Attack", "Protect", "Calm Mind"],
+        "nature": "Modest",
+        "level": 50,
+    }
+    return team
+
+
+def throat_chop_team() -> list[dict[str, object]]:
+    team = legal_team()
+    team[0] = {
+        "species": "Incineroar",
+        "ability": "Intimidate",
+        "moves": ["Throat Chop", "Protect", "Fake Out", "Parting Shot"],
+        "nature": "Jolly",
+        "level": 50,
+    }
+    return team
+
+
 def sodium_seed(offset: int = 0) -> str:
     return "sodium," + "".join(f"{(offset + index) % 256:02x}" for index in range(32))

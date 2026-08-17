@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,8 @@ from jsonschema import Draft202012Validator
 from champions_sim.showdown.manifest import ManifestError, load_showdown_manifest
 from champions_sim.showdown.resolver import (
     ShowdownResolutionError,
+    build_fingerprint,
+    sanitized_git_environment,
     sanitized_node_environment,
     verify_forbidden_paths,
 )
@@ -25,7 +28,8 @@ def test_tracked_manifest_pins_source_build_license_and_format() -> None:
         for dependency in manifest.runtime_dependencies
     ) == (("ts-chacha20", "1.2.0", "MIT"),)
     assert dict(manifest.source_files)[manifest.license_file] == manifest.license_sha256
-    assert manifest.build.file_count == 336
+    assert manifest.build.file_count == 338
+    assert manifest.build.closed_roots == ("dist/config",)
     assert manifest.default_format.id == "gen9championsbssregmb"
     assert manifest.default_format.mod == "champions"
     assert manifest.default_format.game_type == "singles"
@@ -107,6 +111,8 @@ def test_node_environment_drops_runtime_injection_variables(
     monkeypatch.setenv("NODE_PATH", "hostile-node-modules")
     monkeypatch.setenv("NODE_REPL_EXTERNAL_MODULE", "hostile.js")
     monkeypatch.setenv("CHAMPIONS_SHOWDOWN_ROOT", "allowed-for-python-resolution-only")
+    monkeypatch.setenv("GIT_DIR", "hostile-git-dir")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
 
     environment = sanitized_node_environment()
 
@@ -114,3 +120,33 @@ def test_node_environment_drops_runtime_injection_variables(
     assert "NODE_PATH" not in environment
     assert "NODE_REPL_EXTERNAL_MODULE" not in environment
     assert "CHAMPIONS_SHOWDOWN_ROOT" not in environment
+
+    git_environment = sanitized_git_environment()
+    assert "GIT_DIR" not in git_environment
+    assert "GIT_CONFIG_COUNT" not in git_environment
+    assert git_environment["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert git_environment["GIT_CONFIG_GLOBAL"]
+
+
+def test_closed_build_root_fingerprints_every_file(tmp_path: Path) -> None:
+    manifest = load_showdown_manifest()
+    config = tmp_path / "dist" / "config"
+    config.mkdir(parents=True)
+    (config / "formats.js").write_text("formats\n", encoding="utf-8")
+    isolated = replace(
+        manifest,
+        build=replace(
+            manifest.build,
+            include_roots=(),
+            closed_roots=("dist/config",),
+            include_files=(),
+        ),
+    )
+    baseline = build_fingerprint(tmp_path, isolated)
+
+    (config / "custom-formats.mjs").write_text("custom\n", encoding="utf-8")
+    changed = build_fingerprint(tmp_path, isolated)
+
+    assert baseline[0] == 1
+    assert changed[0] == 2
+    assert changed[1] != baseline[1]

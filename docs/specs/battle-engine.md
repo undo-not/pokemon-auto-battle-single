@@ -8,7 +8,9 @@ The engine is the external Pokémon Showdown checkout resolved from `data/manife
 - MIT license bytes and selected source-file SHA-256 values;
 - Node minimum version;
 - compiled JavaScript and runtime-dependency file set, count, and aggregate fingerprint;
-- exact format ID, display name, mod, ruleset, and singles game type;
+- exact format ID, display name, mod, direct ruleset, expanded effective rule
+  table, singles game type, and team-size, selection-size, move-count, source
+  generation, level, adjustment-level, and EV constraints;
 - absence of local custom-format files that Showdown would otherwise load at runtime.
 
 The checkout, `node_modules`, configuration copy, and `dist/` remain outside the repository. Runtime battle execution performs no network access.
@@ -17,7 +19,7 @@ The checkout, `node_modules`, configuration copy, and `dist/` remain outside the
 
 Python starts one persistent Node process and communicates through protocol `1.0.0`, one JSON object per line. Requests and responses carry a monotonically increasing request ID. The startup handshake binds the normalized SHA-256 of the executed bridge source. Both sides reject duplicate keys, non-finite numbers, excessive input, unknown envelope fields, protocol drift, and malformed values. A malformed Showdown output poisons that battle session; it cannot be observed, advanced, sampled, or exported afterward, but can still be closed.
 
-One process may host multiple named sessions. Session IDs are unique, battle state is not shared, and commands are serialized by the Python transport. Process exit, timeout, mismatched response identity, invalid format, invalid team, or invalid choice is an error. A timeout terminates the transport so a late response cannot be consumed by a later request. No request may invoke a Python mechanics fallback.
+One process may host multiple named sessions. Session IDs are unique, battle state is not shared, and commands are serialized by the Python transport. Process exit, timeout, mismatched response identity, invalid format, invalid team, or invalid choice is an error. A timeout terminates the transport so a late response cannot be consumed by a later request. `FORMAT_DRIFT` means a runtime preview differs from the bound effective constraints; `SESSION_POISONED` means malformed output or a failed isolation invariant made that session unusable; `REPLAY_INCOMPLETE` requires the caller to make diagnostic export explicit. No request may invoke a Python mechanics fallback.
 
 ## Battle session
 
@@ -31,13 +33,15 @@ Session creation requires:
 
 Team set fields are closed by the bridge contract before they reach `Teams.pack`. The engine owns species, item, ability, move, stat-point, clause, and preview legality.
 
-At each decision window, `observe(player)` returns only that player's latest request, legal Showdown choice strings, and player-visible protocol log. Team preview enumerates ordered legal selections; move, switch, and engine-advertised transformation choices are derived from the request. Showdown remains the final legality authority when public information such as possible trapping makes a mask conditional.
+At each decision window, `observe(player)` returns only that player's latest request, legal Showdown choice strings, and player-visible protocol log. Team preview enumerates ordered legal selections using the active format's verified minimum/maximum team size and picked-team size, with an explicit bound on enumeration size; move, switch, and engine-advertised transformation choices are derived from the request. Showdown remains the final legality authority when public information such as possible trapping makes a mask conditional.
 
 `choose(player, choice)` passes one bounded Showdown choice string to strict-choice mode. A rejected choice does not become a default action.
 
 ## Damage
 
-Damage is not reimplemented in Python. `damage_sample` clones the current Showdown battle state, applies Showdown's `ModifyType` and `ModifyMove` event sequence to the named move, and asks the pinned engine for one damage result. It returns the resolved move type/category, an explicit result status, the state revision, HP context, clone PRNG lineage, and live PRNG values before and after inspection. It neither changes the live battle nor omits current field, status, item, ability, or transformation state.
+Damage is not reimplemented in Python. `damage_sample` serializes the current Showdown battle through JSON to break mutable aliases, constructs a clone, applies Showdown's `ModifyType` and `ModifyMove` event sequence to the named move, and asks the pinned engine for one damage result. It compares the complete serialized live state before and after inspection and poisons the session if anything changed. It returns the resolved move type/category, the state revision, HP context, clone PRNG lineage, and live PRNG values before and after inspection. It neither changes the live battle nor omits current field, status, item, ability, or transformation state.
+
+`damage_status` distinguishes `value` (including numeric zero), `blocked` (Showdown returned `false`), `silent_failure` (Showdown returned `null`), and `non_damaging` (Showdown returned no numeric result). A changed target or cancelled move is unavailable rather than approximated.
 
 A damage sample is one seeded engine result, not a complete probability distribution and not client-grounding evidence.
 

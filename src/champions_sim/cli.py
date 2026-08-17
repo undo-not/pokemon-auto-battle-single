@@ -116,6 +116,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     _client_arguments(battle)
     battle.add_argument("--input", type=Path, required=True)
+    battle.add_argument("--allow-incomplete", action="store_true")
 
     replay = subparsers.add_parser(
         "replay", help="re-execute and verify a canonical Showdown Replay"
@@ -220,7 +221,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if args.command == "battle":
                     print(
                         canonical_json(
-                            session.replay(allow_incomplete=True).to_dict()
+                            session.replay(
+                                allow_incomplete=args.allow_incomplete
+                            ).to_dict()
                         )
                     )
                     return 0

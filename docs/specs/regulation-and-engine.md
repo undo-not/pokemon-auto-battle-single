@@ -13,6 +13,9 @@ The dependency manifest binds one or more exact Showdown format records to an im
 - format ID and display name;
 - Showdown mod ID;
 - human-readable regulation label;
+- singles game type, ordered direct ruleset, and sorted expanded effective rule table;
+- minimum/maximum registered team size, picked-team size, maximum move count,
+  source generation, level bounds/default/adjustment, and EV limit;
 - commit, tree, source hashes, license, and build fingerprint.
 
 There is no local Catalog, RuleSet, target-pool compiler, or copied upstream Pokédex. Species, form, item, move, ability, legality, and mechanics data are loaded from the verified Showdown build.

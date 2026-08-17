@@ -31,8 +31,10 @@
   "forbidden_paths": [
     "config/custom-formats.ts",
     "dist/config/custom-formats",
+    "dist/config/custom-formats.cjs",
     "dist/config/custom-formats.js",
     "dist/config/custom-formats.json",
+    "dist/config/custom-formats.mjs",
     "dist/config/custom-formats.node"
   ],
   "formats": [
@@ -107,8 +109,9 @@
     "package.json": "61e8418af32ff9be531c1447fca8e3dda1b11d49bc1c417b188cbf710460e84a"
   },
   "build": {
-    "algorithm": "sha256-path-nul-sha256-lf-v1",
+    "algorithm": "sha256-path-nul-sha256-lf-v2",
     "include_roots": ["dist/sim", "dist/data", "dist/lib"],
+    "closed_roots": ["dist/config"],
     "include_files": [
       "dist/config/formats.js",
       "node_modules/ts-chacha20/LICENSE",
@@ -116,7 +119,7 @@
       "node_modules/ts-chacha20/package.json"
     ],
     "extension": ".js",
-    "file_count": 336,
-    "fingerprint_sha256": "63b85c7605e9eb2b701219529685deb5cb14ac5b015fe98d94721d190e1603c1"
+    "file_count": 338,
+    "fingerprint_sha256": "e98e14060ea32d8925098c5bfbde78f972c40d72a0599fcd2ccf5080d7e510c4"
   }
 }

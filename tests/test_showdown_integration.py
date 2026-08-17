@@ -20,7 +20,13 @@ from champions_sim.showdown import (
     resolve_showdown,
 )
 
-from showdown_fixtures import legal_team, opponent_team_with_private_item, sodium_seed
+from showdown_fixtures import (
+    legal_team,
+    opponent_team_with_private_item,
+    pixilate_team,
+    sodium_seed,
+    throat_chop_team,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -167,20 +173,13 @@ def test_private_observation_legal_actions_damage_and_replay(client: ShowdownCli
 def test_damage_sample_applies_showdown_move_type_modification(
     client: ShowdownClient,
 ) -> None:
-    pixilate_team = legal_team()
-    pixilate_team[0] = {
-        "species": "Sylveon",
-        "ability": "Pixilate",
-        "moves": ["Hyper Voice", "Quick Attack", "Protect", "Calm Mind"],
-        "nature": "Modest",
-        "level": 50,
-    }
-    assert client.validate_team(pixilate_team) == ()
+    team = pixilate_team()
+    assert client.validate_team(team) == ()
     session = client.create_session(
         session_id="damage-modify-type",
         seed=sodium_seed(16),
         p1_name="Alpha",
-        p1_team=pixilate_team,
+        p1_team=team,
         p2_name="Beta",
         p2_team=legal_team(),
     )
@@ -194,6 +193,48 @@ def test_damage_sample_applies_showdown_move_type_modification(
         assert sample.damage is not None and sample.damage > 0
     finally:
         session.close()
+
+
+def test_damage_sample_breaks_clone_aliases_even_when_move_events_log(
+    client: ShowdownClient,
+) -> None:
+    first = client.create_session(
+        session_id="damage-log-isolation-a",
+        seed=sodium_seed(160),
+        p1_name="Alpha",
+        p1_team=pixilate_team(),
+        p2_name="Beta",
+        p2_team=throat_chop_team(),
+    )
+    control = client.create_session(
+        session_id="damage-log-isolation-b",
+        seed=sodium_seed(160),
+        p1_name="Alpha",
+        p1_team=pixilate_team(),
+        p2_name="Beta",
+        p2_team=throat_chop_team(),
+    )
+    try:
+        for session in (first, control):
+            session.choose("p1", "team 123")
+            session.choose("p2", "team 123")
+            session.choose("p1", "move 4")
+            session.choose("p2", "move 1")
+
+        with pytest.raises(ShowdownBridgeError) as captured:
+            first.damage_sample("p1", "Hyper Voice")
+        assert captured.value.code == "DAMAGE_UNAVAILABLE"
+
+        for session in (first, control):
+            session.choose("p1", "move 3")
+            session.choose("p2", "move 2")
+
+        assert first.replay(allow_incomplete=True).to_dict() == control.replay(
+            allow_incomplete=True
+        ).to_dict()
+    finally:
+        first.close()
+        control.close()
 
 
 def test_replay_round_trip_accepts_packed_defaults_and_optional_fields(
@@ -226,6 +267,9 @@ def test_parent_node_injection_variables_do_not_reach_runtime(
 ) -> None:
     monkeypatch.setenv("NODE_OPTIONS", "--definitely-invalid-option")
     monkeypatch.setenv("NODE_PATH", "hostile-node-modules")
+    monkeypatch.setenv("GIT_DIR", "hostile-git-dir")
+    monkeypatch.setenv("GIT_OBJECT_DIRECTORY", "hostile-git-objects")
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
 
     with ShowdownClient() as isolated:
         assert isolated.validate_team(legal_team()) == ()
@@ -437,10 +481,15 @@ def test_dependency_origin_mismatch_fails_before_hash_acceptance(
     resolved = resolve_showdown()
     real_run = resolver_module._run
 
-    def changed_origin(arguments: list[str], *, cwd: Path | None = None) -> str:
+    def changed_origin(
+        arguments: list[str],
+        *,
+        cwd: Path | None = None,
+        environment: dict[str, str] | None = None,
+    ) -> str:
         if arguments[-3:] == ["remote", "get-url", "origin"]:
             return "https://example.invalid/lookalike.git"
-        return real_run(arguments, cwd=cwd)
+        return real_run(arguments, cwd=cwd, environment=environment)
 
     monkeypatch.setattr(resolver_module, "_run", changed_origin)
     with pytest.raises(ShowdownResolutionError, match="origin mismatch"):
