@@ -5,7 +5,8 @@
 The engine is the external Pokémon Showdown checkout resolved from `data/manifests/pokemon-showdown-champions.json`. Before starting a bridge, the resolver verifies:
 
 - repository URL, exact commit, and Git tree;
-- MIT license bytes and selected source-file SHA-256 values;
+- canonical upstream Git-blob bytes for the MIT license and selected source
+  files, plus the same SHA-256 after LF-normalizing the platform worktree;
 - Node minimum version;
 - compiled JavaScript and runtime-dependency file set, count, and aggregate fingerprint;
 - exact format ID, display name, mod, direct ruleset, expanded effective rule

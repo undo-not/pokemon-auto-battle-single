@@ -15,7 +15,7 @@ The dependency manifest and hashes establish only the first claim. Showdown's pr
 
 ## Engine evidence
 
-An engineering-ready engine resolves the external checkout from bytes, verifies every manifest constraint, loads the exact singles format, rejects invalid teams/actions, isolates sessions and player observations, preserves live RNG during damage inspection, and reproduces canonical Replay identity.
+An engineering-ready engine resolves the external checkout from bytes, verifies every manifest constraint, and checks selected source identity against both canonical Git blobs and the LF-normalized worktree so Windows checkout conversion cannot change the pin. It loads the exact singles format, rejects invalid teams/actions, isolates sessions and player observations, preserves the complete live state during damage inspection, and reproduces canonical Replay identity.
 
 Any unresolved engine identity or protocol failure is a hard error. The system must not continue through guessed data, an older local build, or the removed Python engine.
 

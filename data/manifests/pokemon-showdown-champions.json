@@ -1,13 +1,14 @@
 {
   "schema_version": "1.0.0",
   "artifact_id": "pokemon-showdown-champions-8ff48edc09e4",
+  "source_hash_algorithm": "sha256-git-blob-and-lf-worktree-v1",
   "upstream": {
     "repository_url": "https://github.com/smogon/pokemon-showdown.git",
     "commit": "8ff48edc09e4aed6011c966258a5f95899128443",
     "tree": "880678686f3fda7a712080581ad5d6cc8ef5417b",
     "license": "MIT",
     "license_file": "LICENSE",
-    "license_sha256": "7b16cdba9317e36300d2a5bfe0e4e075afb0047cf690e4fb9705b1689cbdfc9a"
+    "license_sha256": "b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0"
   },
   "runtime": {
     "minimum_node_major": 22,
@@ -90,23 +91,23 @@
     }
   ],
   "source_files": {
-    "LICENSE": "7b16cdba9317e36300d2a5bfe0e4e075afb0047cf690e4fb9705b1689cbdfc9a",
-    "config/formats.ts": "b28fb41e4311489c2e86407185df754f3ee7d3264ab008770cf36ff0dd5ac962",
-    "data/mods/champions/abilities.ts": "75a0123fe9f0261ebf5ce686570c1fde3443cd9cf6baf3bdea4d9616c5f6c3e0",
-    "data/mods/champions/conditions.ts": "374fc394ea2d015a68bf867e663215195be70e591746326af352f1d4d14e1670",
-    "data/mods/champions/formats-data.ts": "94132ac519a0be9ec046a4c709403486203ad6ccb7b15e491831447a2b190413",
-    "data/mods/champions/items.ts": "2231796ac1fe015332bd1d0e7dcd99401c6e1e939327d3ac68934a837a045148",
-    "data/mods/champions/learnsets.ts": "2130104bd04c66d9c5c75748685aaccf1f1c35cb6635b6a7b2bc8fc45a91489c",
-    "data/mods/champions/moves.ts": "b88acdaea5015507a6dbc83aba5a05dfcd3093c52acc9bcdeaa16920338ff8fd",
-    "data/mods/champions/rulesets.ts": "cd42f8b5f132cf862ed7191f537104bffceb7b9882e737bf4cbfda6fc13ce498",
-    "data/mods/champions/scripts.ts": "2da0b9e380019173e1a31a342031d711aa18622df40d54729802911663600b3b",
-    "data/mods/championsregma/abilities.ts": "f15740194b43426cbfc99229f8a6413459a968777ee9bad13359d6db4c830af2",
-    "data/mods/championsregma/formats-data.ts": "c602ee71d0ffc4fb20ec93ab164d76b22d759fcbd49ab45f3fcf7e5a926c9818",
-    "data/mods/championsregma/items.ts": "796d598af696372156a5deb6ef97246913558f604fa3c344af37bdc0da679646",
-    "data/mods/championsregma/moves.ts": "46179c9d9d224a463e05de2bee84e6375c437c016176ad7e71e8771e16b4e04f",
-    "data/mods/championsregma/scripts.ts": "3d4a14077dcb467ba4af25cc177aad193ba098e8d8b7ff4acb2f17d106721149",
-    "package-lock.json": "eb6ece67e093d5f1eda8bcf05386564627b0614c6d23c29bb3c85c6200a372da",
-    "package.json": "61e8418af32ff9be531c1447fca8e3dda1b11d49bc1c417b188cbf710460e84a"
+    "LICENSE": "b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0",
+    "config/formats.ts": "c5944f811521ee651293507ee77f8adcb6b281ec1a94fc2187c9f654eeb5e681",
+    "data/mods/champions/abilities.ts": "5e370ba986e026c37b9f446cd3c40c9abf8b88a896597e1819be3755256af23f",
+    "data/mods/champions/conditions.ts": "851507309dde0b58807e33b17d8ce7e607dad70893546f67bad294ad70249005",
+    "data/mods/champions/formats-data.ts": "dcdb0f9cf9433e439e1cbac68309ded78a2ed9697c80a4fe9ea9367dd6657a75",
+    "data/mods/champions/items.ts": "0a046bd8f5975217bab643bc01cde52d7973c4984aa8228fc9342055bb21f38a",
+    "data/mods/champions/learnsets.ts": "78fc395c01406008e054f63b168fe0b4ec7f7fec6ff6454f4d14a502147d2a9b",
+    "data/mods/champions/moves.ts": "ea07f04c1da9cf0baa277102b8ef83f93e5b299fb3da4b49abbe2b1bd077416b",
+    "data/mods/champions/rulesets.ts": "31671152a6ff1f09d81a5306baadaa1593ef235e5c7cdcc9180c67bac8e84cd9",
+    "data/mods/champions/scripts.ts": "8282488fa630255417e8bd4d6037d45e8d382ae28cdd84c230e59b33befa5fc2",
+    "data/mods/championsregma/abilities.ts": "2c884d0b7fdf4067d812200a597b08b9a12a5a3eeb4bf7cd7721f974689d7242",
+    "data/mods/championsregma/formats-data.ts": "253c1626e2cf37b7475cf9984cae3e04eb73c3043eccaa2ae43435f61f587388",
+    "data/mods/championsregma/items.ts": "08ffe35460c61266d33a4f540e9750a69d55dae3bb10b54da783375b0552e5a5",
+    "data/mods/championsregma/moves.ts": "15ab6535a4845e498448a62effdb76c3e59d22a796b326615d2efa3aed166665",
+    "data/mods/championsregma/scripts.ts": "efebc59baa78aa99cf6d98d7bf572b8141abbff804d1f9f6d17b77de479b0919",
+    "package-lock.json": "f207748a1ef4e549160defbbb688de0f35889f3038939edebb5a956cf41b9d0a",
+    "package.json": "561152e07c4a0f4a8ddb0ab60bc3f4c3225bac24b207a70545f528d5bc4727e9"
   },
   "build": {
     "algorithm": "sha256-path-nul-sha256-lf-v2",

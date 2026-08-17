@@ -475,6 +475,22 @@ def test_manifest_identity_mismatch_fails_before_process_start(tmp_path: Path) -
         )
 
 
+def test_upstream_git_blob_mismatch_fails_before_process_start(tmp_path: Path) -> None:
+    resolved = resolve_showdown()
+    document = json.loads(resolved.manifest.path.read_text(encoding="utf-8"))
+    document["source_files"]["LICENSE"] = "0" * 64
+    document["upstream"]["license_sha256"] = "0" * 64
+    hostile = tmp_path / "manifest.json"
+    hostile.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(ShowdownResolutionError, match="blob="):
+        resolve_showdown(
+            root=resolved.root,
+            node_executable=resolved.node_executable,
+            manifest_path=hostile,
+        )
+
+
 def test_dependency_origin_mismatch_fails_before_hash_acceptance(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

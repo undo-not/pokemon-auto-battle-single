@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator
 from champions_sim.showdown.manifest import ManifestError, load_showdown_manifest
 from champions_sim.showdown.resolver import (
     ShowdownResolutionError,
+    _sha256_lf,
     build_fingerprint,
     sanitized_git_environment,
     sanitized_node_environment,
@@ -23,6 +24,8 @@ def test_tracked_manifest_pins_source_build_license_and_format() -> None:
     assert manifest.commit == "8ff48edc09e4aed6011c966258a5f95899128443"
     assert manifest.tree == "880678686f3fda7a712080581ad5d6cc8ef5417b"
     assert manifest.license == "MIT"
+    assert manifest.license_sha256 == "b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0"
+    assert manifest.source_hash_algorithm == "sha256-git-blob-and-lf-worktree-v1"
     assert tuple(
         (dependency.name, dependency.version, dependency.license)
         for dependency in manifest.runtime_dependencies
@@ -150,3 +153,12 @@ def test_closed_build_root_fingerprints_every_file(tmp_path: Path) -> None:
     assert baseline[0] == 1
     assert changed[0] == 2
     assert changed[1] != baseline[1]
+
+
+def test_source_hash_normalizes_platform_crlf_only(tmp_path: Path) -> None:
+    lf = tmp_path / "lf.txt"
+    crlf = tmp_path / "crlf.txt"
+    lf.write_bytes(b"first\nsecond\n")
+    crlf.write_bytes(b"first\r\nsecond\r\n")
+
+    assert _sha256_lf(lf) == _sha256_lf(crlf)

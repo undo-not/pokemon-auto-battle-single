@@ -75,6 +75,26 @@ def _run(
     return result.stdout.strip()
 
 
+def _run_bytes(
+    arguments: list[str],
+    *,
+    environment: dict[str, str] | None = None,
+) -> bytes:
+    try:
+        result = subprocess.run(
+            arguments,
+            env=environment,
+            check=True,
+            capture_output=True,
+            timeout=20,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ShowdownResolutionError(
+            f"command failed: {arguments[0]}: {error}"
+        ) from error
+    return result.stdout
+
+
 def sanitized_node_environment() -> dict[str, str]:
     allowed = {
         "APPDATA",
@@ -120,6 +140,14 @@ def _sha256(path: Path) -> str:
     except OSError as error:
         raise ShowdownResolutionError(f"cannot hash {path}: {error}") from error
     return digest.hexdigest()
+
+
+def _sha256_lf(path: Path) -> str:
+    try:
+        content = path.read_bytes()
+    except OSError as error:
+        raise ShowdownResolutionError(f"cannot hash {path}: {error}") from error
+    return hashlib.sha256(content.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _safe_file(root: Path, relative: str) -> Path:
@@ -265,10 +293,24 @@ def resolve_showdown(
         raise ShowdownResolutionError(f"Showdown tree mismatch: expected {manifest.tree}, got {tree}")
 
     for relative, expected in manifest.source_files:
-        actual = _sha256(_safe_file(resolved_root, relative))
-        if actual != expected:
+        blob = _run_bytes(
+            [
+                git,
+                "-C",
+                str(resolved_root),
+                "cat-file",
+                "blob",
+                f"{manifest.commit}:{relative}",
+            ],
+            environment=git_environment,
+        )
+        blob_hash = hashlib.sha256(blob).hexdigest()
+        worktree_hash = _sha256_lf(_safe_file(resolved_root, relative))
+        if blob_hash != expected or worktree_hash != expected:
             raise ShowdownResolutionError(
-                f"Showdown source hash mismatch for {relative}: expected {expected}, got {actual}"
+                "Showdown source hash mismatch for "
+                f"{relative}: expected {expected}, blob={blob_hash}, "
+                f"lf_worktree={worktree_hash}"
             )
     for dependency in manifest.runtime_dependencies:
         dependency_files = (

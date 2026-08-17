@@ -12,7 +12,7 @@ Large upstream source trees, Node dependencies, builds, battle runs, and machine
 
 ## Decision
 
-Use the Pokémon Showdown Champions mod as the only battle-transition, team-validation, legal-choice, and damage engine. Pin one upstream commit and Git tree in a tracked manifest. The manifest also binds the MIT license, selected source hashes, relevant format identity, Node minimum, compiled/runtime-dependency file count, and deterministic build fingerprint.
+Use the Pokémon Showdown Champions mod as the only battle-transition, team-validation, legal-choice, and damage engine. Pin one upstream commit and Git tree in a tracked manifest. The manifest also binds the canonical Git-blob and LF-normalized worktree hashes for the MIT license and selected sources, relevant format identity, Node minimum, compiled/runtime-dependency file count, and deterministic build fingerprint.
 
 Keep the Showdown checkout, `node_modules`, and compiled output outside the repository. A strict versioned JSON-lines bridge runs as one persistent Node process and hosts multiple isolated battles. Its normalized source hash is part of engine identity. Python exposes player-scoped observations, Showdown choice strings, cloned-state damage samples, and content-addressed, re-executable Replays. Any identity, protocol, format, validation, process, or action error fails closed; there is no Python mechanics fallback.
 

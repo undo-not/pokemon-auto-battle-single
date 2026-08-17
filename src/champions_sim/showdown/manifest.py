@@ -166,6 +166,7 @@ class ShowdownRuntimeDependency:
 class ShowdownManifest:
     schema_version: str
     artifact_id: str
+    source_hash_algorithm: str
     repository_url: str
     commit: str
     tree: str
@@ -196,11 +197,27 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     root = _mapping(
         _load_json(manifest_path),
         "manifest",
-        {"schema_version", "artifact_id", "upstream", "runtime", "runtime_dependencies", "forbidden_paths", "formats", "source_files", "build"},
+        {
+            "schema_version",
+            "artifact_id",
+            "source_hash_algorithm",
+            "upstream",
+            "runtime",
+            "runtime_dependencies",
+            "forbidden_paths",
+            "formats",
+            "source_files",
+            "build",
+        },
     )
     schema_version = _string(root["schema_version"], "schema_version")
     if schema_version != "1.0.0":
         raise ManifestError("unsupported dependency manifest schema_version")
+    source_hash_algorithm = _string(
+        root["source_hash_algorithm"], "source_hash_algorithm"
+    )
+    if source_hash_algorithm != "sha256-git-blob-and-lf-worktree-v1":
+        raise ManifestError("unsupported source_hash_algorithm")
 
     upstream = _mapping(
         root["upstream"],
@@ -471,6 +488,7 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     return ShowdownManifest(
         schema_version=schema_version,
         artifact_id=artifact_id,
+        source_hash_algorithm=source_hash_algorithm,
         repository_url=repository_url,
         commit=_hex(upstream["commit"], "upstream.commit", _HEX_40),
         tree=_hex(upstream["tree"], "upstream.tree", _HEX_40),
