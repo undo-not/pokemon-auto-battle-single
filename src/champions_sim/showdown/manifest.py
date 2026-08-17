@@ -100,16 +100,16 @@ def _hex(value: Any, label: str, pattern: re.Pattern[str]) -> str:
 class ShowdownTeamConstraints:
     min_team_size: int
     max_team_size: int
-    picked_team_size: int
+    picked_team_size: int | None
     max_move_count: int
     min_source_gen: int
     min_level: int
     max_level: int
     default_level: int
-    adjust_level: int
+    adjust_level: int | None
     ev_limit: int
 
-    def to_dict(self) -> dict[str, int]:
+    def to_dict(self) -> dict[str, int | None]:
         return {
             field: getattr(self, field)
             for field in (
@@ -132,6 +132,7 @@ class ShowdownFormat:
     id: str
     name: str
     mod: str
+    purpose: str
     regulation: str
     game_type: str
     ruleset: tuple[str, ...]
@@ -145,7 +146,7 @@ class ShowdownBuild:
     include_roots: tuple[str, ...]
     closed_roots: tuple[str, ...]
     include_files: tuple[str, ...]
-    extension: str
+    extensions: tuple[str, ...]
     file_count: int
     fingerprint_sha256: str
 
@@ -185,7 +186,10 @@ class ShowdownManifest:
 
     @property
     def default_format(self) -> ShowdownFormat:
-        return self.formats[0]
+        return next(item for item in self.formats if item.purpose == "battle")
+
+    def format_by_id(self, format_id: str) -> ShowdownFormat | None:
+        return next((item for item in self.formats if item.id == format_id), None)
 
 
 def default_manifest_path() -> Path:
@@ -211,7 +215,7 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
         },
     )
     schema_version = _string(root["schema_version"], "schema_version")
-    if schema_version != "1.0.0":
+    if schema_version != "2.0.0":
         raise ManifestError("unsupported dependency manifest schema_version")
     source_hash_algorithm = _string(
         root["source_hash_algorithm"], "source_hash_algorithm"
@@ -307,6 +311,7 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
                 "id",
                 "name",
                 "mod",
+                "purpose",
                 "regulation",
                 "game_type",
                 "ruleset",
@@ -323,6 +328,11 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
         mod = _string(item["mod"], f"formats[{index}].mod")
         if _ID.fullmatch(mod) is None:
             raise ManifestError(f"formats[{index}].mod must be a stable ID")
+        purpose = _string(item["purpose"], f"formats[{index}].purpose")
+        if purpose not in {"battle", "team_generation"}:
+            raise ManifestError(
+                f"formats[{index}].purpose must be battle or team_generation"
+            )
         ruleset_value = item["ruleset"]
         if not isinstance(ruleset_value, list) or not ruleset_value:
             raise ManifestError(f"formats[{index}].ruleset must be a non-empty array")
@@ -359,27 +369,30 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
             f"formats[{index}].team_constraints",
             constraint_fields,
         )
-        constraints: dict[str, int] = {}
+        constraints: dict[str, int | None] = {}
+        nullable_constraints = {"picked_team_size", "adjust_level"}
         for field in constraint_fields:
             raw = constraints_value[field]
+            if raw is None and field in nullable_constraints:
+                constraints[field] = None
+                continue
             if not isinstance(raw, int) or isinstance(raw, bool) or raw < 1:
                 raise ManifestError(
                     f"formats[{index}].team_constraints.{field} must be a positive integer"
                 )
             constraints[field] = raw
-        if not (
-            constraints["picked_team_size"]
-            <= constraints["min_team_size"]
-            <= constraints["max_team_size"]
+        picked_team_size = constraints["picked_team_size"]
+        if not constraints["min_team_size"] <= constraints["max_team_size"]:
+            raise ManifestError(f"formats[{index}] team sizes are inconsistent")
+        if picked_team_size is not None and not (
+            picked_team_size <= constraints["min_team_size"]
         ):
             raise ManifestError(f"formats[{index}] team sizes are inconsistent")
-        if not (
-            constraints["min_level"]
-            <= constraints["adjust_level"]
-            <= constraints["max_level"]
-            and constraints["min_level"]
-            <= constraints["default_level"]
-            <= constraints["max_level"]
+        adjust_level = constraints["adjust_level"]
+        if not constraints["min_level"] <= constraints["default_level"] <= constraints["max_level"]:
+            raise ManifestError(f"formats[{index}] level constraints are inconsistent")
+        if adjust_level is not None and not (
+            constraints["min_level"] <= adjust_level <= constraints["max_level"]
         ):
             raise ManifestError(f"formats[{index}] level constraints are inconsistent")
         game_type = _string(item["game_type"], f"formats[{index}].game_type")
@@ -390,6 +403,7 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
                 id=format_id,
                 name=_string(item["name"], f"formats[{index}].name"),
                 mod=mod,
+                purpose=purpose,
                 regulation=_string(item["regulation"], f"formats[{index}].regulation"),
                 game_type=game_type,
                 ruleset=ruleset,
@@ -397,6 +411,9 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
                 team_constraints=ShowdownTeamConstraints(**constraints),
             )
         )
+
+    if not any(item.purpose == "battle" for item in formats):
+        raise ManifestError("formats must contain at least one battle binding")
 
     source_value = root["source_files"]
     if not isinstance(source_value, dict) or not source_value:
@@ -419,7 +436,7 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
             "include_roots",
             "closed_roots",
             "include_files",
-            "extension",
+            "extensions",
             "file_count",
             "fingerprint_sha256",
         },
@@ -436,19 +453,27 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     file_count = build_value["file_count"]
     if not isinstance(file_count, int) or isinstance(file_count, bool) or file_count < 1:
         raise ManifestError("build.file_count must be a positive integer")
+    extensions_value = build_value["extensions"]
+    if not isinstance(extensions_value, list) or not extensions_value:
+        raise ManifestError("build.extensions must be a non-empty array")
+    extensions = tuple(
+        _string(item, "build.extensions[]") for item in extensions_value
+    )
+    if extensions != tuple(sorted(set(extensions))) or any(
+        _EXTENSION.fullmatch(item) is None for item in extensions
+    ):
+        raise ManifestError("build.extensions must be sorted unique file extensions")
     build = ShowdownBuild(
         algorithm=_string(build_value["algorithm"], "build.algorithm"),
         include_roots=paths(build_value["include_roots"], "build.include_roots"),
         closed_roots=paths(build_value["closed_roots"], "build.closed_roots"),
         include_files=paths(build_value["include_files"], "build.include_files"),
-        extension=_string(build_value["extension"], "build.extension"),
+        extensions=extensions,
         file_count=file_count,
         fingerprint_sha256=_hex(build_value["fingerprint_sha256"], "build.fingerprint_sha256", _HEX_64),
     )
-    if build.algorithm != "sha256-path-nul-sha256-lf-v2":
+    if build.algorithm != "sha256-path-nul-sha256-lf-v3":
         raise ManifestError(f"unsupported build fingerprint algorithm: {build.algorithm}")
-    if _EXTENSION.fullmatch(build.extension) is None:
-        raise ManifestError("build.extension must be a simple file extension")
     required_runtime_files = {
         relative
         for dependency in dependencies

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "artifact_id": "pokemon-showdown-champions-8ff48edc09e4",
   "source_hash_algorithm": "sha256-git-blob-and-lf-worktree-v1",
   "upstream": {
@@ -43,6 +43,7 @@
       "id": "gen9championsbssregmb",
       "name": "[Gen 9 Champions] BSS Reg M-B",
       "mod": "champions",
+      "purpose": "battle",
       "regulation": "M-B",
       "game_type": "singles",
       "ruleset": ["Flat Rules", "VGC Timer"],
@@ -88,6 +89,43 @@
         "adjust_level": 50,
         "ev_limit": 66
       }
+    },
+    {
+      "id": "gen9championsrandombattle",
+      "name": "[Gen 9 Champions] Random Battle",
+      "mod": "champions",
+      "purpose": "team_generation",
+      "regulation": "random",
+      "game_type": "singles",
+      "ruleset": ["Obtainable", "Species Clause", "Cancel Mod", "Sleep Clause Mod", "Illusion Level Mod", "Level Clause Mod"],
+      "rule_table": [
+        "-nonexistent",
+        "-tag:unobtainable",
+        "-unreleased",
+        "cancelmod",
+        "evlimit",
+        "illusionlevelmod",
+        "levelclausemod",
+        "obtainable",
+        "obtainableabilities",
+        "obtainableformes",
+        "obtainablemisc",
+        "obtainablemoves",
+        "sleepclausemod",
+        "speciesclause"
+      ],
+      "team_constraints": {
+        "min_team_size": 1,
+        "max_team_size": 6,
+        "picked_team_size": null,
+        "max_move_count": 4,
+        "min_source_gen": 9,
+        "min_level": 1,
+        "max_level": 100,
+        "default_level": 100,
+        "adjust_level": null,
+        "ev_limit": 66
+      }
     }
   ],
   "source_files": {
@@ -106,21 +144,26 @@
     "data/mods/championsregma/items.ts": "08ffe35460c61266d33a4f540e9750a69d55dae3bb10b54da783375b0552e5a5",
     "data/mods/championsregma/moves.ts": "15ab6535a4845e498448a62effdb76c3e59d22a796b326615d2efa3aed166665",
     "data/mods/championsregma/scripts.ts": "efebc59baa78aa99cf6d98d7bf572b8141abbff804d1f9f6d17b77de479b0919",
+    "data/random-battles/champions/doubles-sets.json": "851114e68805aafbecbed0aaee7994164d199d890deed78bafc2beaf3c2221d8",
+    "data/random-battles/champions/sets.json": "7b189d6de33367aca7191e484069b74757097fc34fed0402b52bb6fa41447421",
+    "data/random-battles/champions/teams.ts": "caf4a6c018ecddc0a492fe4a28d5ca745ff76ed25fb29dd857e3ad35411502e0",
     "package-lock.json": "f207748a1ef4e549160defbbb688de0f35889f3038939edebb5a956cf41b9d0a",
     "package.json": "561152e07c4a0f4a8ddb0ab60bc3f4c3225bac24b207a70545f528d5bc4727e9"
   },
   "build": {
-    "algorithm": "sha256-path-nul-sha256-lf-v2",
+    "algorithm": "sha256-path-nul-sha256-lf-v3",
     "include_roots": ["dist/sim", "dist/data", "dist/lib"],
     "closed_roots": ["dist/config"],
     "include_files": [
       "dist/config/formats.js",
+      "dist/data/random-battles/champions/doubles-sets.json",
+      "dist/data/random-battles/champions/sets.json",
       "node_modules/ts-chacha20/LICENSE",
       "node_modules/ts-chacha20/build/src/chacha20.js",
       "node_modules/ts-chacha20/package.json"
     ],
-    "extension": ".js",
-    "file_count": 338,
-    "fingerprint_sha256": "e98e14060ea32d8925098c5bfbde78f972c40d72a0599fcd2ccf5080d7e510c4"
+    "extensions": [".js", ".json"],
+    "file_count": 369,
+    "fingerprint_sha256": "d9b1a3d574456fb2070d26b51a066c03db04bcc67d03bf05c7436c1e656516e3"
   }
 }

@@ -186,7 +186,9 @@ def build_fingerprint(root: Path, manifest: ShowdownManifest) -> tuple[int, str]
 
     for relative_root in manifest.build.include_roots:
         resolved_directory = build_root(relative_root)
-        for candidate in resolved_directory.rglob(f"*{manifest.build.extension}"):
+        for candidate in resolved_directory.rglob("*"):
+            if not candidate.is_file() or candidate.suffix not in manifest.build.extensions:
+                continue
             relative = candidate.relative_to(root).as_posix()
             files[relative] = _safe_file(root, relative)
     for relative_root in manifest.build.closed_roots:
@@ -206,7 +208,7 @@ def build_fingerprint(root: Path, manifest: ShowdownManifest) -> tuple[int, str]
     for relative in sorted(files):
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(_sha256(files[relative]).encode("ascii"))
+        digest.update(_sha256_lf(files[relative]).encode("ascii"))
         digest.update(b"\n")
     return len(files), digest.hexdigest()
 

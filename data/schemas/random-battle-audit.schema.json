@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:random-battle-audit:1",
+  "title": "Champions M-B random-battle completion audit v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "audit_id", "status", "audit_seed", "battle_count", "max_decisions", "engine", "format", "team_generator", "totals", "battles", "determinism", "report_hash"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "audit_id": {"const": "champions-m-b-random-battle-completion-v1"},
+    "status": {"const": "passed"},
+    "audit_seed": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
+    "battle_count": {"const": 10},
+    "max_decisions": {"type": "integer", "minimum": 1, "maximum": 4000},
+    "engine": {"$ref": "urn:champions-sim:schema:showdown-replay:1#/properties/engine"},
+    "format": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "mod", "regulation", "game_type", "registered_team_size", "picked_team_size"],
+      "properties": {
+        "id": {"const": "gen9championsbssregmb"},
+        "name": {"const": "[Gen 9 Champions] BSS Reg M-B"},
+        "mod": {"const": "champions"},
+        "regulation": {"const": "M-B"},
+        "game_type": {"const": "singles"},
+        "registered_team_size": {"const": 6},
+        "picked_team_size": {"const": 3}
+      }
+    },
+    "team_generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format_id", "format_name", "mod", "candidate_count", "rejected_before_selection", "selected_team_count"],
+      "properties": {
+        "format_id": {"const": "gen9championsrandombattle"},
+        "format_name": {"const": "[Gen 9 Champions] Random Battle"},
+        "mod": {"const": "champions"},
+        "candidate_count": {"type": "integer", "minimum": 20, "maximum": 512},
+        "rejected_before_selection": {"type": "integer", "minimum": 0, "maximum": 492},
+        "selected_team_count": {"const": 20}
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terminal_battles", "replay_verified_battles", "unique_teams", "decisions", "team_choices", "move_choices", "switch_choices"],
+      "properties": {
+        "terminal_battles": {"const": 10},
+        "replay_verified_battles": {"const": 10},
+        "unique_teams": {"const": 20},
+        "decisions": {"type": "integer", "minimum": 20, "maximum": 40000},
+        "team_choices": {"const": 20},
+        "move_choices": {"type": "integer", "minimum": 1},
+        "switch_choices": {"type": "integer", "minimum": 1}
+      }
+    },
+    "battles": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {"$ref": "#/$defs/battle"}
+    },
+    "determinism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repetitions", "process_isolated", "matching_report_hash"],
+      "properties": {
+        "repetitions": {"type": "integer", "minimum": 2, "maximum": 4},
+        "process_isolated": {"const": true},
+        "matching_report_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "report_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "seed": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"type": "integer", "minimum": 0, "maximum": 65535}
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hp": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "atk": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "def": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "spa": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "spd": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "spe": {"type": "integer", "minimum": 0, "maximum": 65535}
+      }
+    },
+    "ivs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hp": {"type": "integer", "minimum": 0, "maximum": 31},
+        "atk": {"type": "integer", "minimum": 0, "maximum": 31},
+        "def": {"type": "integer", "minimum": 0, "maximum": 31},
+        "spa": {"type": "integer", "minimum": 0, "maximum": 31},
+        "spd": {"type": "integer", "minimum": 0, "maximum": 31},
+        "spe": {"type": "integer", "minimum": 0, "maximum": 31}
+      }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["species", "ability", "moves", "nature", "level"],
+      "properties": {
+        "species": {"type": "string", "minLength": 1, "maxLength": 128},
+        "item": {"type": "string", "minLength": 1, "maxLength": 128},
+        "ability": {"type": "string", "minLength": 1, "maxLength": 128},
+        "moves": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "string", "minLength": 1, "maxLength": 128}},
+        "nature": {"type": "string", "minLength": 1, "maxLength": 128},
+        "gender": {"enum": ["M", "F", "N"]},
+        "evs": {"$ref": "#/$defs/stats"},
+        "ivs": {"$ref": "#/$defs/ivs"},
+        "level": {"type": "integer", "minimum": 1, "maximum": 9999},
+        "shiny": {"type": "boolean"},
+        "happiness": {"type": "integer", "minimum": 0, "maximum": 255},
+        "pokeball": {"type": "string", "minLength": 1, "maxLength": 128},
+        "hpType": {"type": "string", "minLength": 1, "maxLength": 128},
+        "dynamaxLevel": {"type": "integer", "minimum": 0, "maximum": 10},
+        "gigantamax": {"type": "boolean"},
+        "teraType": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "team_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation_seed", "team_hash", "team"],
+      "properties": {
+        "generation_seed": {"$ref": "#/$defs/seed"},
+        "team_hash": {"$ref": "#/$defs/sha256"},
+        "team": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"$ref": "#/$defs/set"}}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_index", "player", "revision", "turn", "kind", "choice", "replay_input", "legal_action_count", "legal_actions_hash"],
+      "properties": {
+        "decision_index": {"type": "integer", "minimum": 0},
+        "player": {"enum": ["p1", "p2"]},
+        "revision": {"type": "integer", "minimum": 0},
+        "turn": {"type": "integer", "minimum": 0},
+        "kind": {"enum": ["team", "move", "switch"]},
+        "choice": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^(team|move|switch) "},
+        "replay_input": {"type": "string", "minLength": 5, "maxLength": 1048576, "pattern": "^>p[12] (team|move|switch) "},
+        "legal_action_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "legal_actions_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "score": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 0}}
+      ]
+    },
+    "battle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["battle_index", "battle_seed", "players", "teams", "selections", "decision_count", "choice_counts", "decisions", "winner", "turns", "score", "replay_verification", "replay"],
+      "properties": {
+        "battle_index": {"type": "integer", "minimum": 1, "maximum": 10},
+        "battle_seed": {"type": "string", "pattern": "^sodium,[0-9a-f]{64}$"},
+        "players": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["p1", "p2"],
+          "properties": {"p1": {"type": "string", "minLength": 1}, "p2": {"type": "string", "minLength": 1}}
+        },
+        "teams": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["p1", "p2"],
+          "properties": {"p1": {"$ref": "#/$defs/team_identity"}, "p2": {"$ref": "#/$defs/team_identity"}}
+        },
+        "selections": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["p1", "p2"],
+          "properties": {"p1": {"type": "string", "pattern": "^team [1-6]{3}$"}, "p2": {"type": "string", "pattern": "^team [1-6]{3}$"}}
+        },
+        "decision_count": {"type": "integer", "minimum": 2, "maximum": 4000},
+        "choice_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["team", "move", "switch"],
+          "properties": {"team": {"const": 2}, "move": {"type": "integer", "minimum": 0}, "switch": {"type": "integer", "minimum": 0}}
+        },
+        "decisions": {"type": "array", "minItems": 2, "maxItems": 4000, "items": {"$ref": "#/$defs/decision"}},
+        "winner": {"type": "string", "minLength": 1},
+        "turns": {"type": "integer", "minimum": 0},
+        "score": {"$ref": "#/$defs/score"},
+        "replay_verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["exact_match", "decision_log_match", "reexecuted_replay_hash"],
+          "properties": {"exact_match": {"const": true}, "decision_log_match": {"const": true}, "reexecuted_replay_hash": {"$ref": "#/$defs/sha256"}}
+        },
+        "replay": {"$ref": "urn:champions-sim:schema:showdown-replay:1"}
+      }
+    }
+  }
+}

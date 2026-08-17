@@ -31,6 +31,7 @@ python -m champions_sim verify-showdown
 python -m champions_sim battle --input data/fixtures/showdown-battle-script.json --allow-incomplete
 python -m champions_sim damage --input data/fixtures/showdown-battle-script.json --attacker p1 --move Thunderbolt
 python -m champions_sim replay --input C:\external-artifacts\replay.json
+python -m champions_sim audit-random-battles --output C:\external-artifacts\m-b-random-10.json
 python scripts/diagnose_bluestacks.py
 ```
 
@@ -54,6 +55,8 @@ with ShowdownClient() as client:
 
 `ShowdownObservation` contains only that player's request and visible log. `damage_sample` clones the battle and proves that the live PRNG state is unchanged. Replay export includes private packed teams and therefore belongs in the external artifact store, not Git. The `replay` command validates its self-hash and engine/bridge identity, re-executes the Showdown input log, and requires the full canonical result to match.
 
+`audit-random-battles` is the completion gate for the pinned M-B singles engine. It generates two unique, Showdown-validated teams of six per battle, chooses an ordered team of three and every later legal move or switch through a reproducible uniform pseudo-random selector, requires ten terminal battles, re-executes every Replay, and repeats the complete run in a fresh bridge process with the same seed. The full Schema-validated report contains private teams and Replays, so `--output` must point outside the repository and refuses to overwrite an existing artifact.
+
 ## Validation
 
 ```powershell
@@ -73,7 +76,7 @@ CI bootstraps and verifies the exact upstream commit and runs the integration su
 - `src/champions_sim/showdown/`: manifest resolver, process transport, sessions, observations, damage samples, and Replay
 - `src/champions_sim/grounding/`: read-only BlueStacks diagnostics and content-addressed capture evidence
 - `data/manifests/`: pinned external dependency identity
-- `data/schemas/`: current dependency, script, Replay, and grounding contracts
+- `data/schemas/`: current dependency, script, Replay, completion-audit, and grounding contracts
 - `data/fixtures/`: one small deterministic battle script
 - `docs/specs/`: current normative behavior
 - `docs/adr/`: durable decision history

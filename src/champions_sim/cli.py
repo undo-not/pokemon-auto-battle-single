@@ -10,7 +10,16 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from champions_sim.core.canonical import canonical_json
-from champions_sim.showdown import ShowdownClient
+from champions_sim.showdown import (
+    ShowdownClient,
+    validate_random_battle_audit_output,
+    verify_repeated_random_battle_audit,
+    write_random_battle_audit,
+)
+from champions_sim.showdown.audit import (
+    DEFAULT_AUDIT_SEED,
+    DEFAULT_MAX_DECISIONS,
+)
 
 
 class CliInputError(ValueError):
@@ -124,6 +133,16 @@ def _parser() -> argparse.ArgumentParser:
     _client_arguments(replay)
     replay.add_argument("--input", type=Path, required=True)
 
+    audit = subparsers.add_parser(
+        "audit-random-battles",
+        help="run the reproducible M-B random-battle completion audit",
+    )
+    _client_arguments(audit)
+    audit.add_argument("--output", type=Path, required=True)
+    audit.add_argument("--seed", default=DEFAULT_AUDIT_SEED)
+    audit.add_argument("--max-decisions", type=int, default=DEFAULT_MAX_DECISIONS)
+    audit.add_argument("--repetitions", type=int, default=2)
+
     damage = subparsers.add_parser(
         "damage", help="sample damage from a scripted battle state"
     )
@@ -190,6 +209,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     _configure_stdio()
     args = _parser().parse_args(argv)
     try:
+        audit_output = (
+            validate_random_battle_audit_output(args.output)
+            if args.command == "audit-random-battles"
+            else None
+        )
         with ShowdownClient(
             root=args.showdown_root, node_executable=args.node
         ) as client:
@@ -216,6 +240,29 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if not isinstance(document, dict):
                     raise CliInputError("Replay must be an object")
                 print(canonical_json(client.replay_input_log(document).to_dict()))
+                return 0
+            if args.command == "audit-random-battles":
+                report = verify_repeated_random_battle_audit(
+                    client,
+                    audit_seed=args.seed,
+                    max_decisions=args.max_decisions,
+                    repetitions=args.repetitions,
+                )
+                assert audit_output is not None
+                write_random_battle_audit(audit_output, report)
+                print(
+                    canonical_json(
+                        {
+                            "ok": True,
+                            "audit_id": report["audit_id"],
+                            "status": report["status"],
+                            "output": str(audit_output),
+                            "report_hash": report["report_hash"],
+                            "totals": report["totals"],
+                            "determinism": report["determinism"],
+                        }
+                    )
+                )
                 return 0
             with _create_scripted_session(client, args.input) as session:
                 if args.command == "battle":

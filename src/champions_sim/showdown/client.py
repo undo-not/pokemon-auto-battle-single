@@ -76,7 +76,10 @@ class ShowdownClient:
             if (
                 not isinstance(constraints, dict)
                 or set(constraints) != set(expected.team_constraints.to_dict())
-                or any(type(value) is not int for value in constraints.values())
+                or any(
+                    value is not None and type(value) is not int
+                    for value in constraints.values()
+                )
             ):
                 self.close()
                 raise RuntimeError(
@@ -117,9 +120,13 @@ class ShowdownClient:
         }
 
     def validate_team(self, team: Team, *, format_id: str | None = None) -> tuple[str, ...]:
+        selected_format = format_id or self.default_format_id
+        binding = self.resolved.manifest.format_by_id(selected_format)
+        if binding is not None and binding.purpose != "battle":
+            raise ValueError(f"format is not a battle binding: {selected_format}")
         result = self.process.request(
             "validate_team",
-            {"format_id": format_id or self.default_format_id, "team": list(team)},
+            {"format_id": selected_format, "team": list(team)},
         )
         problems = result.get("problems")
         if set(result) != {"valid", "problems"} or not isinstance(
@@ -129,6 +136,95 @@ class ShowdownClient:
         if result["valid"] != (not problems):
             raise RuntimeError("Showdown bridge returned inconsistent team validity")
         return tuple(str(problem) for problem in problems)
+
+    def generate_random_team_candidates(
+        self,
+        *,
+        generation_format_id: str,
+        seeds: Sequence[Sequence[int]],
+        target_format_id: str | None = None,
+    ) -> tuple[Mapping[str, Any], ...]:
+        target_id = target_format_id or self.default_format_id
+        generation = self.resolved.manifest.format_by_id(generation_format_id)
+        target = self.resolved.manifest.format_by_id(target_id)
+        if generation is None or generation.purpose != "team_generation":
+            raise ValueError(
+                f"format is not a team-generation binding: {generation_format_id}"
+            )
+        if target is None or target.purpose != "battle":
+            raise ValueError(f"format is not a battle binding: {target_id}")
+        converted_seeds: list[list[int]] = []
+        if not isinstance(seeds, Sequence) or isinstance(seeds, (str, bytes)):
+            raise ValueError("seeds must be a sequence")
+        for index, seed in enumerate(seeds):
+            if (
+                not isinstance(seed, Sequence)
+                or isinstance(seed, (str, bytes))
+                or len(seed) != 4
+                or any(
+                    not isinstance(part, int)
+                    or isinstance(part, bool)
+                    or not 0 <= part <= 0xFFFF
+                    for part in seed
+                )
+            ):
+                raise ValueError(
+                    f"seeds[{index}] must contain four integers between 0 and 65535"
+                )
+            converted_seeds.append(list(seed))
+        if not 1 <= len(converted_seeds) <= 512:
+            raise ValueError("seeds must contain 1 to 512 Showdown seeds")
+        result = self.process.request(
+            "generate_random_teams",
+            {
+                "generation_format_id": generation.id,
+                "target_format_id": target.id,
+                "seeds": converted_seeds,
+            },
+        )
+        if set(result) != {
+            "generation_format_id",
+            "target_format_id",
+            "candidates",
+        } or result.get("generation_format_id") != generation.id or result.get(
+            "target_format_id"
+        ) != target.id:
+            raise RuntimeError("Showdown random-team response identity mismatch")
+        candidates = result.get("candidates")
+        if not isinstance(candidates, list) or len(candidates) != len(converted_seeds):
+            raise RuntimeError("Showdown random-team candidate count mismatch")
+        parsed: list[Mapping[str, Any]] = []
+        for index, candidate in enumerate(candidates):
+            if not isinstance(candidate, dict) or set(candidate) != {
+                "generation_seed",
+                "team",
+                "problems",
+            }:
+                raise RuntimeError(
+                    f"Showdown random-team candidate[{index}] fields are invalid"
+                )
+            team = candidate["team"]
+            problems = candidate["problems"]
+            if candidate["generation_seed"] != converted_seeds[index]:
+                raise RuntimeError(
+                    f"Showdown random-team candidate[{index}] seed mismatch"
+                )
+            if (
+                not isinstance(team, list)
+                or len(team) != 6
+                or not all(isinstance(item, dict) for item in team)
+            ):
+                raise RuntimeError(
+                    f"Showdown random-team candidate[{index}] team is invalid"
+                )
+            if not isinstance(problems, list) or not all(
+                isinstance(problem, str) for problem in problems
+            ):
+                raise RuntimeError(
+                    f"Showdown random-team candidate[{index}] problems are invalid"
+                )
+            parsed.append(candidate)
+        return tuple(parsed)
 
     def create_session(
         self,
@@ -142,6 +238,9 @@ class ShowdownClient:
         format_id: str | None = None,
     ) -> "ShowdownSession":
         selected_format = format_id or self.default_format_id
+        binding = self.resolved.manifest.format_by_id(selected_format)
+        if binding is not None and binding.purpose != "battle":
+            raise ValueError(f"format is not a battle binding: {selected_format}")
         summary = self.process.request(
             "create_session",
             {
@@ -168,6 +267,9 @@ class ShowdownClient:
         expected = ShowdownReplay.from_document(document)
         if expected.document["engine"] != self.engine_identity():
             raise RuntimeError("Replay engine identity does not match the active Showdown engine")
+        binding = self.resolved.manifest.format_by_id(expected.document["format_id"])
+        if binding is None or binding.purpose != "battle":
+            raise RuntimeError("Replay format is not an active battle binding")
         result = self.process.request(
             "replay_input_log", {"input_log": expected.document["input_log"]}
         )
@@ -210,6 +312,27 @@ class ShowdownSession:
         return _validate_session_summary(
             result, session_id=self.session_id, format_id=self.format_id
         )
+
+    def choose_with_replay_input(
+        self, player: str, choice: str
+    ) -> tuple[Mapping[str, Any], str]:
+        result = self.client.process.request(
+            "choose_with_replay_input",
+            {"session_id": self.session_id, "player": player, "choice": choice},
+        )
+        replay_input = result.get("replay_input")
+        if (
+            set(result) != {"summary", "replay_input"}
+            or not isinstance(result.get("summary"), dict)
+            or not isinstance(replay_input, str)
+            or not replay_input.startswith(f">{player} ")
+            or len(replay_input) > 1024 * 1024
+        ):
+            raise RuntimeError("Showdown canonical-choice response violates the protocol")
+        summary = _validate_session_summary(
+            result["summary"], session_id=self.session_id, format_id=self.format_id
+        )
+        return summary, replay_input
 
     def damage_sample(self, attacker: str, move: str) -> DamageSample:
         result = self.client.process.request(

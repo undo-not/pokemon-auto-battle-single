@@ -19,6 +19,7 @@ from champions_sim.showdown import (
     ShowdownResolutionError,
     resolve_showdown,
 )
+from champions_sim.showdown.audit import _generation_seed
 
 from showdown_fixtures import (
     legal_team,
@@ -104,6 +105,111 @@ def test_team_validation_comes_from_showdown(client: ShowdownClient) -> None:
     with pytest.raises(ShowdownBridgeError) as captured:
         client.validate_team(legal_team(), format_id="gen9customgame")
     assert captured.value.code == "UNBOUND_FORMAT"
+
+
+def test_bound_random_team_generation_is_closed_and_target_validated(
+    client: ShowdownClient,
+) -> None:
+    seeds = [_generation_seed("integration-generator", index) for index in range(4)]
+
+    candidates = client.generate_random_team_candidates(
+        generation_format_id="gen9championsrandombattle",
+        seeds=seeds,
+    )
+
+    assert len(candidates) == 4
+    assert len({canonical_hash(candidate["team"]) for candidate in candidates}) == 4
+    for index, candidate in enumerate(candidates):
+        assert candidate["generation_seed"] == list(seeds[index])
+        assert len(candidate["team"]) == 6
+        assert not candidate["problems"]
+        assert client.validate_team(candidate["team"]) == ()
+    with pytest.raises(ValueError, match="team-generation binding"):
+        client.generate_random_team_candidates(
+            generation_format_id="gen9championsbssregmb",
+            seeds=seeds,
+        )
+    with pytest.raises(ValueError, match="four integers"):
+        client.generate_random_team_candidates(
+            generation_format_id="gen9championsrandombattle",
+            seeds=[(1, 2, 3)],
+        )
+    with pytest.raises(ValueError, match="not a battle binding"):
+        client.create_session(
+            session_id="wrong-purpose",
+            seed=sodium_seed(),
+            p1_name="Alpha",
+            p1_team=legal_team(),
+            p2_name="Beta",
+            p2_team=legal_team(),
+            format_id="gen9championsrandombattle",
+        )
+
+
+def test_random_battle_audit_decision_bound_fails_closed(
+    client: ShowdownClient,
+) -> None:
+    from champions_sim.showdown.audit import (
+        RandomBattleAuditError,
+        run_random_battle_audit,
+    )
+
+    with pytest.raises(RandomBattleAuditError, match="exceeded 1 decisions"):
+        run_random_battle_audit(client, max_decisions=1)
+
+
+def test_accepted_choice_consumes_request_until_next_engine_request(
+    client: ShowdownClient,
+) -> None:
+    session = client.create_session(
+        session_id="request-consumption",
+        seed=sodium_seed(71),
+        p1_name="Alpha",
+        p1_team=legal_team(),
+        p2_name="Beta",
+        p2_team=opponent_team_with_private_item(),
+    )
+    try:
+        p1_choice = session.observe("p1").legal_actions[0]
+        p2_choice = session.observe("p2").legal_actions[0]
+
+        session.choose("p1", p1_choice)
+
+        assert session.observe("p1").legal_actions == ()
+        with pytest.raises(ShowdownBridgeError) as captured:
+            session.choose("p1", p1_choice)
+        assert captured.value.code == "CHOICE_UNAVAILABLE"
+
+        session.choose("p2", p2_choice)
+        assert session.observe("p1").legal_actions
+    finally:
+        session.close()
+
+
+def test_choice_canonicalization_matches_replay_input_exactly(
+    client: ShowdownClient,
+) -> None:
+    session = client.create_session(
+        session_id="choice-canonicalization",
+        seed=sodium_seed(72),
+        p1_name="Alpha",
+        p1_team=legal_team(),
+        p2_name="Beta",
+        p2_team=opponent_team_with_private_item(),
+    )
+    try:
+        p1_choice = "team 123"
+        p2_choice = "team 456"
+
+        _p1_summary, p1_input = session.choose_with_replay_input("p1", p1_choice)
+        _p2_summary, p2_input = session.choose_with_replay_input("p2", p2_choice)
+        replay = session.replay(allow_incomplete=True).to_dict()
+
+        assert p1_input == ">p1 team 1, 2, 3"
+        assert p2_input == ">p2 team 4, 5, 6"
+        assert replay["input_log"][3:] == [p1_input, p2_input]
+    finally:
+        session.close()
 
 
 def test_private_observation_legal_actions_damage_and_replay(client: ShowdownClient) -> None:

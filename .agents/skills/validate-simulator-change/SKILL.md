@@ -29,7 +29,7 @@ $env:SHOWDOWN_INTEGRATION = "1"
 python -m pytest -q tests/test_showdown_manifest.py tests/test_showdown_integration.py tests/test_showdown_cli.py
 ```
 
-Verify the pinned origin, commit, Git tree, selected source hashes, license hash, compiled-file count, build fingerprint, Node minimum, format name/mod, bridge protocol, and bridge source hash before battle tests. Test terminal equal-input Replay identity and input-log re-execution, concurrent session isolation, policy-view privacy, team validation, legal choices, invalid choices, process termination, timeout transport disposal, strict JSON, and clone-only damage sampling. A mismatch must fail closed; do not add the removed Python engine as a fallback.
+Verify the pinned origin, commit, Git tree, selected source hashes, license hash, compiled/runtime-file count, build fingerprint, Node minimum, format name/mod/purpose, bridge protocol, and bridge source hash before battle tests. When random-team generation changes, verify its source and runtime JSON, the generation-format binding, ten-battle audit Schema, target-format validation, cross-process determinism, decision-to-Replay correspondence, and external-only no-overwrite report. Test terminal equal-input Replay identity and input-log re-execution, concurrent session isolation, policy-view privacy, team validation, legal choices, invalid choices, process termination, timeout transport disposal, strict JSON, and clone-only damage sampling. A mismatch must fail closed; do not add the removed Python engine as a fallback.
 
 ### Regulation or upstream pin
 

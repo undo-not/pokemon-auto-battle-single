@@ -7,9 +7,15 @@ import sys
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
+from referencing import Registry, Resource
 
 from champions_sim.cli import main
+from champions_sim.core.canonical import canonical_hash
+from champions_sim.showdown import (
+    RandomBattleAuditError,
+    validate_random_battle_audit_document,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +80,105 @@ def test_replay_cli_reexecutes_and_verifies_document(
 
     assert main(["replay", "--input", str(replay_path)]) == 0
     assert json.loads(capsys.readouterr().out) == replay
+
+
+def test_random_battle_completion_audit_runs_ten_reproducible_battles(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    output = tmp_path / "m-b-random-10.json"
+
+    assert main(["audit-random-battles", "--output", str(output)]) == 0
+
+    result = json.loads(capsys.readouterr().out)
+    report = json.loads(output.read_text(encoding="utf-8"))
+    assert result == {
+        "ok": True,
+        "audit_id": report["audit_id"],
+        "status": "passed",
+        "output": str(output.resolve()),
+        "report_hash": report["report_hash"],
+        "totals": report["totals"],
+        "determinism": report["determinism"],
+    }
+    assert report["battle_count"] == 10
+    assert report["format"] == {
+        "id": "gen9championsbssregmb",
+        "name": "[Gen 9 Champions] BSS Reg M-B",
+        "mod": "champions",
+        "regulation": "M-B",
+        "game_type": "singles",
+        "registered_team_size": 6,
+        "picked_team_size": 3,
+    }
+    assert report["totals"]["terminal_battles"] == 10
+    assert report["totals"]["replay_verified_battles"] == 10
+    assert report["totals"]["unique_teams"] == 20
+    assert report["totals"]["team_choices"] == 20
+    assert report["totals"]["move_choices"] > 0
+    assert report["totals"]["switch_choices"] > 0
+    assert report["determinism"]["repetitions"] == 2
+    assert report["determinism"]["process_isolated"] is True
+    assert len(report["battles"]) == 10
+    assert len(
+        {
+            battle["teams"][player]["team_hash"]
+            for battle in report["battles"]
+            for player in ("p1", "p2")
+        }
+    ) == 20
+    for battle in report["battles"]:
+        assert battle["replay_verification"]["exact_match"] is True
+        assert battle["replay_verification"]["decision_log_match"] is True
+        assert (
+            battle["replay_verification"]["reexecuted_replay_hash"]
+            == battle["replay"]["replay_hash"]
+        )
+        assert battle["replay"]["ended"] is True
+        assert battle["winner"] in battle["players"].values()
+        assert all(len(battle["teams"][player]["team"]) == 6 for player in ("p1", "p2"))
+        assert all(battle["selections"][player].startswith("team ") for player in ("p1", "p2"))
+        for player in ("p1", "p2"):
+            assert [
+                line
+                for line in battle["replay"]["input_log"][3:]
+                if line.startswith(f">{player} ")
+            ] == [
+                decision["replay_input"]
+                for decision in battle["decisions"]
+                if decision["player"] == player
+            ]
+    assert any(
+        decision["replay_input"]
+        != f">{decision['player']} {decision['choice']}"
+        for battle in report["battles"]
+        for decision in battle["decisions"]
+    )
+    schema_root = ROOT / "data" / "schemas"
+    replay_schema = json.loads(
+        (schema_root / "showdown-replay.schema.json").read_text(encoding="utf-8")
+    )
+    audit_schema = json.loads(
+        (schema_root / "random-battle-audit.schema.json").read_text(encoding="utf-8")
+    )
+    registry = Registry().with_resource(
+        replay_schema["$id"], Resource.from_contents(replay_schema)
+    )
+    Draft202012Validator(audit_schema, registry=registry).validate(report)
+    validate_random_battle_audit_document(report)
+    false_claim = json.loads(json.dumps(report))
+    false_claim["determinism"]["process_isolated"] = False
+    with pytest.raises(ValidationError):
+        Draft202012Validator(audit_schema, registry=registry).validate(false_claim)
+    with pytest.raises(RandomBattleAuditError, match="determinism"):
+        validate_random_battle_audit_document(false_claim)
+    false_decision = json.loads(json.dumps(report))
+    false_decision["battles"][0]["decisions"][0]["replay_input"] = (
+        ">p1 team 1, 2, 3"
+    )
+    with pytest.raises(RandomBattleAuditError, match="Replay decision"):
+        validate_random_battle_audit_document(false_decision)
+    claimed_hash = report.pop("report_hash")
+    assert claimed_hash == canonical_hash(report)
 
 
 def test_cli_rejects_type_coercion(

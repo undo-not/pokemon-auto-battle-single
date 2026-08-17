@@ -31,9 +31,12 @@ def test_tracked_manifest_pins_source_build_license_and_format() -> None:
         for dependency in manifest.runtime_dependencies
     ) == (("ts-chacha20", "1.2.0", "MIT"),)
     assert dict(manifest.source_files)[manifest.license_file] == manifest.license_sha256
-    assert manifest.build.file_count == 338
+    assert manifest.schema_version == "2.0.0"
+    assert manifest.build.file_count == 369
+    assert manifest.build.extensions == (".js", ".json")
     assert manifest.build.closed_roots == ("dist/config",)
     assert manifest.default_format.id == "gen9championsbssregmb"
+    assert manifest.default_format.purpose == "battle"
     assert manifest.default_format.mod == "champions"
     assert manifest.default_format.game_type == "singles"
     assert manifest.default_format.ruleset == ("Flat Rules", "VGC Timer")
@@ -52,6 +55,17 @@ def test_tracked_manifest_pins_source_build_license_and_format() -> None:
     }
     assert manifest.minimum_node_major >= 22
     assert "config/custom-formats.ts" in manifest.forbidden_paths
+    generator = manifest.format_by_id("gen9championsrandombattle")
+    assert generator is not None
+    assert generator.purpose == "team_generation"
+    assert generator.name == "[Gen 9 Champions] Random Battle"
+    assert generator.mod == manifest.default_format.mod
+    assert generator.team_constraints.picked_team_size is None
+    assert generator.team_constraints.adjust_level is None
+    assert {
+        "dist/data/random-battles/champions/sets.json",
+        "dist/data/random-battles/champions/doubles-sets.json",
+    } <= set(manifest.build.include_files)
 
     schema = json.loads(
         (manifest.path.parents[1] / "schemas" / "pokemon-showdown-dependency.schema.json").read_text(
@@ -66,8 +80,8 @@ def test_tracked_manifest_pins_source_build_license_and_format() -> None:
 def test_manifest_rejects_duplicate_json_keys(tmp_path: Path) -> None:
     original = load_showdown_manifest().path.read_text(encoding="utf-8")
     hostile = original.replace(
-        '"schema_version": "1.0.0",',
-        '"schema_version": "1.0.0", "schema_version": "1.0.0",',
+        '"schema_version": "2.0.0",',
+        '"schema_version": "2.0.0", "schema_version": "2.0.0",',
         1,
     )
     path = tmp_path / "manifest.json"
@@ -162,3 +176,23 @@ def test_source_hash_normalizes_platform_crlf_only(tmp_path: Path) -> None:
     crlf.write_bytes(b"first\r\nsecond\r\n")
 
     assert _sha256_lf(lf) == _sha256_lf(crlf)
+
+
+def test_build_fingerprint_normalizes_platform_crlf(tmp_path: Path) -> None:
+    manifest = load_showdown_manifest()
+    included = tmp_path / "runtime.json"
+    included.write_bytes(b'{"line":1}\n')
+    isolated = replace(
+        manifest,
+        build=replace(
+            manifest.build,
+            include_roots=(),
+            closed_roots=(),
+            include_files=("runtime.json",),
+        ),
+    )
+    baseline = build_fingerprint(tmp_path, isolated)
+
+    included.write_bytes(b'{"line":1}\r\n')
+
+    assert build_fingerprint(tmp_path, isolated) == baseline

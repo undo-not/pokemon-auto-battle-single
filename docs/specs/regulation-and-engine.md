@@ -12,6 +12,7 @@ The dependency manifest binds one or more exact Showdown format records to an im
 
 - format ID and display name;
 - Showdown mod ID;
+- binding purpose (`battle` or `team_generation`);
 - human-readable regulation label;
 - singles game type, ordered direct ruleset, and sorted expanded effective rule table;
 - minimum/maximum registered team size, picked-team size, maximum move count,
@@ -19,6 +20,8 @@ The dependency manifest binds one or more exact Showdown format records to an im
 - commit, tree, canonical Git-blob/LF-worktree source hashes, license, and build fingerprint.
 
 There is no local Catalog, RuleSet, target-pool compiler, or copied upstream Pokédex. Species, form, item, move, ability, legality, and mechanics data are loaded from the verified Showdown build.
+
+The M-B completion audit additionally binds the Champions random-battle format, its generator source and set JSON, and the corresponding compiled/runtime files. Generated teams remain test inputs; only the M-B battle binding is accepted for sessions and Replay execution.
 
 ## Regulation change
 

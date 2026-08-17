@@ -19,6 +19,11 @@ const SET_FIELDS = new Set([
   "name", "species", "item", "ability", "moves", "nature", "gender", "evs", "ivs",
   "level", "shiny", "happiness", "pokeball", "hpType", "dynamaxLevel", "gigantamax", "teraType",
 ]);
+const GENERATED_SET_FIELDS = [
+  "species", "item", "ability", "moves", "nature", "gender", "evs", "ivs",
+  "level", "shiny", "happiness", "pokeball", "hpType", "dynamaxLevel",
+  "gigantamax", "teraType",
+];
 const REQUIRED_SET_FIELDS = ["species", "ability", "moves", "nature", "level"];
 const STAT_IDS = new Set(["hp", "atk", "def", "spa", "spd", "spe"]);
 
@@ -268,6 +273,69 @@ function assertFormat(formatId) {
 function validateTeam(formatId, team) {
   const problems = new TeamValidator(formatId).validateTeam(team);
   return problems ? [...problems] : [];
+}
+
+function canonicalChoiceInput(session, player, choice) {
+  const liveState = JSON.stringify(session.stream.battle.toJSON());
+  const clone = Battle.fromJSON(liveState);
+  const side = clone[player];
+  if (!side || !side.choose(choice) || !side.isChoiceDone()) {
+    throw new ProtocolError(
+      "CHOICE_REJECTED",
+      `choice could not be canonicalized for ${player}`,
+    );
+  }
+  const canonical = side.getChoice();
+  if (!canonical || JSON.stringify(session.stream.battle.toJSON()) !== liveState) {
+    session.poisoned = "choice canonicalization violated live-state isolation";
+    throw new ProtocolError("SESSION_POISONED", session.poisoned);
+  }
+  return `>${player} ${canonical}`;
+}
+
+function assertGenerationSeeds(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 512) {
+    throw new ProtocolError("INVALID_REQUEST", "seeds must contain 1 to 512 Showdown seeds");
+  }
+  return value.map((seed, seedIndex) => {
+    if (!Array.isArray(seed) || seed.length !== 4 || seed.some(part => (
+      !Number.isInteger(part) || part < 0 || part > 0xffff
+    ))) {
+      throw new ProtocolError(
+        "INVALID_REQUEST",
+        `seeds[${seedIndex}] must contain four integers between 0 and 65535`,
+      );
+    }
+    return [...seed];
+  });
+}
+
+function normalizeGeneratedTeam(rawTeam) {
+  if (!Array.isArray(rawTeam) || rawTeam.length !== 6) {
+    throw new ProtocolError("GENERATOR_DRIFT", "random-team generator did not return six sets");
+  }
+  const seenItems = new Set();
+  const team = rawTeam.map(rawSet => {
+    const set = {};
+    for (const field of GENERATED_SET_FIELDS) {
+      if (Object.hasOwn(rawSet, field)) set[field] = rawSet[field];
+    }
+    set.nature = set.nature || "Serious";
+    for (const field of ["item", "pokeball", "hpType", "teraType"]) {
+      if (set[field] === "") delete set[field];
+    }
+    if (set.item) {
+      const itemId = Dex.toID(set.item);
+      if (seenItems.has(itemId)) {
+        delete set.item;
+      } else {
+        seenItems.add(itemId);
+      }
+    }
+    return set;
+  });
+  assertTeam(team, "generated_team");
+  return team;
 }
 
 function normalizeLines(text) {
@@ -545,6 +613,45 @@ async function dispatch(method, params) {
     return {valid: problems.length === 0, problems};
   }
 
+  if (method === "generate_random_teams") {
+    assertObject(
+      params,
+      "params",
+      ["generation_format_id", "target_format_id", "seeds"],
+    );
+    const generationFormat = assertFormat(params.generation_format_id);
+    const targetFormat = assertFormat(params.target_format_id);
+    if (
+      generationFormat.mod !== targetFormat.mod ||
+      (generationFormat.gameType || "singles") !== "singles" ||
+      (targetFormat.gameType || "singles") !== "singles"
+    ) {
+      throw new ProtocolError(
+        "FORMAT_INCOMPATIBLE",
+        "generation and target formats must use the same singles mod",
+      );
+    }
+    const seeds = assertGenerationSeeds(params.seeds);
+    const candidates = seeds.map(seed => {
+      const team = normalizeGeneratedTeam(
+        Teams.generate(generationFormat.id, {seed}),
+      );
+      const problems = validateTeam(targetFormat.id, team);
+      return {
+        generation_seed: seed,
+        // TeamValidator mutates its input and restores absent strings as "".
+        // Emit a fresh bridge-safe copy after validation.
+        team: normalizeGeneratedTeam(team),
+        problems,
+      };
+    });
+    return {
+      generation_format_id: generationFormat.id,
+      target_format_id: targetFormat.id,
+      candidates,
+    };
+  }
+
   if (method === "create_session") {
     assertObject(params, "params", ["session_id", "format_id", "seed", "players"]);
     const id = assertString(params.session_id, "session_id", 128);
@@ -603,21 +710,32 @@ async function dispatch(method, params) {
     return observation(session, player, params.since);
   }
 
-  if (method === "choose") {
+  if (method === "choose" || method === "choose_with_replay_input") {
     assertObject(params, "params", ["session_id", "player", "choice"]);
     const session = getSession(params);
     const player = assertString(params.player, "player", 2);
     if (!PLAYER_IDS.has(player)) throw new ProtocolError("INVALID_REQUEST", "player must be p1 or p2");
     const choice = assertString(params.choice, "choice", 256);
     if (session.stream.battle.ended) throw new ProtocolError("BATTLE_ENDED", "battle already ended");
+    const pendingRequest = session.requests[player];
+    if (!pendingRequest) {
+      throw new ProtocolError("CHOICE_UNAVAILABLE", `${player} has no pending request`);
+    }
+    const replayInput = method === "choose_with_replay_input" ?
+      canonicalChoiceInput(session, player, choice) : null;
+    // Consume before writing so a synchronously emitted next request replaces
+    // null instead of being erased after the accepted choice returns.
+    session.requests[player] = null;
     try {
       await session.stream.write(`>${player} ${choice}`);
     } catch (error) {
+      if (session.requests[player] === null) session.requests[player] = pendingRequest;
       if (session.poisoned) throw new ProtocolError("SESSION_POISONED", session.poisoned);
       throw new ProtocolError("CHOICE_REJECTED", error.message);
     }
     session.revision++;
-    return sessionSummary(session);
+    const summary = sessionSummary(session);
+    return method === "choose" ? summary : {summary, replay_input: replayInput};
   }
 
   if (method === "damage_sample") {
