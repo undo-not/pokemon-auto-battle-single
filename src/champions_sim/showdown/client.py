@@ -53,16 +53,57 @@ class ShowdownClient:
         self.process = ShowdownProcess(self.resolved, timeout_seconds=timeout_seconds)
         for expected in self.resolved.manifest.formats:
             actual = self.process.request("describe_format", {"format_id": expected.id})
-            if set(actual) != {"id", "name", "mod", "game_type", "ruleset"} or not isinstance(
-                actual.get("ruleset"), list
-            ) or any(not isinstance(item, str) for item in actual["ruleset"]):
+            if set(actual) != {
+                "id",
+                "name",
+                "mod",
+                "game_type",
+                "ruleset",
+                "rule_table",
+                "team_constraints",
+            }:
                 self.close()
                 raise RuntimeError("Showdown format response violates the bridge contract")
-            identity = (actual.get("id"), actual.get("name"), actual.get("mod"), actual.get("game_type"))
-            required = (expected.id, expected.name, expected.mod, "singles")
+            for field in ("ruleset", "rule_table"):
+                if not isinstance(actual[field], list) or any(
+                    not isinstance(item, str) for item in actual[field]
+                ):
+                    self.close()
+                    raise RuntimeError(
+                        "Showdown format response violates the bridge contract"
+                    )
+            constraints = actual["team_constraints"]
+            if (
+                not isinstance(constraints, dict)
+                or set(constraints) != set(expected.team_constraints.to_dict())
+                or any(type(value) is not int for value in constraints.values())
+            ):
+                self.close()
+                raise RuntimeError(
+                    "Showdown format response violates the bridge contract"
+                )
+            identity = (
+                actual.get("id"),
+                actual.get("name"),
+                actual.get("mod"),
+                actual.get("game_type"),
+            )
+            required = (expected.id, expected.name, expected.mod, expected.game_type)
             if identity != required:
                 self.close()
                 raise RuntimeError(f"Showdown format identity mismatch: expected {required!r}, got {identity!r}")
+            if tuple(actual["ruleset"]) != expected.ruleset:
+                self.close()
+                raise RuntimeError(
+                    "Showdown format ruleset mismatch: "
+                    f"expected {expected.ruleset!r}, got {tuple(actual['ruleset'])!r}"
+                )
+            if tuple(actual["rule_table"]) != expected.rule_table:
+                self.close()
+                raise RuntimeError("Showdown effective rule table mismatch")
+            if constraints != expected.team_constraints.to_dict():
+                self.close()
+                raise RuntimeError("Showdown team constraints mismatch")
 
     @property
     def default_format_id(self) -> str:
@@ -93,7 +134,7 @@ class ShowdownClient:
         self,
         *,
         session_id: str,
-        seed: Sequence[int],
+        seed: str,
         p1_name: str,
         p1_team: Team,
         p2_name: str,
@@ -106,7 +147,7 @@ class ShowdownClient:
             {
                 "session_id": session_id,
                 "format_id": selected_format,
-                "seed": list(seed),
+                "seed": seed,
                 "players": {
                     "p1": {"name": p1_name, "team": list(p1_team)},
                     "p2": {"name": p2_name, "team": list(p2_team)},
@@ -180,9 +221,13 @@ class ShowdownSession:
             raise RuntimeError("Showdown damage sample identity mismatch")
         return sample
 
-    def replay(self) -> ShowdownReplay:
+    def replay(self, *, allow_incomplete: bool = False) -> ShowdownReplay:
         result = self.client.process.request(
-            "export_replay", {"session_id": self.session_id}
+            "export_replay",
+            {
+                "session_id": self.session_id,
+                "allow_incomplete": allow_incomplete,
+            },
         )
         replay = ShowdownReplay.from_mapping(
             result,

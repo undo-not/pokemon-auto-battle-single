@@ -20,7 +20,7 @@ from champions_sim.showdown import (
     resolve_showdown,
 )
 
-from showdown_fixtures import legal_team, opponent_team_with_private_item
+from showdown_fixtures import legal_team, opponent_team_with_private_item, sodium_seed
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,6 +49,38 @@ def test_dependency_identity_and_champions_format_are_verified(client: ShowdownC
     assert client.default_format_id == "gen9championsbssregmb"
 
 
+def test_manifest_ruleset_mismatch_fails_before_session_creation(
+    client: ShowdownClient, tmp_path: Path
+) -> None:
+    document = json.loads(client.resolved.manifest.path.read_text(encoding="utf-8"))
+    document["formats"][0]["ruleset"] = ["Flat Rules"]
+    hostile = tmp_path / "manifest.json"
+    hostile.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="format ruleset mismatch"):
+        ShowdownClient(
+            root=client.resolved.root,
+            node_executable=client.resolved.node_executable,
+            manifest_path=hostile,
+        )
+
+
+def test_manifest_effective_rule_table_mismatch_fails_before_session_creation(
+    client: ShowdownClient, tmp_path: Path
+) -> None:
+    document = json.loads(client.resolved.manifest.path.read_text(encoding="utf-8"))
+    document["formats"][0]["rule_table"].remove("speciesclause")
+    hostile = tmp_path / "manifest.json"
+    hostile.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="effective rule table mismatch"):
+        ShowdownClient(
+            root=client.resolved.root,
+            node_executable=client.resolved.node_executable,
+            manifest_path=hostile,
+        )
+
+
 def test_team_validation_comes_from_showdown(client: ShowdownClient) -> None:
     assert client.validate_team(legal_team()) == ()
 
@@ -71,13 +103,17 @@ def test_team_validation_comes_from_showdown(client: ShowdownClient) -> None:
 def test_private_observation_legal_actions_damage_and_replay(client: ShowdownClient) -> None:
     session = client.create_session(
         session_id="integration-main",
-        seed=(1, 2, 3, 4),
+        seed=sodium_seed(),
         p1_name="Alpha",
         p1_team=legal_team(),
         p2_name="Beta",
         p2_team=opponent_team_with_private_item(),
     )
     try:
+        with pytest.raises(ShowdownBridgeError) as captured:
+            session.replay()
+        assert captured.value.code == "REPLAY_INCOMPLETE"
+
         preview = session.observe("p1")
         assert len(preview.legal_actions) == 120
         assert "team 123" in preview.legal_actions
@@ -94,12 +130,20 @@ def test_private_observation_legal_actions_damage_and_replay(client: ShowdownCli
         second = session.damage_sample("p1", "Thunderbolt")
         assert first == second
         assert first.damage is not None and first.damage > 0
+        assert first.move_type == "Electric"
+        assert first.move_category == "Special"
+        assert first.damage_status == "value"
         assert first.clone_seed_before != first.clone_seed_after
         assert first.live_seed_before == first.live_seed_after == first.clone_seed_before
 
+        status = session.damage_sample("p1", "Protect")
+        assert status.damage is None
+        assert status.move_category == "Status"
+        assert status.damage_status == "non_damaging"
+
         session.choose("p1", "move 1")
         session.choose("p2", "move 1")
-        replay = session.replay()
+        replay = session.replay(allow_incomplete=True)
         replay_document = replay.to_dict()
         assert replay_document["engine"]["commit"] == client.resolved.manifest.commit
         assert len(replay_document["engine"]["bridge_sha256"]) == 64
@@ -120,13 +164,80 @@ def test_private_observation_legal_actions_damage_and_replay(client: ShowdownCli
         session.close()
 
 
+def test_damage_sample_applies_showdown_move_type_modification(
+    client: ShowdownClient,
+) -> None:
+    pixilate_team = legal_team()
+    pixilate_team[0] = {
+        "species": "Sylveon",
+        "ability": "Pixilate",
+        "moves": ["Hyper Voice", "Quick Attack", "Protect", "Calm Mind"],
+        "nature": "Modest",
+        "level": 50,
+    }
+    assert client.validate_team(pixilate_team) == ()
+    session = client.create_session(
+        session_id="damage-modify-type",
+        seed=sodium_seed(16),
+        p1_name="Alpha",
+        p1_team=pixilate_team,
+        p2_name="Beta",
+        p2_team=legal_team(),
+    )
+    try:
+        session.choose("p1", "team 123")
+        session.choose("p2", "team 123")
+        sample = session.damage_sample("p1", "Hyper Voice")
+        assert sample.move_type == "Fairy"
+        assert sample.move_category == "Special"
+        assert sample.damage_status == "value"
+        assert sample.damage is not None and sample.damage > 0
+    finally:
+        session.close()
+
+
+def test_replay_round_trip_accepts_packed_defaults_and_optional_fields(
+    client: ShowdownClient,
+) -> None:
+    team = legal_team()
+    for pokemon in team:
+        pokemon["level"] = 100
+    team[0]["happiness"] = 200
+    assert client.validate_team(team) == ()
+    session = client.create_session(
+        session_id="packed-defaults",
+        seed=sodium_seed(48),
+        p1_name="Alpha",
+        p1_team=team,
+        p2_name="Beta",
+        p2_team=team,
+    )
+    try:
+        session.choose("p1", "team 123")
+        session.choose("p2", "team 123")
+        replay = session.replay(allow_incomplete=True)
+        assert client.replay_input_log(replay.to_dict()).to_dict() == replay.to_dict()
+    finally:
+        session.close()
+
+
+def test_parent_node_injection_variables_do_not_reach_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("NODE_OPTIONS", "--definitely-invalid-option")
+    monkeypatch.setenv("NODE_PATH", "hostile-node-modules")
+
+    with ShowdownClient() as isolated:
+        assert isolated.validate_team(legal_team()) == ()
+
+
 def test_equal_inputs_have_equal_replay_identity_and_sessions_are_isolated(
     client: ShowdownClient,
 ) -> None:
     sessions = [
         client.create_session(
             session_id=f"deterministic-{index}",
-            seed=(9, 8, 7, 6),
+            seed=sodium_seed(32),
             p1_name="Alpha",
             p1_team=legal_team(),
             p2_name="Beta",
@@ -140,7 +251,9 @@ def test_equal_inputs_have_equal_replay_identity_and_sessions_are_isolated(
             session.choose("p2", "team 123")
             session.choose("p1", "move 1")
             session.choose("p2", "move 1")
-        assert sessions[0].replay().to_dict() == sessions[1].replay().to_dict()
+        assert sessions[0].replay(allow_incomplete=True).to_dict() == sessions[
+            1
+        ].replay(allow_incomplete=True).to_dict()
         assert sessions[0].observe("p1").session_id != sessions[1].observe("p1").session_id
     finally:
         for session in sessions:
@@ -150,7 +263,7 @@ def test_equal_inputs_have_equal_replay_identity_and_sessions_are_isolated(
 def _complete_battle(client: ShowdownClient, session_id: str) -> dict[str, object]:
     session = client.create_session(
         session_id=session_id,
-        seed=(45, 46, 47, 48),
+        seed=sodium_seed(64),
         p1_name="Alpha",
         p1_team=legal_team(),
         p2_name="Beta",
@@ -211,7 +324,7 @@ def test_terminal_battle_is_deterministic_and_replay_is_executable(
 def test_invalid_choice_fails_closed_without_killing_bridge(client: ShowdownClient) -> None:
     session = client.create_session(
         session_id="invalid-choice",
-        seed=(10, 20, 30, 40),
+        seed=sodium_seed(96),
         p1_name="Alpha",
         p1_team=legal_team(),
         p2_name="Beta",

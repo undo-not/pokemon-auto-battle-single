@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -14,6 +15,9 @@ from champions_sim.showdown import ShowdownClient
 
 class CliInputError(ValueError):
     pass
+
+
+_SODIUM_SEED = re.compile(r"^sodium,[0-9a-f]{64}$")
 
 
 def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -144,9 +148,9 @@ def _create_scripted_session(client: ShowdownClient, path: Path):
         player_data[player] = _exact(
             players[player], f"players.{player}", {"name", "team"}
         )
-    seed = document["seed"]
-    if not isinstance(seed, list):
-        raise CliInputError("seed must be an array")
+    seed = _string(document["seed"], "seed")
+    if _SODIUM_SEED.fullmatch(seed) is None:
+        raise CliInputError("seed must be a 32-byte Showdown sodium seed")
     choices = document["choices"]
     if not isinstance(choices, list):
         raise CliInputError("choices must be an array")
@@ -214,7 +218,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 0
             with _create_scripted_session(client, args.input) as session:
                 if args.command == "battle":
-                    print(canonical_json(session.replay().to_dict()))
+                    print(
+                        canonical_json(
+                            session.replay(allow_incomplete=True).to_dict()
+                        )
+                    )
                     return 0
                 sample = session.damage_sample(args.attacker, args.move)
                 print(canonical_json(sample))

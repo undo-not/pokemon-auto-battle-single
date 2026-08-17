@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-17
-- Supersedes: ADR-0003 and ADR-0004
+- Supersedes: ADR-0003, ADR-0004, and ADR-0005
 
 ## Context
 
@@ -16,9 +16,11 @@ Use the Pokémon Showdown Champions mod as the only battle-transition, team-vali
 
 Keep the Showdown checkout, `node_modules`, and compiled output outside the repository. A strict versioned JSON-lines bridge runs as one persistent Node process and hosts multiple isolated battles. Its normalized source hash is part of engine identity. Python exposes player-scoped observations, Showdown choice strings, cloned-state damage samples, and content-addressed, re-executable Replays. Any identity, protocol, format, validation, process, or action error fails closed; there is no Python mechanics fallback.
 
-Remove the custom engine and the Catalog, RuleSet, intake, compiler, capability, promotion, and synthetic-arena implementations dedicated to it. Git history is the recovery mechanism for deleted code.
+Remove the custom engine and the Catalog, RuleSet, intake, compiler, capability, promotion, production-trust, and synthetic-arena implementations dedicated to it. Git history is the recovery mechanism for deleted code. Any future deployment-authorization boundary requires a new decision designed for the Showdown-based architecture.
 
-Regulation changes update a named Showdown format and, when required, the pinned upstream commit. Within 48 hours of a frozen regulation notice, produce an engineering candidate or reasoned `NO-GO`; complete authorized private-match grounding and the deployment decision within seven days. Equal engine/build/runtime identity, teams, choices, and seed must produce equal canonical Replay identity.
+Regulation changes update a named Showdown format and, when required, the pinned upstream commit. Each pin update recomputes the source, runtime-dependency, build, effective-rule, and license identities and reruns deterministic, privacy, Replay, and relevant client-grounding comparisons before replacing the prior usable pin. Local bridge patches must not alter battle semantics. If upstream behavior is insufficient, use a separately reviewed pinned fork or return `NO-GO`; never fall back to the deleted Python engine.
+
+The verified upstream checkout retains its MIT license file outside this repository. If its license, maintainability, security, or Champions suitability becomes unacceptable, stop promotion and choose a replacement through a new ADR. Within 48 hours of a frozen regulation notice, produce an engineering candidate or reasoned `NO-GO`; complete authorized private-match grounding and the deployment decision within seven days. Equal engine/build/runtime identity, teams, choices, and seed must produce equal canonical Replay identity.
 
 ## Consequences
 

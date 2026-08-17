@@ -11,6 +11,7 @@ const MAX_LINE_BYTES = 1024 * 1024;
 const MAX_SESSIONS = 64;
 const SESSION_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/;
 const PLAYER_IDS = new Set(["p1", "p2"]);
+const SODIUM_SEED = /^sodium,[0-9a-f]{64}$/;
 const bridgeSource = fs.readFileSync(__filename, "utf8").replace(/\r\n?/g, "\n");
 const bridgeSha256 = crypto.createHash("sha256").update(bridgeSource, "utf8").digest("hex");
 const SET_FIELDS = new Set([
@@ -247,9 +248,10 @@ function assertTeam(team, label) {
 }
 
 function assertSeed(seed) {
-  if (!Array.isArray(seed) || seed.length !== 4 || seed.some(value => !Number.isInteger(value) || value < 0 || value > 65535)) {
-    throw new ProtocolError("INVALID_REQUEST", "seed must be four integers between 0 and 65535");
+  if (typeof seed !== "string" || !SODIUM_SEED.test(seed)) {
+    throw new ProtocolError("INVALID_REQUEST", "seed must be sodium followed by a 32-byte lowercase hex seed");
   }
+  return seed;
 }
 
 function assertFormat(formatId) {
@@ -302,6 +304,17 @@ function handleOutput(session, type, rawData) {
   }
 }
 
+function bindOutput(session) {
+  session.stream.pushMessage = (type, data) => {
+    try {
+      handleOutput(session, type, data);
+    } catch (error) {
+      session.poisoned = error?.message || "Showdown output processing failed";
+      throw error;
+    }
+  };
+}
+
 function permutations(size, chosenSize) {
   const output = [];
   function visit(prefix, remaining) {
@@ -337,7 +350,9 @@ function legalActions(request) {
   if (request.teamPreview) {
     const size = request.side?.pokemon?.length;
     const chosen = request.maxChosenTeamSize || size;
-    if (!Number.isInteger(size) || !Number.isInteger(chosen) || size > 9 || chosen < 1 || chosen > size) return [];
+    if (size !== 6 || chosen !== 3) {
+      throw new ProtocolError("FORMAT_DRIFT", "bound Champions format must preview exactly 6 Pokemon and choose 3");
+    }
     return permutations(size, chosen);
   }
   if (Array.isArray(request.forceSwitch)) return switchActions(request);
@@ -377,7 +392,7 @@ function replayDocument(session) {
   return {
     schema_version: "1.0.0",
     format_id: session.formatId,
-    seed: [...session.seed],
+    seed: session.seed,
     input_log: [...battle.inputLog],
     public_log: [...session.publicLog],
     ended: Boolean(battle.ended),
@@ -399,12 +414,7 @@ function validateReplayInputLog(inputLog) {
   const start = parseStrictJson(inputLog[0].slice(">start ".length));
   assertObject(start, "input_log start", ["formatid", "seed"]);
   const format = assertFormat(start.formatid);
-  const seedText = assertString(start.seed, "input_log start seed", 32);
-  if (!/^[0-9]+(?:,[0-9]+){3}$/.test(seedText)) {
-    throw new ProtocolError("INVALID_REPLAY", "input_log start seed is invalid");
-  }
-  const seed = seedText.split(",").map(Number);
-  assertSeed(seed);
+  const seed = assertSeed(start.seed);
 
   for (const [index, player] of ["p1", "p2"].entries()) {
     const prefix = `>player ${player} `;
@@ -419,9 +429,13 @@ function validateReplayInputLog(inputLog) {
     if (!team) throw new ProtocolError("INVALID_REPLAY", `input_log ${player} team cannot be unpacked`);
     const normalizedTeam = team.map(set => {
       const normalized = {...set};
+      for (const field of Object.keys(normalized)) {
+        if (normalized[field] === undefined) delete normalized[field];
+      }
       for (const field of ["name", "item", "pokeball", "hpType", "teraType"]) {
         if (normalized[field] === "") delete normalized[field];
       }
+      if (!Object.hasOwn(normalized, "level")) normalized.level = 100;
       return normalized;
     });
     assertTeam(normalizedTeam, `input_log ${player}.team`);
@@ -455,10 +469,13 @@ function observation(session, player, since) {
   };
 }
 
-function getSession(params) {
+function getSession(params, allowPoisoned = false) {
   const id = assertString(params.session_id, "session_id", 128);
   const session = sessions.get(id);
   if (!session) throw new ProtocolError("SESSION_NOT_FOUND", `unknown session: ${id}`);
+  if (session.poisoned && !allowPoisoned) {
+    throw new ProtocolError("SESSION_POISONED", session.poisoned);
+  }
   return session;
 }
 
@@ -478,7 +495,27 @@ async function dispatch(method, params) {
   if (method === "describe_format") {
     assertObject(params, "params", ["format_id"]);
     const format = assertFormat(params.format_id);
-    return {id: format.id, name: format.name, mod: format.mod, game_type: format.gameType || "singles", ruleset: [...format.ruleset]};
+    const ruleTable = Dex.formats.getRuleTable(format);
+    return {
+      id: format.id,
+      name: format.name,
+      mod: format.mod,
+      game_type: format.gameType || "singles",
+      ruleset: [...format.ruleset],
+      rule_table: [...ruleTable.keys()].sort(),
+      team_constraints: {
+        min_team_size: ruleTable.minTeamSize,
+        max_team_size: ruleTable.maxTeamSize,
+        picked_team_size: ruleTable.pickedTeamSize,
+        max_move_count: ruleTable.maxMoveCount,
+        min_source_gen: ruleTable.minSourceGen,
+        min_level: ruleTable.minLevel,
+        max_level: ruleTable.maxLevel,
+        default_level: ruleTable.defaultLevel,
+        adjust_level: ruleTable.adjustLevel,
+        ev_limit: ruleTable.evLimit,
+      },
+    };
   }
 
   if (method === "validate_team") {
@@ -496,7 +533,7 @@ async function dispatch(method, params) {
     if (sessions.has(id)) throw new ProtocolError("SESSION_EXISTS", `session already exists: ${id}`);
     if (sessions.size >= MAX_SESSIONS) throw new ProtocolError("SESSION_CAPACITY", "session capacity reached");
     const format = assertFormat(params.format_id);
-    assertSeed(params.seed);
+    const seed = assertSeed(params.seed);
     assertObject(params.players, "players", ["p1", "p2"]);
     const packed = {};
     for (const player of ["p1", "p2"]) {
@@ -511,18 +548,29 @@ async function dispatch(method, params) {
     const session = {
       id,
       formatId: format.id,
-      seed: [...params.seed],
+      seed,
       stream,
       revision: 0,
       publicLog: [],
       visibleLogs: {p1: [], p2: []},
       requests: {p1: null, p2: null},
       end: null,
+      poisoned: null,
     };
-    stream.pushMessage = (type, data) => handleOutput(session, type, data);
-    await stream.write(`>start ${JSON.stringify({formatid: format.id, seed: params.seed, strictChoices: true})}`);
-    for (const player of ["p1", "p2"]) {
-      await stream.write(`>player ${player} ${JSON.stringify({name: params.players[player].name, team: packed[player]})}`);
+    bindOutput(session);
+    try {
+      await stream.write(`>start ${JSON.stringify({formatid: format.id, seed, strictChoices: true})}`);
+      for (const player of ["p1", "p2"]) {
+        await stream.write(`>player ${player} ${JSON.stringify({name: params.players[player].name, team: packed[player]})}`);
+      }
+    } catch (error) {
+      try {
+        await stream.writeEnd();
+      } catch (_closeError) {
+        // The original parse/output failure is the authoritative error.
+      }
+      if (session.poisoned) throw new ProtocolError("SESSION_POISONED", session.poisoned);
+      throw error;
     }
     sessions.set(id, session);
     return sessionSummary(session);
@@ -546,6 +594,7 @@ async function dispatch(method, params) {
     try {
       await session.stream.write(`>${player} ${choice}`);
     } catch (error) {
+      if (session.poisoned) throw new ProtocolError("SESSION_POISONED", session.poisoned);
       throw new ProtocolError("CHOICE_REJECTED", error.message);
     }
     session.revision++;
@@ -570,8 +619,20 @@ async function dispatch(method, params) {
       throw new ProtocolError("MOVE_UNAVAILABLE", `${source.name} does not know ${move}`);
     }
     const seedBefore = clone.prng.getSeed();
-    const damage = clone.actions.getDamage(source, target, moveId, true);
+    let activeMove = clone.dex.getActiveMove(moveId);
+    const baseTarget = activeMove.target;
+    clone.setActiveMove(activeMove, source, target);
+    clone.singleEvent("ModifyType", activeMove, null, source, target, activeMove, activeMove);
+    clone.singleEvent("ModifyMove", activeMove, null, source, target, activeMove, activeMove);
+    activeMove = clone.runEvent("ModifyType", source, target, activeMove, activeMove);
+    activeMove = clone.runEvent("ModifyMove", source, target, activeMove, activeMove);
+    if (!activeMove) throw new ProtocolError("DAMAGE_UNAVAILABLE", "move modification prevented damage inspection");
+    if (activeMove.target !== baseTarget) {
+      throw new ProtocolError("DAMAGE_UNAVAILABLE", "move modification changed the target and requires full move execution");
+    }
+    const damage = clone.actions.getDamage(source, target, activeMove, true);
     const normalizedDamage = typeof damage === "number" ? damage : null;
+    const damageStatus = typeof damage === "number" ? "value" : damage === false ? "blocked" : damage === null ? "silent_failure" : "non_damaging";
     return {
       session_id: session.id,
       revision: session.revision,
@@ -579,7 +640,10 @@ async function dispatch(method, params) {
       source: source.species.name,
       target: target.species.name,
       move_id: moveId,
+      move_type: activeMove.type,
+      move_category: activeMove.category,
       damage: normalizedDamage,
+      damage_status: damageStatus,
       target_max_hp: target.maxhp,
       target_current_hp: target.hp,
       clone_seed_before: seedBefore,
@@ -590,8 +654,14 @@ async function dispatch(method, params) {
   }
 
   if (method === "export_replay") {
-    assertObject(params, "params", ["session_id"]);
+    assertObject(params, "params", ["session_id", "allow_incomplete"]);
     const session = getSession(params);
+    if (typeof params.allow_incomplete !== "boolean") {
+      throw new ProtocolError("INVALID_REQUEST", "allow_incomplete must be boolean");
+    }
+    if (!session.stream.battle.ended && !params.allow_incomplete) {
+      throw new ProtocolError("REPLAY_INCOMPLETE", "battle must end before Replay export unless explicitly allowed");
+    }
     return replayDocument(session);
   }
 
@@ -610,8 +680,9 @@ async function dispatch(method, params) {
       visibleLogs: {p1: [], p2: []},
       requests: {p1: null, p2: null},
       end: null,
+      poisoned: null,
     };
-    stream.pushMessage = (type, data) => handleOutput(session, type, data);
+    bindOutput(session);
     try {
       await stream.write(`>start ${JSON.stringify({formatid: format.id, seed, strictChoices: true})}`);
       for (const line of inputLog.slice(1)) await stream.write(line);
@@ -625,7 +696,7 @@ async function dispatch(method, params) {
 
   if (method === "close_session") {
     assertObject(params, "params", ["session_id"]);
-    const session = getSession(params);
+    const session = getSession(params, true);
     await session.stream.writeEnd();
     sessions.delete(session.id);
     return {session_id: session.id, closed: true};

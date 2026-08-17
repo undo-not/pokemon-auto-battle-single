@@ -43,7 +43,7 @@ with ShowdownClient() as client:
     problems = client.validate_team(team)
     session = client.create_session(
         session_id="experiment-1",
-        seed=(1, 2, 3, 4),
+        seed="sodium," + "00" * 32,
         p1_name="policy-a",
         p1_team=team,
         p2_name="policy-b",

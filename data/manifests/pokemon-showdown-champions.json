@@ -28,12 +28,63 @@
       }
     }
   ],
+  "forbidden_paths": [
+    "config/custom-formats.ts",
+    "dist/config/custom-formats",
+    "dist/config/custom-formats.js",
+    "dist/config/custom-formats.json",
+    "dist/config/custom-formats.node"
+  ],
   "formats": [
     {
       "id": "gen9championsbssregmb",
       "name": "[Gen 9 Champions] BSS Reg M-B",
       "mod": "champions",
-      "regulation": "M-B"
+      "regulation": "M-B",
+      "game_type": "singles",
+      "ruleset": ["Flat Rules", "VGC Timer"],
+      "rule_table": [
+        "-nonexistent",
+        "-tag:mythical",
+        "-tag:restrictedlegendary",
+        "-tag:unobtainable",
+        "-unreleased",
+        "adjustlevel",
+        "cancelmod",
+        "dctimerbank",
+        "evlimit",
+        "flatrules",
+        "itemclause",
+        "minteamsize",
+        "nicknameclause",
+        "obtainable",
+        "obtainableabilities",
+        "obtainableformes",
+        "obtainablemisc",
+        "obtainablemoves",
+        "pickedteamsize",
+        "speciesclause",
+        "teampreview",
+        "timeoutautochoose",
+        "timeraddperturn",
+        "timergrace",
+        "timermaxfirstturn",
+        "timermaxperturn",
+        "timerstarting",
+        "vgctimer"
+      ],
+      "team_constraints": {
+        "min_team_size": 6,
+        "max_team_size": 6,
+        "picked_team_size": 3,
+        "max_move_count": 4,
+        "min_source_gen": 9,
+        "min_level": 1,
+        "max_level": 100,
+        "default_level": 100,
+        "adjust_level": 50,
+        "ev_limit": 66
+      }
     }
   ],
   "source_files": {

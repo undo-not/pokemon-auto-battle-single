@@ -13,6 +13,7 @@ _HEX_40 = re.compile(r"^[0-9a-f]{40}$")
 _HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 _VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,239}$")
+_FORMAT_ID = re.compile(r"^[a-z0-9]{1,128}$")
 _EXTENSION = re.compile(r"^\.[A-Za-z0-9]+$")
 _PATH = re.compile(r"^[A-Za-z0-9._/-]+$")
 _UPSTREAM = "https://github.com/smogon/pokemon-showdown.git"
@@ -96,11 +97,46 @@ def _hex(value: Any, label: str, pattern: re.Pattern[str]) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class ShowdownTeamConstraints:
+    min_team_size: int
+    max_team_size: int
+    picked_team_size: int
+    max_move_count: int
+    min_source_gen: int
+    min_level: int
+    max_level: int
+    default_level: int
+    adjust_level: int
+    ev_limit: int
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            field: getattr(self, field)
+            for field in (
+                "min_team_size",
+                "max_team_size",
+                "picked_team_size",
+                "max_move_count",
+                "min_source_gen",
+                "min_level",
+                "max_level",
+                "default_level",
+                "adjust_level",
+                "ev_limit",
+            )
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ShowdownFormat:
     id: str
     name: str
     mod: str
     regulation: str
+    game_type: str
+    ruleset: tuple[str, ...]
+    rule_table: tuple[str, ...]
+    team_constraints: ShowdownTeamConstraints
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +175,7 @@ class ShowdownManifest:
     install_command: tuple[str, ...]
     build_command: tuple[str, ...]
     runtime_dependencies: tuple[ShowdownRuntimeDependency, ...]
+    forbidden_paths: tuple[str, ...]
     formats: tuple[ShowdownFormat, ...]
     source_files: tuple[tuple[str, str], ...]
     build: ShowdownBuild
@@ -158,7 +195,7 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     root = _mapping(
         _load_json(manifest_path),
         "manifest",
-        {"schema_version", "artifact_id", "upstream", "runtime", "runtime_dependencies", "formats", "source_files", "build"},
+        {"schema_version", "artifact_id", "upstream", "runtime", "runtime_dependencies", "forbidden_paths", "formats", "source_files", "build"},
     )
     schema_version = _string(root["schema_version"], "schema_version")
     if schema_version != "1.0.0":
@@ -177,14 +214,23 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     if (
         not isinstance(runtime["minimum_node_major"], int)
         or isinstance(runtime["minimum_node_major"], bool)
-        or runtime["minimum_node_major"] < 1
+        or runtime["minimum_node_major"] < 22
     ):
-        raise ManifestError("minimum_node_major must be a positive integer")
+        raise ManifestError("minimum_node_major must be an integer >= 22")
 
     def command(value: Any, label: str) -> tuple[str, ...]:
         if not isinstance(value, list) or not value:
             raise ManifestError(f"{label} must be a non-empty array")
         return tuple(_string(part, f"{label}[]") for part in value)
+
+    forbidden_value = root["forbidden_paths"]
+    if not isinstance(forbidden_value, list) or not forbidden_value:
+        raise ManifestError("forbidden_paths must be a non-empty array")
+    forbidden_paths = tuple(
+        _relative_path(item, "forbidden_paths[]") for item in forbidden_value
+    )
+    if len(forbidden_paths) != len(set(forbidden_paths)):
+        raise ManifestError("forbidden_paths must contain unique paths")
 
     dependencies_value = root["runtime_dependencies"]
     if not isinstance(dependencies_value, list) or not dependencies_value:
@@ -236,22 +282,101 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
     formats: list[ShowdownFormat] = []
     format_ids: set[str] = set()
     for index, value in enumerate(formats_value):
-        item = _mapping(value, f"formats[{index}]", {"id", "name", "mod", "regulation"})
+        item = _mapping(
+            value,
+            f"formats[{index}]",
+            {
+                "id",
+                "name",
+                "mod",
+                "regulation",
+                "game_type",
+                "ruleset",
+                "rule_table",
+                "team_constraints",
+            },
+        )
         format_id = _string(item["id"], f"formats[{index}].id")
-        if _ID.fullmatch(format_id) is None:
-            raise ManifestError(f"formats[{index}].id must be a stable ID")
+        if _FORMAT_ID.fullmatch(format_id) is None:
+            raise ManifestError(f"formats[{index}].id must be a lowercase Showdown ID")
         if format_id in format_ids:
             raise ManifestError(f"duplicate format id: {format_id}")
         format_ids.add(format_id)
         mod = _string(item["mod"], f"formats[{index}].mod")
         if _ID.fullmatch(mod) is None:
             raise ManifestError(f"formats[{index}].mod must be a stable ID")
+        ruleset_value = item["ruleset"]
+        if not isinstance(ruleset_value, list) or not ruleset_value:
+            raise ManifestError(f"formats[{index}].ruleset must be a non-empty array")
+        ruleset = tuple(
+            _string(rule, f"formats[{index}].ruleset[]") for rule in ruleset_value
+        )
+        if len(ruleset) != len(set(ruleset)):
+            raise ManifestError(f"formats[{index}].ruleset must contain unique entries")
+        rule_table_value = item["rule_table"]
+        if not isinstance(rule_table_value, list) or not rule_table_value:
+            raise ManifestError(f"formats[{index}].rule_table must be a non-empty array")
+        rule_table = tuple(
+            _string(rule, f"formats[{index}].rule_table[]")
+            for rule in rule_table_value
+        )
+        if rule_table != tuple(sorted(set(rule_table))):
+            raise ManifestError(
+                f"formats[{index}].rule_table must be sorted and unique"
+            )
+        constraint_fields = {
+            "min_team_size",
+            "max_team_size",
+            "picked_team_size",
+            "max_move_count",
+            "min_source_gen",
+            "min_level",
+            "max_level",
+            "default_level",
+            "adjust_level",
+            "ev_limit",
+        }
+        constraints_value = _mapping(
+            item["team_constraints"],
+            f"formats[{index}].team_constraints",
+            constraint_fields,
+        )
+        constraints: dict[str, int] = {}
+        for field in constraint_fields:
+            raw = constraints_value[field]
+            if not isinstance(raw, int) or isinstance(raw, bool) or raw < 1:
+                raise ManifestError(
+                    f"formats[{index}].team_constraints.{field} must be a positive integer"
+                )
+            constraints[field] = raw
+        if not (
+            constraints["picked_team_size"]
+            <= constraints["min_team_size"]
+            <= constraints["max_team_size"]
+        ):
+            raise ManifestError(f"formats[{index}] team sizes are inconsistent")
+        if not (
+            constraints["min_level"]
+            <= constraints["adjust_level"]
+            <= constraints["max_level"]
+            and constraints["min_level"]
+            <= constraints["default_level"]
+            <= constraints["max_level"]
+        ):
+            raise ManifestError(f"formats[{index}] level constraints are inconsistent")
+        game_type = _string(item["game_type"], f"formats[{index}].game_type")
+        if game_type != "singles":
+            raise ManifestError(f"formats[{index}].game_type must be singles")
         formats.append(
             ShowdownFormat(
                 id=format_id,
                 name=_string(item["name"], f"formats[{index}].name"),
                 mod=mod,
                 regulation=_string(item["regulation"], f"formats[{index}].regulation"),
+                game_type=game_type,
+                ruleset=ruleset,
+                rule_table=rule_table,
+                team_constraints=ShowdownTeamConstraints(**constraints),
             )
         )
 
@@ -346,6 +471,7 @@ def load_showdown_manifest(path: Path | None = None) -> ShowdownManifest:
         install_command=install_command,
         build_command=build_command,
         runtime_dependencies=tuple(dependencies),
+        forbidden_paths=forbidden_paths,
         formats=tuple(formats),
         source_files=source_files,
         build=build,

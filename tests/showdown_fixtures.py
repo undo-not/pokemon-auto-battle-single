@@ -59,3 +59,7 @@ def opponent_team_with_private_item() -> list[dict[str, object]]:
     team = legal_team()
     team[0]["item"] = "Light Ball"
     return team
+
+
+def sodium_seed(offset: int = 0) -> str:
+    return "sodium," + "".join(f"{(offset + index) % 256:02x}" for index in range(32))

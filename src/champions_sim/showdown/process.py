@@ -14,11 +14,12 @@ from typing import Any, Mapping
 
 from champions_sim.core.canonical import canonical_json
 
-from .resolver import ResolvedShowdown
+from .resolver import ResolvedShowdown, sanitized_node_environment
 
 
 PROTOCOL_VERSION = "1.0.0"
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
+SESSION_CAPACITY = 64
 
 
 class ShowdownProcessError(RuntimeError):
@@ -63,6 +64,47 @@ def _strict_loads(text: str) -> Any:
         raise ShowdownProcessError(f"bridge returned invalid JSON: {error}") from error
 
 
+def _response_result(line: str, request_id: int) -> Mapping[str, Any]:
+    response = _strict_loads(line)
+    if not isinstance(response, dict):
+        raise ShowdownProcessError("bridge response must be an object")
+    expected = {"protocol_version", "request_id", "ok"}
+    if response.get("ok") is True:
+        expected.add("result")
+    elif response.get("ok") is False:
+        expected.add("error")
+    else:
+        raise ShowdownProcessError("bridge response has invalid ok field")
+    if set(response) != expected:
+        raise ShowdownProcessError("bridge response fields violate the protocol")
+    response_id = response["request_id"]
+    if (
+        response["protocol_version"] != PROTOCOL_VERSION
+        or not isinstance(response_id, int)
+        or isinstance(response_id, bool)
+        or response_id != request_id
+    ):
+        raise ShowdownProcessError("bridge response identity mismatch")
+    if response["ok"]:
+        result = response["result"]
+        if not isinstance(result, dict):
+            raise ShowdownProcessError("bridge result must be an object")
+        return result
+    error_payload = response["error"]
+    if not isinstance(error_payload, dict):
+        raise ShowdownProcessError("bridge error must be an object")
+    if set(error_payload) not in (
+        {"code", "message"},
+        {"code", "message", "details"},
+    ):
+        raise ShowdownProcessError("bridge error fields violate the protocol")
+    code = error_payload.get("code")
+    message = error_payload.get("message")
+    if not isinstance(code, str) or not code or not isinstance(message, str) or not message:
+        raise ShowdownProcessError("bridge error fields are invalid")
+    raise ShowdownBridgeError(code, message, error_payload.get("details"))
+
+
 class ShowdownProcess:
     """One persistent Node process serving multiple independent battle sessions."""
 
@@ -84,7 +126,11 @@ class ShowdownProcess:
         if not bridge.is_file():
             raise ShowdownProcessError(f"Showdown bridge is missing: {bridge}")
         try:
-            normalized_bridge = bridge.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+            normalized_bridge = (
+                bridge.read_text(encoding="utf-8")
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+            )
         except (OSError, UnicodeError) as error:
             raise ShowdownProcessError(f"cannot read Showdown bridge: {error}") from error
         self.bridge_sha256 = hashlib.sha256(normalized_bridge.encode("utf-8")).hexdigest()
@@ -99,6 +145,8 @@ class ShowdownProcess:
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                cwd=resolved.root,
+                env=sanitized_node_environment(),
                 text=True,
                 encoding="utf-8",
                 errors="strict",
@@ -112,39 +160,36 @@ class ShowdownProcess:
         self._stderr_thread = threading.Thread(target=self._read_stderr, daemon=True)
         self._stdout_thread.start()
         self._stderr_thread.start()
-        hello = self.request("hello", {})
-        if set(hello) != {
-            "protocol_version",
-            "bridge_sha256",
-            "node_version",
-            "showdown_root",
-            "allowed_format_ids",
-            "session_capacity",
-        }:
+        try:
+            hello = self.request("hello", {})
+            if set(hello) != {
+                "protocol_version",
+                "bridge_sha256",
+                "node_version",
+                "showdown_root",
+                "allowed_format_ids",
+                "session_capacity",
+            }:
+                raise ShowdownProcessError("bridge hello fields violate the protocol")
+            if hello.get("protocol_version") != PROTOCOL_VERSION:
+                raise ShowdownProcessError("bridge hello protocol mismatch")
+            if hello.get("bridge_sha256") != self.bridge_sha256:
+                raise ShowdownProcessError("bridge source identity mismatch")
+            if Path(str(hello.get("showdown_root"))).resolve() != resolved.root:
+                raise ShowdownProcessError("bridge loaded a different Showdown root")
+            if hello.get("node_version") != resolved.node_version:
+                raise ShowdownProcessError("bridge Node version mismatch")
+            if hello.get("allowed_format_ids") != sorted(
+                item.id for item in resolved.manifest.formats
+            ):
+                raise ShowdownProcessError("bridge format allowlist mismatch")
+            if hello.get("session_capacity") != SESSION_CAPACITY or isinstance(
+                hello.get("session_capacity"), bool
+            ):
+                raise ShowdownProcessError("bridge session capacity is invalid")
+        except BaseException:
             self.close()
-            raise ShowdownProcessError("bridge hello fields violate the protocol")
-        if hello.get("protocol_version") != PROTOCOL_VERSION:
-            self.close()
-            raise ShowdownProcessError("bridge hello protocol mismatch")
-        if hello.get("bridge_sha256") != self.bridge_sha256:
-            self.close()
-            raise ShowdownProcessError("bridge source identity mismatch")
-        if Path(str(hello.get("showdown_root"))).resolve() != resolved.root:
-            self.close()
-            raise ShowdownProcessError("bridge loaded a different Showdown root")
-        if hello.get("node_version") != resolved.node_version:
-            self.close()
-            raise ShowdownProcessError("bridge Node version mismatch")
-        if hello.get("allowed_format_ids") != sorted(
-            item.id for item in resolved.manifest.formats
-        ):
-            self.close()
-            raise ShowdownProcessError("bridge format allowlist mismatch")
-        if not isinstance(hello.get("session_capacity"), int) or isinstance(
-            hello.get("session_capacity"), bool
-        ):
-            self.close()
-            raise ShowdownProcessError("bridge session capacity is invalid")
+            raise
 
     def _read_stdout(self) -> None:
         assert self._process.stdout is not None
@@ -196,48 +241,21 @@ class ShowdownProcess:
                 )
                 self.close()
                 raise ShowdownProcessError(message) from error
-            if line is None:
-                raise ShowdownProcessError(self._exit_message("bridge closed stdout"))
-            if isinstance(line, BaseException):
-                raise ShowdownProcessError(self._exit_message(f"cannot read bridge output: {line}")) from line
-            response = _strict_loads(line)
-            if not isinstance(response, dict):
-                raise ShowdownProcessError("bridge response must be an object")
-            expected = {"protocol_version", "request_id", "ok"}
-            if response.get("ok") is True:
-                expected.add("result")
-            elif response.get("ok") is False:
-                expected.add("error")
-            else:
-                raise ShowdownProcessError("bridge response has invalid ok field")
-            if set(response) != expected:
-                raise ShowdownProcessError("bridge response fields violate the protocol")
-            response_id = response["request_id"]
-            if (
-                response["protocol_version"] != PROTOCOL_VERSION
-                or not isinstance(response_id, int)
-                or isinstance(response_id, bool)
-                or response_id != request_id
-            ):
-                raise ShowdownProcessError("bridge response identity mismatch")
-            if response["ok"]:
-                result = response["result"]
-                if not isinstance(result, dict):
-                    raise ShowdownProcessError("bridge result must be an object")
-                return result
-            error_payload = response["error"]
-            if not isinstance(error_payload, dict):
-                raise ShowdownProcessError("bridge error must be an object")
-            if set(error_payload) not in (
-                {"code", "message"},
-                {"code", "message", "details"},
-            ):
-                raise ShowdownProcessError("bridge error fields violate the protocol")
-            code = error_payload.get("code")
-            message = error_payload.get("message")
-            if not isinstance(code, str) or not code or not isinstance(message, str) or not message:
-                raise ShowdownProcessError("bridge error fields are invalid")
-            raise ShowdownBridgeError(code, message, error_payload.get("details"))
+            try:
+                if line is None:
+                    raise ShowdownProcessError(
+                        self._exit_message("bridge closed stdout")
+                    )
+                if isinstance(line, BaseException):
+                    raise ShowdownProcessError(
+                        self._exit_message(f"cannot read bridge output: {line}")
+                    ) from line
+                return _response_result(line, request_id)
+            except ShowdownBridgeError:
+                raise
+            except BaseException:
+                self.close()
+                raise
 
     def _exit_message(self, prefix: str) -> str:
         stderr = " | ".join(self._stderr)

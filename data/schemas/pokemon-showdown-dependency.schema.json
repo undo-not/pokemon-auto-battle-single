@@ -4,7 +4,7 @@
   "title": "Pinned Pokemon Showdown dependency v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "artifact_id", "upstream", "runtime", "runtime_dependencies", "formats", "source_files", "build"],
+  "required": ["schema_version", "artifact_id", "upstream", "runtime", "runtime_dependencies", "forbidden_paths", "formats", "source_files", "build"],
   "properties": {
     "schema_version": {"const": "1.0.0"},
     "artifact_id": {"$ref": "#/$defs/id"},
@@ -55,6 +55,12 @@
         }
       }
     },
+    "forbidden_paths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/path"}
+    },
     "formats": {
       "type": "array",
       "minItems": 1,
@@ -62,12 +68,26 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "mod", "regulation"],
+        "required": ["id", "name", "mod", "regulation", "game_type", "ruleset", "rule_table", "team_constraints"],
         "properties": {
-          "id": {"$ref": "#/$defs/id"},
+          "id": {"type": "string", "pattern": "^[a-z0-9]{1,128}$"},
           "name": {"$ref": "#/$defs/text"},
           "mod": {"$ref": "#/$defs/id"},
-          "regulation": {"$ref": "#/$defs/text"}
+          "regulation": {"$ref": "#/$defs/text"},
+          "game_type": {"const": "singles"},
+          "ruleset": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/text"}
+          },
+          "rule_table": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/text"}
+          },
+          "team_constraints": {"$ref": "#/$defs/teamConstraints"}
         }
       }
     },
@@ -96,6 +116,23 @@
     "text": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
     "path": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?!/)(?!.*\\.\\.)(?!.*\\\\)[A-Za-z0-9._/-]+$"},
     "gitObject": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "teamConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_team_size", "max_team_size", "picked_team_size", "max_move_count", "min_source_gen", "min_level", "max_level", "default_level", "adjust_level", "ev_limit"],
+      "properties": {
+        "min_team_size": {"type": "integer", "minimum": 1},
+        "max_team_size": {"type": "integer", "minimum": 1},
+        "picked_team_size": {"type": "integer", "minimum": 1},
+        "max_move_count": {"type": "integer", "minimum": 1},
+        "min_source_gen": {"type": "integer", "minimum": 1},
+        "min_level": {"type": "integer", "minimum": 1},
+        "max_level": {"type": "integer", "minimum": 1},
+        "default_level": {"type": "integer", "minimum": 1},
+        "adjust_level": {"type": "integer", "minimum": 1},
+        "ev_limit": {"type": "integer", "minimum": 1}
+      }
+    }
   }
 }

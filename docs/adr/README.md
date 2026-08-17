@@ -8,7 +8,7 @@ ADRs preserve durable decisions, their context, and their consequences. Project 
 | [ADR-0002](0002-artifact-storage-and-size-limits.md) | Keep large artifacts outside Git and enforce size limits | Accepted |
 | [ADR-0003](0003-deterministic-unverified-battle-semantics.md) | Isolate deterministic but unverified battle semantics in RuleSet data | Superseded by ADR-0007 |
 | [ADR-0004](0004-validation-budgets-and-regulation-sla.md) | Use bounded engineering regressions and a fail-closed adaptation SLA | Superseded by ADR-0007 |
-| [ADR-0005](0005-external-production-trust-boundary.md) | Require externally enrolled asymmetric trust and anti-rollback state | Accepted |
+| [ADR-0005](0005-external-production-trust-boundary.md) | Require externally enrolled asymmetric trust and anti-rollback state | Superseded by ADR-0007 |
 | [ADR-0006](0006-conservative-evidence-intake.md) | Separate semantic authority from permission and promote conservatively | Accepted |
 | [ADR-0007](0007-pinned-showdown-champions-engine.md) | Use a pinned external Showdown Champions engine | Accepted |
 

@@ -52,11 +52,17 @@ def default_showdown_root(manifest: ShowdownManifest) -> Path:
     return base / "pokemon-auto-battle-single" / "dependencies" / "pokemon-showdown" / manifest.commit
 
 
-def _run(arguments: list[str], *, cwd: Path | None = None) -> str:
+def _run(
+    arguments: list[str],
+    *,
+    cwd: Path | None = None,
+    environment: dict[str, str] | None = None,
+) -> str:
     try:
         result = subprocess.run(
             arguments,
             cwd=cwd,
+            env=environment,
             check=True,
             capture_output=True,
             text=True,
@@ -67,6 +73,27 @@ def _run(arguments: list[str], *, cwd: Path | None = None) -> str:
     except (OSError, subprocess.SubprocessError, UnicodeError) as error:
         raise ShowdownResolutionError(f"command failed: {arguments[0]}: {error}") from error
     return result.stdout.strip()
+
+
+def sanitized_node_environment() -> dict[str, str]:
+    allowed = {
+        "APPDATA",
+        "COMSPEC",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOCALAPPDATA",
+        "PATH",
+        "PATHEXT",
+        "SYSTEMDRIVE",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "USERPROFILE",
+        "WINDIR",
+    }
+    return {key: value for key, value in os.environ.items() if key.upper() in allowed}
 
 
 def _sha256(path: Path) -> str:
@@ -119,6 +146,15 @@ def build_fingerprint(root: Path, manifest: ShowdownManifest) -> tuple[int, str]
         digest.update(_sha256(files[relative]).encode("ascii"))
         digest.update(b"\n")
     return len(files), digest.hexdigest()
+
+
+def verify_forbidden_paths(root: Path, manifest: ShowdownManifest) -> None:
+    for relative in manifest.forbidden_paths:
+        candidate = root.joinpath(*relative.split("/"))
+        if os.path.lexists(candidate):
+            raise ShowdownResolutionError(
+                f"forbidden Showdown customization path exists: {relative}"
+            )
 
 
 def _resolve_node(explicit: Path | None) -> Path:
@@ -177,6 +213,7 @@ def resolve_showdown(
         raise ShowdownResolutionError(
             f"Showdown origin mismatch: expected {manifest.repository_url}, got {origin}"
         )
+    verify_forbidden_paths(resolved_root, manifest)
     if head != manifest.commit:
         raise ShowdownResolutionError(f"Showdown commit mismatch: expected {manifest.commit}, got {head}")
     if tree != manifest.tree:
@@ -213,7 +250,9 @@ def resolve_showdown(
         )
 
     node = _resolve_node(node_executable)
-    node_version = _run([str(node), "--version"])
+    node_version = _run(
+        [str(node), "--version"], environment=sanitized_node_environment()
+    )
     match = _NODE_VERSION.fullmatch(node_version)
     if match is None or int(match.group("major")) < manifest.minimum_node_major:
         raise ShowdownResolutionError(

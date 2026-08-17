@@ -35,7 +35,7 @@
   "$defs": {
     "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
     "text": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
-    "seed": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "integer", "minimum": 0, "maximum": 65535}},
+    "seed": {"type": "string", "pattern": "^sodium,[0-9a-f]{64}$"},
     "stats": {
       "type": "object",
       "additionalProperties": false,

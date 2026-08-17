@@ -12,6 +12,7 @@ from champions_sim.core.canonical import canonical_hash, to_canonical_data
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _GIT_OBJECT = re.compile(r"^[0-9a-f]{40}$")
 _NODE_VERSION = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+$")
+_SODIUM_SEED = re.compile(r"^sodium,[0-9a-f]{64}$")
 _ENGINE_FIELDS = {
     "artifact_id",
     "repository_url",
@@ -147,7 +148,10 @@ class DamageSample:
     source: str
     target: str
     move_id: str
+    move_type: str
+    move_category: str
     damage: int | None
+    damage_status: str
     target_max_hp: int
     target_current_hp: int
     clone_seed_before: str
@@ -166,7 +170,10 @@ class DamageSample:
                 "source",
                 "target",
                 "move_id",
+                "move_type",
+                "move_category",
                 "damage",
+                "damage_status",
                 "target_max_hp",
                 "target_current_hp",
                 "clone_seed_before",
@@ -186,7 +193,10 @@ class DamageSample:
             source=_string(value["source"], "damage_sample.source"),
             target=_string(value["target"], "damage_sample.target"),
             move_id=_string(value["move_id"], "damage_sample.move_id"),
+            move_type=_string(value["move_type"], "damage_sample.move_type"),
+            move_category=_string(value["move_category"], "damage_sample.move_category"),
             damage=damage,
+            damage_status=_string(value["damage_status"], "damage_sample.damage_status"),
             target_max_hp=_integer(value["target_max_hp"], "damage_sample.target_max_hp", minimum=1),
             target_current_hp=_integer(value["target_current_hp"], "damage_sample.target_current_hp"),
             clone_seed_before=_string(value["clone_seed_before"], "damage_sample.clone_seed_before"),
@@ -196,6 +206,25 @@ class DamageSample:
         )
         if sample.attacker not in {"p1", "p2"}:
             raise ValueError("damage_sample.attacker must be p1 or p2")
+        if sample.move_category not in {"Physical", "Special", "Status"}:
+            raise ValueError("damage_sample.move_category is invalid")
+        if sample.damage_status not in {
+            "value",
+            "blocked",
+            "silent_failure",
+            "non_damaging",
+        }:
+            raise ValueError("damage_sample.damage_status is invalid")
+        if (sample.damage_status == "value") != (sample.damage is not None):
+            raise ValueError("damage_sample status and numeric damage disagree")
+        for field in (
+            "clone_seed_before",
+            "clone_seed_after",
+            "live_seed_before",
+            "live_seed_after",
+        ):
+            if _SODIUM_SEED.fullmatch(getattr(sample, field)) is None:
+                raise ValueError(f"damage_sample.{field} must be a Showdown sodium seed")
         if sample.target_current_hp > sample.target_max_hp:
             raise ValueError("damage_sample target HP exceeds its maximum")
         if sample.clone_seed_before != sample.live_seed_before:
@@ -231,18 +260,9 @@ class ShowdownReplay:
             },
             "replay",
         )
-        seed = value["seed"]
-        if (
-            not isinstance(seed, list)
-            or len(seed) != 4
-            or any(
-                not isinstance(item, int)
-                or isinstance(item, bool)
-                or not 0 <= item <= 65535
-                for item in seed
-            )
-        ):
-            raise ValueError("replay.seed must contain four 16-bit integers")
+        seed = _string(value["seed"], "replay.seed")
+        if _SODIUM_SEED.fullmatch(seed) is None:
+            raise ValueError("replay.seed must be a 32-byte Showdown sodium seed")
         score = value["score"]
         if score is not None and (
             not isinstance(score, list)
@@ -263,7 +283,7 @@ class ShowdownReplay:
         document = {
             "schema_version": schema_version,
             "format_id": _string(value["format_id"], "replay.format_id"),
-            "seed": list(seed),
+            "seed": seed,
             "input_log": list(_strings(value["input_log"], "replay.input_log")),
             "public_log": list(_strings(value["public_log"], "replay.public_log")),
             "ended": ended,

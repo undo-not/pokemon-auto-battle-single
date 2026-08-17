@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "session_id": "fixture-battle",
   "format_id": "gen9championsbssregmb",
-  "seed": [1, 2, 3, 4],
+  "seed": "sodium,000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
   "players": {
     "p1": {
       "name": "Alpha",

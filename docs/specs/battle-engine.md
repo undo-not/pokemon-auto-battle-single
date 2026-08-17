@@ -8,13 +8,14 @@ The engine is the external Pokémon Showdown checkout resolved from `data/manife
 - MIT license bytes and selected source-file SHA-256 values;
 - Node minimum version;
 - compiled JavaScript and runtime-dependency file set, count, and aggregate fingerprint;
-- exact format ID, display name, mod, and singles game type.
+- exact format ID, display name, mod, ruleset, and singles game type;
+- absence of local custom-format files that Showdown would otherwise load at runtime.
 
 The checkout, `node_modules`, configuration copy, and `dist/` remain outside the repository. Runtime battle execution performs no network access.
 
 ## Bridge protocol
 
-Python starts one persistent Node process and communicates through protocol `1.0.0`, one JSON object per line. Requests and responses carry a monotonically increasing request ID. The startup handshake binds the normalized SHA-256 of the executed bridge source. Both sides reject duplicate keys, non-finite numbers, excessive input, unknown envelope fields, protocol drift, and malformed values.
+Python starts one persistent Node process and communicates through protocol `1.0.0`, one JSON object per line. Requests and responses carry a monotonically increasing request ID. The startup handshake binds the normalized SHA-256 of the executed bridge source. Both sides reject duplicate keys, non-finite numbers, excessive input, unknown envelope fields, protocol drift, and malformed values. A malformed Showdown output poisons that battle session; it cannot be observed, advanced, sampled, or exported afterward, but can still be closed.
 
 One process may host multiple named sessions. Session IDs are unique, battle state is not shared, and commands are serialized by the Python transport. Process exit, timeout, mismatched response identity, invalid format, invalid team, or invalid choice is an error. A timeout terminates the transport so a late response cannot be consumed by a later request. No request may invoke a Python mechanics fallback.
 
@@ -23,7 +24,8 @@ One process may host multiple named sessions. Session IDs are unique, battle sta
 Session creation requires:
 
 - the bound format ID;
-- four explicit Showdown PRNG seed integers;
+- one explicit 32-byte lowercase hexadecimal `sodium` seed, selecting the pinned
+  Showdown ChaCha20 PRNG rather than the legacy four-integer generator;
 - two player names;
 - two structured teams accepted by Showdown's `TeamValidator`.
 
@@ -35,13 +37,13 @@ At each decision window, `observe(player)` returns only that player's latest req
 
 ## Damage
 
-Damage is not reimplemented in Python. `damage_sample` clones the current Showdown battle state, resolves the named move with the pinned engine, and returns the state revision, deterministic sample, HP context, clone PRNG lineage, and live PRNG values before and after inspection. It neither changes the live battle nor omits current field, status, item, ability, or transformation state.
+Damage is not reimplemented in Python. `damage_sample` clones the current Showdown battle state, applies Showdown's `ModifyType` and `ModifyMove` event sequence to the named move, and asks the pinned engine for one damage result. It returns the resolved move type/category, an explicit result status, the state revision, HP context, clone PRNG lineage, and live PRNG values before and after inspection. It neither changes the live battle nor omits current field, status, item, ability, or transformation state.
 
 A damage sample is one seeded engine result, not a complete probability distribution and not client-grounding evidence.
 
 ## Determinism and Replay
 
-For equal manifest identity, build fingerprint, Node version, format, teams, names, ordered choices, and seed, the canonical Replay and its SHA-256 must be equal. Wall-clock protocol lines are normalized and do not enter identity with their actual time.
+For equal manifest identity, build fingerprint, Node version, format, teams, names, ordered choices, and seed, the canonical Replay and its SHA-256 must be equal. Wall-clock protocol lines are normalized and do not enter identity with their actual time. Empty channel lines are omitted from the canonical public and player-visible logs.
 
 Replay `1.0.0` binds:
 
@@ -52,7 +54,7 @@ Replay `1.0.0` binds:
 - terminal state, winner, turns, and score when available;
 - canonical self-hash.
 
-The input log contains packed private teams and is an external research artifact, not a policy observation or a Git fixture. Replay verification rejects a changed self-hash or engine/bridge identity, permits only the bound start format, two validated player teams, and player-choice commands, then re-executes the log and requires the complete canonical Replay to match. A Replay proves reproducibility for its pinned engine; it does not prove official client conformance.
+The input log contains packed private teams and is an external research artifact, not a policy observation or a Git fixture. Replay export requires a terminal battle unless the caller explicitly opts into an incomplete diagnostic artifact. Replay verification rejects a changed self-hash or engine/bridge identity, permits only the bound start format, two validated player teams, and player-choice commands, then re-executes the log and requires the complete canonical Replay to match. A Replay proves reproducibility for its pinned engine; it does not prove official client conformance.
 
 ## Failure and privacy invariants
 

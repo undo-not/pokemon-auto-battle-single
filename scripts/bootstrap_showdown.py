@@ -17,8 +17,12 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from champions_sim.core.canonical import canonical_json  # noqa: E402
-from champions_sim.showdown.manifest import load_showdown_manifest  # noqa: E402
+from champions_sim.showdown.manifest import (  # noqa: E402
+    ManifestError,
+    load_showdown_manifest,
+)
 from champions_sim.showdown.resolver import (  # noqa: E402
+    ShowdownResolutionError,
     default_showdown_root,
     resolve_showdown,
 )
@@ -35,8 +39,14 @@ def _run(
     environment: dict[str, str] | None = None,
 ) -> None:
     try:
-        subprocess.run(arguments, cwd=cwd, env=environment, check=True)
-    except (OSError, subprocess.CalledProcessError) as error:
+        subprocess.run(
+            arguments,
+            cwd=cwd,
+            env=environment,
+            check=True,
+            timeout=15 * 60,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
         raise BootstrapError(f"command failed: {arguments[0]}: {error}") from error
 
 
@@ -50,8 +60,14 @@ def _output(arguments: Sequence[str], *, cwd: Path | None = None) -> str:
             text=True,
             encoding="utf-8",
             errors="strict",
+            timeout=30,
         )
-    except (OSError, subprocess.CalledProcessError, UnicodeError) as error:
+    except (
+        OSError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        UnicodeError,
+    ) as error:
         raise BootstrapError(f"command failed: {arguments[0]}: {error}") from error
     return result.stdout.strip()
 
@@ -155,6 +171,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             install = [str(pnpm), "dlx", "npm@11.6.2", *manifest.install_command[1:]]
         build_environment = os.environ.copy()
+        for key in tuple(build_environment):
+            if key.upper() in {"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}:
+                del build_environment[key]
         build_environment["PATH"] = os.pathsep.join(
             [str(node.parent), build_environment.get("PATH", "")]
         )
@@ -166,13 +185,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     resolved = resolve_showdown(root=destination, node_executable=node)
-    print(canonical_json({"ok": True, "identity": resolved.identity(), "root": str(resolved.root)}))
+    print(canonical_json({"ok": True, "identity": resolved.identity()}))
     return 0
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except BootstrapError as error:
+    except (BootstrapError, ManifestError, ShowdownResolutionError) as error:
         print(canonical_json({"ok": False, "error": str(error)}))
         raise SystemExit(2)
