@@ -1,116 +1,283 @@
-"""Command-line entry points for fixture runs and seeded smoke batches."""
+"""Command-line entry points for the pinned Showdown integration."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
+import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Mapping, Sequence
 
-from .catalog import load_catalog, load_ruleset
-from .engine import BattleEngine
-from .fixtures import load_battle_fixture
-from .core import ReplayRecord
-from .runner import run_battle, run_random_batch, verify_replay
+from champions_sim.core.canonical import canonical_json
+from champions_sim.showdown import (
+    ShowdownClient,
+    validate_random_battle_audit_output,
+    verify_repeated_random_battle_audit,
+    write_random_battle_audit,
+)
+from champions_sim.showdown.audit import (
+    DEFAULT_AUDIT_SEED,
+    DEFAULT_MAX_DECISIONS,
+)
+
+
+class CliInputError(ValueError):
+    pass
+
+
+_SODIUM_SEED = re.compile(r"^sodium,[0-9a-f]{64}$")
+
+
+def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise CliInputError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_number(value: str) -> None:
+    raise CliInputError(f"floating-point or non-finite value is not allowed: {value}")
+
+
+def _load_json(path: Path) -> Any:
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_pairs,
+            parse_float=_reject_number,
+            parse_constant=_reject_number,
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise CliInputError(f"cannot read {path}: {error}") from error
+
+
+def _exact(
+    value: Any,
+    label: str,
+    required: set[str],
+    optional: set[str] = frozenset(),
+) -> Mapping[str, Any]:
+    if not isinstance(value, dict):
+        raise CliInputError(f"{label} must be an object")
+    actual = set(value)
+    missing = required - actual
+    unknown = actual - required - optional
+    if missing or unknown:
+        raise CliInputError(
+            f"{label} fields differ: missing={sorted(missing)}, unknown={sorted(unknown)}"
+        )
+    return value
+
+
+def _team(value: Any, label: str) -> list[Mapping[str, object]]:
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(item, dict) for item in value)
+    ):
+        raise CliInputError(f"{label} must be a non-empty array of objects")
+    return value
+
+
+def _string(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in value)
+    ):
+        raise CliInputError(f"{label} must be a non-empty control-free string")
+    return value
+
+
+def _client_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--showdown-root", type=Path)
+    parser.add_argument("--node", type=Path)
+
+
+def _configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="strict")
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="champions-sim")
-    parser.add_argument("--catalog", default="data/fixtures/sim01_catalog.json")
-    parser.add_argument("--ruleset", default="data/fixtures/sim01_ruleset.json")
-    parser.add_argument("--battle", default="data/fixtures/sim01_battle.json")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    battle = subparsers.add_parser("battle", help="run one random-policy battle")
-    battle.add_argument("--seed", type=int, default=20260713)
-    battle.add_argument("--replay-out", type=Path)
-
-    smoke = subparsers.add_parser("smoke", help="run a deterministic random batch")
-    smoke.add_argument("--battles", type=int, default=100)
-    smoke.add_argument("--seed-start", type=int, default=0)
-
     verify = subparsers.add_parser(
-        "verify-replay", help="load and deterministically re-execute a replay"
+        "verify-showdown", help="verify the external pinned engine"
     )
-    verify.add_argument("--replay", type=Path, required=True)
+    _client_arguments(verify)
+
+    team = subparsers.add_parser(
+        "validate-team", help="validate a structured Showdown team JSON"
+    )
+    _client_arguments(team)
+    team.add_argument("--team", type=Path, required=True)
+    team.add_argument("--format-id")
+
+    battle = subparsers.add_parser(
+        "battle", help="execute a deterministic choice script"
+    )
+    _client_arguments(battle)
+    battle.add_argument("--input", type=Path, required=True)
+    battle.add_argument("--allow-incomplete", action="store_true")
+
+    replay = subparsers.add_parser(
+        "replay", help="re-execute and verify a canonical Showdown Replay"
+    )
+    _client_arguments(replay)
+    replay.add_argument("--input", type=Path, required=True)
+
+    audit = subparsers.add_parser(
+        "audit-random-battles",
+        help="run the reproducible M-B random-battle completion audit",
+    )
+    _client_arguments(audit)
+    audit.add_argument("--output", type=Path, required=True)
+    audit.add_argument("--seed", default=DEFAULT_AUDIT_SEED)
+    audit.add_argument("--max-decisions", type=int, default=DEFAULT_MAX_DECISIONS)
+    audit.add_argument("--repetitions", type=int, default=2)
+
+    damage = subparsers.add_parser(
+        "damage", help="sample damage from a scripted battle state"
+    )
+    _client_arguments(damage)
+    damage.add_argument("--input", type=Path, required=True)
+    damage.add_argument("--attacker", choices=("p1", "p2"), required=True)
+    damage.add_argument("--move", required=True)
     return parser
 
 
+def _create_scripted_session(client: ShowdownClient, path: Path):
+    document = _exact(
+        _load_json(path),
+        "battle script",
+        {"schema_version", "session_id", "seed", "players", "choices"},
+        {"format_id"},
+    )
+    if document["schema_version"] != "1.0.0":
+        raise CliInputError("battle script schema_version must be 1.0.0")
+    players = _exact(document["players"], "players", {"p1", "p2"})
+    player_data: dict[str, Mapping[str, Any]] = {}
+    for player in ("p1", "p2"):
+        player_data[player] = _exact(
+            players[player], f"players.{player}", {"name", "team"}
+        )
+    seed = _string(document["seed"], "seed")
+    if _SODIUM_SEED.fullmatch(seed) is None:
+        raise CliInputError("seed must be a 32-byte Showdown sodium seed")
+    choices = document["choices"]
+    if not isinstance(choices, list):
+        raise CliInputError("choices must be an array")
+    parsed_choices: list[tuple[str, str]] = []
+    for index, raw_choice in enumerate(choices):
+        choice = _exact(raw_choice, f"choices[{index}]", {"player", "choice"})
+        player = _string(choice["player"], f"choices[{index}].player")
+        if player not in {"p1", "p2"}:
+            raise CliInputError(f"choices[{index}].player must be p1 or p2")
+        parsed_choices.append(
+            (player, _string(choice["choice"], f"choices[{index}].choice"))
+        )
+    session = client.create_session(
+        session_id=_string(document["session_id"], "session_id"),
+        seed=seed,
+        p1_name=_string(player_data["p1"]["name"], "players.p1.name"),
+        p1_team=_team(player_data["p1"]["team"], "players.p1.team"),
+        p2_name=_string(player_data["p2"]["name"], "players.p2.name"),
+        p2_team=_team(player_data["p2"]["team"], "players.p2.team"),
+        format_id=(
+            _string(document["format_id"], "format_id")
+            if "format_id" in document
+            else None
+        ),
+    )
+    try:
+        for player, choice in parsed_choices:
+            session.choose(player, choice)
+    except BaseException:
+        session.close()
+        raise
+    return session
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _configure_stdio()
     args = _parser().parse_args(argv)
-    catalog = load_catalog(args.catalog)
-    ruleset = load_ruleset(args.ruleset)
-    fixture = load_battle_fixture(args.battle, catalog=catalog, ruleset=ruleset)
-    engine = BattleEngine(catalog, ruleset)
-
-    if args.command == "battle":
-        run = run_battle(engine, fixture.initial_state, seed=args.seed)
-        if args.replay_out is not None:
-            args.replay_out.parent.mkdir(parents=True, exist_ok=True)
-            args.replay_out.write_text(run.replay.to_json() + "\n", encoding="utf-8")
-        print(
-            json.dumps(
-                {
-                    "battle_id": run.final_state.battle_id,
-                    "winner": run.winner.value if run.winner else None,
-                    "turn": run.final_state.turn,
-                    "decision_windows": run.decision_windows,
-                    "events": run.event_count,
-                    "final_state_hash": run.replay.final_state_hash,
-                    "replay_hash": run.replay.replay_hash,
-                    "replay_schema_version": run.replay.schema_version,
-                    "engine_semantics_version": run.replay.bundle.engine_semantics_version,
-                    "provisional_decision_ids": run.replay.provisional_decision_ids,
-                    "rng_cursor": run.engine_rng.cursor,
-                    "catalog_hash": catalog.snapshot_hash,
-                    "ruleset_hash": ruleset.snapshot_hash,
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-            )
+    try:
+        audit_output = (
+            validate_random_battle_audit_output(args.output)
+            if args.command == "audit-random-battles"
+            else None
         )
-        return 0
-
-    if args.command == "verify-replay":
-        replay = ReplayRecord.from_json(args.replay.read_text(encoding="utf-8"))
-        final_state = verify_replay(engine, replay)
-        print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "replay_id": replay.replay_id,
-                    "replay_hash": replay.replay_hash,
-                    "final_state_hash": replay.final_state_hash,
-                    "winner": final_state.winner.value if final_state.winner else None,
-                    "turn": final_state.turn,
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-            )
-        )
-        return 0
-
-    summary = run_random_batch(
-        engine,
-        fixture.initial_state,
-        battles=args.battles,
-        seed_start=args.seed_start,
-    )
-    print(
-        json.dumps(
-            {
-                "battles": summary.battles,
-                "p1_wins": summary.p1_wins,
-                "p2_wins": summary.p2_wins,
-                "draws": summary.draws,
-                "decision_windows": summary.decision_windows,
-                "events": summary.events,
-                "unique_final_hashes": len(set(summary.final_hashes)),
-                "catalog_hash": catalog.snapshot_hash,
-                "ruleset_hash": ruleset.snapshot_hash,
-            },
-            ensure_ascii=False,
-            sort_keys=True,
-        )
-    )
-    return 0
+        with ShowdownClient(
+            root=args.showdown_root, node_executable=args.node
+        ) as client:
+            if args.command == "verify-showdown":
+                print(
+                    canonical_json(
+                        {
+                            "ok": True,
+                            "identity": client.engine_identity(),
+                            "formats": [
+                                item.id for item in client.resolved.manifest.formats
+                            ],
+                        }
+                    )
+                )
+                return 0
+            if args.command == "validate-team":
+                team = _team(_load_json(args.team), "team")
+                problems = client.validate_team(team, format_id=args.format_id)
+                print(canonical_json({"ok": not problems, "problems": problems}))
+                return 0 if not problems else 2
+            if args.command == "replay":
+                document = _load_json(args.input)
+                if not isinstance(document, dict):
+                    raise CliInputError("Replay must be an object")
+                print(canonical_json(client.replay_input_log(document).to_dict()))
+                return 0
+            if args.command == "audit-random-battles":
+                report = verify_repeated_random_battle_audit(
+                    client,
+                    audit_seed=args.seed,
+                    max_decisions=args.max_decisions,
+                    repetitions=args.repetitions,
+                )
+                assert audit_output is not None
+                write_random_battle_audit(audit_output, report)
+                print(
+                    canonical_json(
+                        {
+                            "ok": True,
+                            "audit_id": report["audit_id"],
+                            "status": report["status"],
+                            "output": str(audit_output),
+                            "report_hash": report["report_hash"],
+                            "totals": report["totals"],
+                            "determinism": report["determinism"],
+                        }
+                    )
+                )
+                return 0
+            with _create_scripted_session(client, args.input) as session:
+                if args.command == "battle":
+                    print(
+                        canonical_json(
+                            session.replay(
+                                allow_incomplete=args.allow_incomplete
+                            ).to_dict()
+                        )
+                    )
+                    return 0
+                sample = session.damage_sample(args.attacker, args.move)
+                print(canonical_json(sample))
+                return 0
+    except (CliInputError, RuntimeError, ValueError) as error:
+        print(canonical_json({"ok": False, "error": str(error)}), file=sys.stderr)
+        return 2
+    raise AssertionError("unreachable")

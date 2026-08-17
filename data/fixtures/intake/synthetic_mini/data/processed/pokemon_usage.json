@@ -1,8 +1,0 @@
-{
-  "source": "synthetic_usage",
-  "dataset": "pokemon_usage",
-  "items": [
-    {"pokedb_pokemon_id": "0001-00", "name": "アルファ", "pokemon_id": "p1", "matched_by": "name"},
-    {"pokedb_pokemon_id": "0002-00", "name": "ベータ", "pokemon_id": "p2", "matched_by": "pokedb_id_map"}
-  ]
-}

@@ -22,7 +22,7 @@ REQUIRED_PATHS = (
     ".github/workflows/ci.yml",
     "docs/specs/product-boundaries.md",
     "docs/specs/battle-engine.md",
-    "docs/specs/regulation-and-catalog.md",
+    "docs/specs/regulation-and-engine.md",
     "docs/specs/evidence-and-readiness.md",
     "docs/specs/ai-evaluation.md",
     "docs/policies/project-workflow.md",

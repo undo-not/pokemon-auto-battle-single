@@ -1,0 +1,169 @@
+{
+  "schema_version": "2.0.0",
+  "artifact_id": "pokemon-showdown-champions-8ff48edc09e4",
+  "source_hash_algorithm": "sha256-git-blob-and-lf-worktree-v1",
+  "upstream": {
+    "repository_url": "https://github.com/smogon/pokemon-showdown.git",
+    "commit": "8ff48edc09e4aed6011c966258a5f95899128443",
+    "tree": "880678686f3fda7a712080581ad5d6cc8ef5417b",
+    "license": "MIT",
+    "license_file": "LICENSE",
+    "license_sha256": "b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0"
+  },
+  "runtime": {
+    "minimum_node_major": 22,
+    "install_command": ["npm", "ci", "--omit=optional"],
+    "build_command": ["node", "build"]
+  },
+  "runtime_dependencies": [
+    {
+      "name": "ts-chacha20",
+      "version": "1.2.0",
+      "license": "MIT",
+      "package_file": "node_modules/ts-chacha20/package.json",
+      "package_sha256": "97076f95e09d0f27c00104cef6c17f3703950848827836cf95d9f7ff501575c0",
+      "license_file": "node_modules/ts-chacha20/LICENSE",
+      "license_sha256": "bd096308933828a112c5bd48eac0f8f49ccf7de63faea077f5246b7ad8738a40",
+      "runtime_files": {
+        "node_modules/ts-chacha20/build/src/chacha20.js": "9c8aa114083d06946ba78c977244cf2a01a85d86ab49dfadf2dd4b0941ffb183"
+      }
+    }
+  ],
+  "forbidden_paths": [
+    "config/custom-formats.ts",
+    "dist/config/custom-formats",
+    "dist/config/custom-formats.cjs",
+    "dist/config/custom-formats.js",
+    "dist/config/custom-formats.json",
+    "dist/config/custom-formats.mjs",
+    "dist/config/custom-formats.node"
+  ],
+  "formats": [
+    {
+      "id": "gen9championsbssregmb",
+      "name": "[Gen 9 Champions] BSS Reg M-B",
+      "mod": "champions",
+      "purpose": "battle",
+      "regulation": "M-B",
+      "game_type": "singles",
+      "ruleset": ["Flat Rules", "VGC Timer"],
+      "rule_table": [
+        "-nonexistent",
+        "-tag:mythical",
+        "-tag:restrictedlegendary",
+        "-tag:unobtainable",
+        "-unreleased",
+        "adjustlevel",
+        "cancelmod",
+        "dctimerbank",
+        "evlimit",
+        "flatrules",
+        "itemclause",
+        "minteamsize",
+        "nicknameclause",
+        "obtainable",
+        "obtainableabilities",
+        "obtainableformes",
+        "obtainablemisc",
+        "obtainablemoves",
+        "pickedteamsize",
+        "speciesclause",
+        "teampreview",
+        "timeoutautochoose",
+        "timeraddperturn",
+        "timergrace",
+        "timermaxfirstturn",
+        "timermaxperturn",
+        "timerstarting",
+        "vgctimer"
+      ],
+      "team_constraints": {
+        "min_team_size": 6,
+        "max_team_size": 6,
+        "picked_team_size": 3,
+        "max_move_count": 4,
+        "min_source_gen": 9,
+        "min_level": 1,
+        "max_level": 100,
+        "default_level": 100,
+        "adjust_level": 50,
+        "ev_limit": 66
+      }
+    },
+    {
+      "id": "gen9championsrandombattle",
+      "name": "[Gen 9 Champions] Random Battle",
+      "mod": "champions",
+      "purpose": "team_generation",
+      "regulation": "random",
+      "game_type": "singles",
+      "ruleset": ["Obtainable", "Species Clause", "Cancel Mod", "Sleep Clause Mod", "Illusion Level Mod", "Level Clause Mod"],
+      "rule_table": [
+        "-nonexistent",
+        "-tag:unobtainable",
+        "-unreleased",
+        "cancelmod",
+        "evlimit",
+        "illusionlevelmod",
+        "levelclausemod",
+        "obtainable",
+        "obtainableabilities",
+        "obtainableformes",
+        "obtainablemisc",
+        "obtainablemoves",
+        "sleepclausemod",
+        "speciesclause"
+      ],
+      "team_constraints": {
+        "min_team_size": 1,
+        "max_team_size": 6,
+        "picked_team_size": null,
+        "max_move_count": 4,
+        "min_source_gen": 9,
+        "min_level": 1,
+        "max_level": 100,
+        "default_level": 100,
+        "adjust_level": null,
+        "ev_limit": 66
+      }
+    }
+  ],
+  "source_files": {
+    "LICENSE": "b2002a9fd52ba8db3783a05fbdebfb09c34fd09513b90f6b390a2c0dfbc93ed0",
+    "config/formats.ts": "c5944f811521ee651293507ee77f8adcb6b281ec1a94fc2187c9f654eeb5e681",
+    "data/mods/champions/abilities.ts": "5e370ba986e026c37b9f446cd3c40c9abf8b88a896597e1819be3755256af23f",
+    "data/mods/champions/conditions.ts": "851507309dde0b58807e33b17d8ce7e607dad70893546f67bad294ad70249005",
+    "data/mods/champions/formats-data.ts": "dcdb0f9cf9433e439e1cbac68309ded78a2ed9697c80a4fe9ea9367dd6657a75",
+    "data/mods/champions/items.ts": "0a046bd8f5975217bab643bc01cde52d7973c4984aa8228fc9342055bb21f38a",
+    "data/mods/champions/learnsets.ts": "78fc395c01406008e054f63b168fe0b4ec7f7fec6ff6454f4d14a502147d2a9b",
+    "data/mods/champions/moves.ts": "ea07f04c1da9cf0baa277102b8ef83f93e5b299fb3da4b49abbe2b1bd077416b",
+    "data/mods/champions/rulesets.ts": "31671152a6ff1f09d81a5306baadaa1593ef235e5c7cdcc9180c67bac8e84cd9",
+    "data/mods/champions/scripts.ts": "8282488fa630255417e8bd4d6037d45e8d382ae28cdd84c230e59b33befa5fc2",
+    "data/mods/championsregma/abilities.ts": "2c884d0b7fdf4067d812200a597b08b9a12a5a3eeb4bf7cd7721f974689d7242",
+    "data/mods/championsregma/formats-data.ts": "253c1626e2cf37b7475cf9984cae3e04eb73c3043eccaa2ae43435f61f587388",
+    "data/mods/championsregma/items.ts": "08ffe35460c61266d33a4f540e9750a69d55dae3bb10b54da783375b0552e5a5",
+    "data/mods/championsregma/moves.ts": "15ab6535a4845e498448a62effdb76c3e59d22a796b326615d2efa3aed166665",
+    "data/mods/championsregma/scripts.ts": "efebc59baa78aa99cf6d98d7bf572b8141abbff804d1f9f6d17b77de479b0919",
+    "data/random-battles/champions/doubles-sets.json": "851114e68805aafbecbed0aaee7994164d199d890deed78bafc2beaf3c2221d8",
+    "data/random-battles/champions/sets.json": "7b189d6de33367aca7191e484069b74757097fc34fed0402b52bb6fa41447421",
+    "data/random-battles/champions/teams.ts": "caf4a6c018ecddc0a492fe4a28d5ca745ff76ed25fb29dd857e3ad35411502e0",
+    "package-lock.json": "f207748a1ef4e549160defbbb688de0f35889f3038939edebb5a956cf41b9d0a",
+    "package.json": "561152e07c4a0f4a8ddb0ab60bc3f4c3225bac24b207a70545f528d5bc4727e9"
+  },
+  "build": {
+    "algorithm": "sha256-path-nul-sha256-lf-v3",
+    "include_roots": ["dist/sim", "dist/data", "dist/lib"],
+    "closed_roots": ["dist/config"],
+    "include_files": [
+      "dist/config/formats.js",
+      "dist/data/random-battles/champions/doubles-sets.json",
+      "dist/data/random-battles/champions/sets.json",
+      "node_modules/ts-chacha20/LICENSE",
+      "node_modules/ts-chacha20/build/src/chacha20.js",
+      "node_modules/ts-chacha20/package.json"
+    ],
+    "extensions": [".js", ".json"],
+    "file_count": 369,
+    "fingerprint_sha256": "d9b1a3d574456fb2070d26b51a066c03db04bcc67d03bf05c7436c1e656516e3"
+  }
+}

@@ -1,6 +1,6 @@
 # ADR-0005: Require externally enrolled asymmetric trust and anti-rollback state
 
-- Status: Accepted
+- Status: Superseded by ADR-0007
 - Date: 2026-08-17
 - Legacy aliases: `PD-010`, `PD-011`
 
@@ -25,3 +25,7 @@ Portable output omits volatile verification time and raw local paths from stable
 - OpenSSH availability and binary identity become operational dependencies.
 - The local mechanism does not by itself protect against compromise of the same OS user, Python process, filesystem ACLs, trusted clock, or executable code.
 - Successful trust verification still does not prove source meaning, permission, client fidelity, or competitive strength.
+
+ADR-0007 removed the custom compiler, promotion, and production-trust implementation
+that applied this decision. Reintroducing a deployment authorization boundary requires
+a new ADR against the current Showdown-based architecture.

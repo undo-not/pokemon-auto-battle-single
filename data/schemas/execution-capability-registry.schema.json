@@ -1,8 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:champions_sim:schema:execution-capability-registry:1",
-  "type": "object", "additionalProperties": false,
-  "required": ["registry_id", "engine_semantics_version", "supports", "source_hashes"],
-  "properties": {"registry_id": {"$ref": "#/$defs/id"}, "engine_semantics_version": {"$ref": "#/$defs/id"}, "supports": {"type": "array", "items": {"$ref": "#/$defs/support"}}, "source_hashes": {"type": "array", "items": {"$ref": "#/$defs/sha"}, "uniqueItems": true}},
-  "$defs": {"id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$"}, "ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}, "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "dimension": {"type": "object", "additionalProperties": false, "required": ["dimension", "status", "contract_id", "test_ids"], "properties": {"dimension": {"enum": ["legality", "transition", "rng", "event", "observation", "replay"]}, "status": {"enum": ["pass", "fail", "missing"]}, "contract_id": {"$ref": "#/$defs/id"}, "test_ids": {"$ref": "#/$defs/ids"}}}, "support": {"type": "object", "additionalProperties": false, "required": ["capability_id", "handler_id", "dimensions"], "properties": {"capability_id": {"$ref": "#/$defs/id"}, "handler_id": {"$ref": "#/$defs/id"}, "dimensions": {"type": "array", "items": {"$ref": "#/$defs/dimension"}}}}}
-}

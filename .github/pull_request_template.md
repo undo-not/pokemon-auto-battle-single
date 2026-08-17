@@ -1,42 +1,42 @@
 Closes #
 
-## Outcome
+## 成果
 
-Describe the behavior or repository contract delivered by the linked Issue.
+関連Issueで求められた成果を記載してください。
 
-## Scope
+## 対象範囲
 
-- Included:
-- Excluded:
+- 含むもの:
+- 含まないもの:
 
-## Specification and decisions
+## 仕様と判断
 
-- Specifications updated:
-- ADRs added or superseded:
+- 更新した仕様:
+- 追加・置換したADR:
 
-## Validation
+## 検証
 
-List exact commands and outcomes. Do not paste full logs.
+実行したコマンドと結果を簡潔に記載し、ログ全文は貼り付けないでください。
 
 - [ ] `python scripts/check_repository_governance.py`
 - [ ] `python scripts/validate_project_skills.py`
 - [ ] `python scripts/check_repo_size.py`
-- [ ] Focused tests
+- [ ] 対象を絞ったテスト
 - [ ] `python -m pytest -q`
-- [ ] Additional risk-based checks
+- [ ] リスクに応じた追加検証
 
-## External evidence and effects
+## 外部証拠と外部作用
 
-- External systems changed:
-- Restricted data accessed:
-- Checks not run and why:
+- 変更した外部システム:
+- 参照した制限付きデータ:
+- 未実施の検証と理由:
 
-## Independent review
+## 独立レビュー
 
-- Reviewer/tool:
-- Reviewed commit:
-- Findings and disposition:
+- レビュアー／ツール:
+- レビュー対象コミット:
+- 指摘と対応:
 
-## Residual risk
+## 残存リスク
 
-State uncertainty or `None`. Put unresolved work in an Issue, not this repository.
+不確実性を記載し、なければ `なし` としてください。未解決作業はレポジトリ文書ではなくIssueに記録します。

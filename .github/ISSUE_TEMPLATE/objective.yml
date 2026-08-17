@@ -1,56 +1,56 @@
-name: Objective
-description: Define a cohesive, outcome-oriented project deliverable.
-title: "[Objective] "
+name: 目的
+description: 一体として価値のある大きな成果を定義します。
+title: "[目的] "
 labels:
   - "type:objective"
 body:
   - type: textarea
     id: outcome
     attributes:
-      label: Outcome
-      description: Describe the observable result, not the implementation steps.
+      label: 成果
+      description: 実装手順ではなく、観測可能な完了状態を記載してください。
     validations:
       required: true
   - type: textarea
     id: context
     attributes:
-      label: Context
-      description: Explain why the result matters and link relevant specifications or ADRs.
+      label: 背景
+      description: 成果が必要な理由と、関連する仕様・ADRを記載してください。
     validations:
       required: true
   - type: textarea
     id: scope
     attributes:
-      label: Scope
-      description: State the included product and engineering surfaces.
+      label: 対象範囲
+      description: 含めるプロダクト・技術領域を記載してください。
     validations:
       required: true
   - type: textarea
     id: non_goals
     attributes:
-      label: Non-goals
-      description: State adjacent work and external effects that are not authorized.
+      label: 対象外
+      description: 含めない周辺作業と、許可しない外部作用を記載してください。
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance criteria
-      description: Use checkboxes for observable completion conditions.
+      label: 受け入れ条件
+      description: 観測可能な完了条件をチェックボックスで記載してください。
       placeholder: "- [ ] ..."
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
-      label: Required evidence
-      description: List tests, artifacts, reviews, and external validation required.
+      label: 必要な証拠
+      description: 必要なテスト、成果物、レビュー、外部検証を記載してください。
     validations:
       required: true
   - type: textarea
     id: dependencies
     attributes:
-      label: Dependencies and safety boundaries
-      description: Identify blockers, permissions, restricted data, and authorized external actions.
+      label: 依存関係と安全境界
+      description: ブロッカー、権限、制限付きデータ、許可された外部操作を記載してください。
     validations:
       required: true

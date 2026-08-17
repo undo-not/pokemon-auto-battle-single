@@ -1,6 +1,6 @@
 # ADR-0004: Use bounded engineering regressions and a fail-closed adaptation SLA
 
-- Status: Accepted
+- Status: Superseded by ADR-0007
 - Date: 2026-08-17
 - Legacy aliases: `PD-005`, `PD-008`, `PD-009`
 

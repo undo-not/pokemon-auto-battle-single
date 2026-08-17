@@ -7,7 +7,7 @@
   "required": [
     "schema_version",
     "trace_id",
-    "ruleset_id",
+    "format_id",
     "viewer",
     "reference_replay_hash",
     "frames",
@@ -19,7 +19,7 @@
   "properties": {
     "schema_version": {"const": "1.0.0"},
     "trace_id": {"$ref": "#/$defs/stableId"},
-    "ruleset_id": {"$ref": "#/$defs/stableId"},
+    "format_id": {"$ref": "#/$defs/stableId"},
     "viewer": {"enum": ["p1", "p2"]},
     "reference_replay_hash": {
       "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]

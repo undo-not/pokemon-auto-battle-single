@@ -1,7 +1,7 @@
 [project]
 name = "champions_sim"
-version = "0.1.0"
-description = "Deterministic Pokemon Champions singles battle simulator and AI research foundation."
+version = "0.2.0"
+description = "Pinned Pokemon Showdown Champions integration and singles AI research foundation."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
@@ -11,8 +11,10 @@ champions-sim = "champions_sim.cli:main"
 
 [project.optional-dependencies]
 dev = [
+    "jsonschema>=4.23",
     "pytest>=8.0",
     "PyYAML>=6.0",
+    "referencing>=0.35",
 ]
 
 [tool.pytest.ini_options]

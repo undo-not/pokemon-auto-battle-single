@@ -1,4 +1,4 @@
-"""Emulator diagnostics, fail-closed observation capture, and AI contracts."""
+"""Read-only emulator diagnostics and fail-closed grounding evidence."""
 
 from .bluestacks import (
     AdbObservationCapture,
@@ -9,14 +9,6 @@ from .bluestacks import (
     ExternalCaptureUnavailable,
     discover_bluestacks,
     parse_bluestacks_config,
-)
-from .env import (
-    EnvObservation,
-    LegalActionMask,
-    MaskStatus,
-    ObservationProvenance,
-    ObservationSource,
-    PublicEvent,
 )
 from .models import (
     AnnotationSource,
@@ -40,9 +32,7 @@ from .store import CaptureStore
 from .validation import (
     GroundingValidationError,
     ValidatedCaptureBinding,
-    ValidatedEnvObservation,
     ValidatedGroundingTrace,
-    validate_env_observation_against_trace_and_store,
     validate_grounding_trace_against_store,
 )
 
@@ -61,7 +51,6 @@ __all__ = [
     "CaptureStore",
     "ConformanceCheck",
     "ConformanceVerdict",
-    "EnvObservation",
     "ExternalCaptureUnavailable",
     "GroundedField",
     "GroundingFrame",
@@ -70,18 +59,11 @@ __all__ = [
     "GroundingTrace",
     "GroundingTraceStatus",
     "GroundingValidationError",
-    "LegalActionMask",
-    "MaskStatus",
-    "ObservationProvenance",
-    "ObservationSource",
-    "PublicEvent",
     "RedactionRegion",
     "RedactionStatus",
     "ValidatedCaptureBinding",
-    "ValidatedEnvObservation",
     "ValidatedGroundingTrace",
     "discover_bluestacks",
     "parse_bluestacks_config",
-    "validate_env_observation_against_trace_and_store",
     "validate_grounding_trace_against_store",
 ]

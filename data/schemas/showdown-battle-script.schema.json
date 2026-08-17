@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:showdown-battle-script:1",
+  "title": "Showdown deterministic battle script v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "session_id", "seed", "players", "choices"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "session_id": {"$ref": "#/$defs/id"},
+    "format_id": {"$ref": "#/$defs/id"},
+    "seed": {"$ref": "#/$defs/seed"},
+    "players": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p1", "p2"],
+      "properties": {
+        "p1": {"$ref": "#/$defs/player"},
+        "p2": {"$ref": "#/$defs/player"}
+      }
+    },
+    "choices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["player", "choice"],
+        "properties": {
+          "player": {"enum": ["p1", "p2"]},
+          "choice": {"$ref": "#/$defs/text"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
+    "seed": {"type": "string", "pattern": "^sodium,[0-9a-f]{64}$"},
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hp": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "atk": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "def": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "spa": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "spd": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "spe": {"type": "integer", "minimum": 0, "maximum": 65535}
+      }
+    },
+    "ivs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hp": {"type": "integer", "minimum": 0, "maximum": 31},
+        "atk": {"type": "integer", "minimum": 0, "maximum": 31},
+        "def": {"type": "integer", "minimum": 0, "maximum": 31},
+        "spa": {"type": "integer", "minimum": 0, "maximum": 31},
+        "spd": {"type": "integer", "minimum": 0, "maximum": 31},
+        "spe": {"type": "integer", "minimum": 0, "maximum": 31}
+      }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["species", "ability", "moves", "nature", "level"],
+      "properties": {
+        "name": {"$ref": "#/$defs/text"},
+        "species": {"$ref": "#/$defs/text"},
+        "item": {"$ref": "#/$defs/text"},
+        "ability": {"$ref": "#/$defs/text"},
+        "moves": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"$ref": "#/$defs/text"}},
+        "nature": {"$ref": "#/$defs/text"},
+        "gender": {"enum": ["M", "F", "N"]},
+        "evs": {"$ref": "#/$defs/stats"},
+        "ivs": {"$ref": "#/$defs/ivs"},
+        "level": {"type": "integer", "minimum": 1, "maximum": 9999},
+        "shiny": {"type": "boolean"},
+        "happiness": {"type": "integer", "minimum": 0, "maximum": 255},
+        "pokeball": {"$ref": "#/$defs/text"},
+        "hpType": {"$ref": "#/$defs/text"},
+        "dynamaxLevel": {"type": "integer", "minimum": 0, "maximum": 10},
+        "gigantamax": {"type": "boolean"},
+        "teraType": {"$ref": "#/$defs/text"}
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "team"],
+      "properties": {
+        "name": {"$ref": "#/$defs/text"},
+        "team": {"type": "array", "minItems": 1, "maxItems": 24, "items": {"$ref": "#/$defs/set"}}
+      }
+    }
+  }
+}

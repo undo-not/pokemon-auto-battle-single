@@ -1,34 +1,34 @@
-name: Decision
-description: Resolve a durable technical choice and record it as an ADR.
-title: "[Decision] "
+name: 技術判断
+description: 長期的な技術判断を行いADRへ記録します。
+title: "[判断] "
 labels:
   - "type:decision"
 body:
   - type: textarea
     id: context
     attributes:
-      label: Decision context
-      description: Describe the forces, constraints, and why a decision is needed.
+      label: 判断の背景
+      description: 判断が必要な理由、制約、考慮事項を記載してください。
     validations:
       required: true
   - type: textarea
     id: options
     attributes:
-      label: Options
-      description: List viable alternatives and meaningful tradeoffs.
+      label: 選択肢
+      description: 実行可能な代替案と重要なトレードオフを記載してください。
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
-      label: Required evidence
-      description: State experiments, sources, reviews, or prototypes needed before deciding.
+      label: 必要な証拠
+      description: 判断前に必要な実験、情報源、レビュー、試作を記載してください。
     validations:
       required: true
   - type: textarea
     id: acceptance
     attributes:
-      label: Resolution criteria
-      placeholder: "- [ ] Decision is explicit\n- [ ] ADR records context, decision, and consequences"
+      label: 解決条件
+      placeholder: "- [ ] 判断内容が明確である\n- [ ] ADRに背景、判断、結果を記録する"
     validations:
       required: true

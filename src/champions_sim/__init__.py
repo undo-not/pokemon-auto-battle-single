@@ -1,43 +1,35 @@
-"""Deterministic Pokémon Champions singles simulation foundation."""
+"""Pokemon Champions singles AI research interfaces."""
 
-from .catalog import (
-    BaseStatBlock,
-    CatalogSnapshot,
-    MegaEvolutionDefinition,
-    RuleSetSnapshot,
-    SnapshotValidationError,
-    load_catalog,
-    load_ruleset,
-    validate_snapshot_pair,
-)
-from .engine import BattleEngine, IllegalAction
-from .fixtures import LoadedBattleFixture, load_battle_fixture
-from .runner import (
-    BatchSummary,
-    BattleRun,
-    ReplayVerificationError,
-    run_battle,
-    run_random_batch,
-    verify_replay,
+from .showdown import (
+    DamageSample,
+    RandomBattleAuditError,
+    ShowdownBridgeError,
+    ShowdownClient,
+    ShowdownObservation,
+    ShowdownProcessError,
+    ShowdownReplay,
+    ShowdownResolutionError,
+    ShowdownSession,
+    run_random_battle_audit,
+    validate_random_battle_audit_document,
+    validate_random_battle_audit_output,
+    verify_repeated_random_battle_audit,
+    write_random_battle_audit,
 )
 
 __all__ = [
-    "BatchSummary",
-    "BaseStatBlock",
-    "BattleEngine",
-    "BattleRun",
-    "CatalogSnapshot",
-    "IllegalAction",
-    "LoadedBattleFixture",
-    "MegaEvolutionDefinition",
-    "RuleSetSnapshot",
-    "ReplayVerificationError",
-    "SnapshotValidationError",
-    "load_battle_fixture",
-    "load_catalog",
-    "load_ruleset",
-    "run_battle",
-    "run_random_batch",
-    "verify_replay",
-    "validate_snapshot_pair",
+    "DamageSample",
+    "RandomBattleAuditError",
+    "ShowdownBridgeError",
+    "ShowdownClient",
+    "ShowdownObservation",
+    "ShowdownProcessError",
+    "ShowdownReplay",
+    "ShowdownResolutionError",
+    "ShowdownSession",
+    "run_random_battle_audit",
+    "validate_random_battle_audit_document",
+    "validate_random_battle_audit_output",
+    "verify_repeated_random_battle_audit",
+    "write_random_battle_audit",
 ]

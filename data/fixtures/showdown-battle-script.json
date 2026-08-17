@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0.0",
+  "session_id": "fixture-battle",
+  "format_id": "gen9championsbssregmb",
+  "seed": "sodium,000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "players": {
+    "p1": {
+      "name": "Alpha",
+      "team": [
+        {"species": "Pikachu", "ability": "Static", "moves": ["Thunderbolt", "Quick Attack", "Protect", "Nuzzle"], "nature": "Timid", "level": 50},
+        {"species": "Charizard", "ability": "Blaze", "moves": ["Flamethrower", "Air Slash", "Protect", "Dragon Pulse"], "nature": "Timid", "level": 50},
+        {"species": "Garchomp", "ability": "Rough Skin", "moves": ["Earthquake", "Dragon Claw", "Protect", "Swords Dance"], "nature": "Jolly", "level": 50},
+        {"species": "Gengar", "ability": "Cursed Body", "moves": ["Shadow Ball", "Sludge Bomb", "Protect", "Hypnosis"], "nature": "Timid", "level": 50},
+        {"species": "Dragonite", "ability": "Multiscale", "moves": ["Dragon Claw", "Extreme Speed", "Protect", "Dragon Dance"], "nature": "Adamant", "level": 50},
+        {"species": "Lucario", "ability": "Inner Focus", "moves": ["Close Combat", "Extreme Speed", "Protect", "Swords Dance"], "nature": "Jolly", "level": 50}
+      ]
+    },
+    "p2": {
+      "name": "Beta",
+      "team": [
+        {"species": "Pikachu", "ability": "Static", "moves": ["Thunderbolt", "Quick Attack", "Protect", "Nuzzle"], "nature": "Timid", "level": 50},
+        {"species": "Charizard", "ability": "Blaze", "moves": ["Flamethrower", "Air Slash", "Protect", "Dragon Pulse"], "nature": "Timid", "level": 50},
+        {"species": "Garchomp", "ability": "Rough Skin", "moves": ["Earthquake", "Dragon Claw", "Protect", "Swords Dance"], "nature": "Jolly", "level": 50},
+        {"species": "Gengar", "ability": "Cursed Body", "moves": ["Shadow Ball", "Sludge Bomb", "Protect", "Hypnosis"], "nature": "Timid", "level": 50},
+        {"species": "Dragonite", "ability": "Multiscale", "moves": ["Dragon Claw", "Extreme Speed", "Protect", "Dragon Dance"], "nature": "Adamant", "level": 50},
+        {"species": "Lucario", "ability": "Inner Focus", "moves": ["Close Combat", "Extreme Speed", "Protect", "Swords Dance"], "nature": "Jolly", "level": 50}
+      ]
+    }
+  },
+  "choices": [
+    {"player": "p1", "choice": "team 123"},
+    {"player": "p2", "choice": "team 123"},
+    {"player": "p1", "choice": "move 1"},
+    {"player": "p2", "choice": "move 1"}
+  ]
+}

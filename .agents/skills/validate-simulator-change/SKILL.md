@@ -1,6 +1,6 @@
 ---
 name: validate-simulator-change
-description: Select and run risk-based validation for champions_sim changes, including governance, size, schemas, deterministic battle behavior, Replay, regulation pipelines, evidence readiness, trust, and agent Skills. Use before committing, handing off, or opening a pull request, and when diagnosing a regression.
+description: Select and run risk-based validation for champions_sim changes, including governance, repository size, pinned Showdown identity, bridge contracts, deterministic Replay, grounding, and agent Skills. Use before committing, handing off, or opening a pull request, and when diagnosing a regression.
 ---
 
 # Validate a simulator change
@@ -21,25 +21,21 @@ python -m pytest -q
 
 ## Add risk-specific checks
 
-### Engine, RuleSet, Catalog, Replay, fixture, or observation
+### Showdown dependency, bridge, Replay, fixture, or observation
 
 ```powershell
-python scripts/validate_sim01_bundle.py --usage-scope local_research
-python scripts/validate_sim01_frozen.py
-python -m champions_sim smoke --battles 10000 --seed-start 0
+python scripts/bootstrap_showdown.py --verify-only
+$env:SHOWDOWN_INTEGRATION = "1"
+python -m pytest -q tests/test_showdown_manifest.py tests/test_showdown_integration.py tests/test_showdown_cli.py
 ```
 
-Run focused engine, Replay, observation, prebattle, and integration tests while iterating. Treat a frozen-baseline change as a semantic change requiring specification and ADR review, not as an expected snapshot update.
+Verify the pinned origin, commit, Git tree, selected source hashes, license hash, compiled/runtime-file count, build fingerprint, Node minimum, format name/mod/purpose, bridge protocol, and bridge source hash before battle tests. When random-team generation changes, verify its source and runtime JSON, the generation-format binding, ten-battle audit Schema, target-format validation, cross-process determinism, decision-to-Replay correspondence, and external-only no-overwrite report. Test terminal equal-input Replay identity and input-log re-execution, concurrent session isolation, policy-view privacy, team validation, legal choices, invalid choices, process termination, timeout transport disposal, strict JSON, and clone-only damage sampling. A mismatch must fail closed; do not add the removed Python engine as a fallback.
 
-### Schema, compiler, regulation, evidence, or readiness
+### Regulation or upstream pin
 
-Run focused loader/compiler mutation tests and validate at least one positive and one fail-closed path. Rebuild deterministic dry-run output twice when a builder changed and compare canonical hashes. Resolve every input artifact from bytes.
+Validate the dependency manifest and battle-script/Replay schemas. Build the candidate external checkout twice when build or pin inputs change and compare fingerprints. Inspect the exact upstream diff affecting the bound format and Champions mods. Keep downloaded source and build output outside the workspace.
 
-Run an actual external-root dry run only when the Issue authorizes the data and the root is available. Report an unrun external check; never fabricate a pass.
-
-### Trust
-
-Run V2 fail-closed and V3 enrollment, signature, revocation, clock, ledger, TOCTOU, and current-context tests. Do not create actual trust state or keys in the workspace.
+Run network acquisition only when the Issue authorizes bootstrapping or updating the upstream pin. A pre-existing verified external checkout is sufficient for ordinary validation. Report an unavailable external check; never fabricate a pass.
 
 ### Documentation, policy, ADR, or Skill
 

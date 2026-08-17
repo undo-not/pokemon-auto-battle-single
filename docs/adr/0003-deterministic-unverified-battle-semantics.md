@@ -1,6 +1,6 @@
 # ADR-0003: Isolate deterministic but unverified battle semantics in RuleSet data
 
-- Status: Accepted
+- Status: Superseded by ADR-0007
 - Date: 2026-08-17
 - Legacy aliases: `PD-003`, `PD-004`, `PD-007`
 

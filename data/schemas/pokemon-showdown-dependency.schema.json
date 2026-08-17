@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions-sim:schema:pokemon-showdown-dependency:2",
+  "title": "Pinned Pokemon Showdown dependency v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "source_hash_algorithm", "upstream", "runtime", "runtime_dependencies", "forbidden_paths", "formats", "source_files", "build"],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "artifact_id": {"$ref": "#/$defs/id"},
+    "source_hash_algorithm": {"const": "sha256-git-blob-and-lf-worktree-v1"},
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_url", "commit", "tree", "license", "license_file", "license_sha256"],
+      "properties": {
+        "repository_url": {"const": "https://github.com/smogon/pokemon-showdown.git"},
+        "commit": {"$ref": "#/$defs/gitObject"},
+        "tree": {"$ref": "#/$defs/gitObject"},
+        "license": {"const": "MIT"},
+        "license_file": {"$ref": "#/$defs/path"},
+        "license_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum_node_major", "install_command", "build_command"],
+      "properties": {
+        "minimum_node_major": {"type": "integer", "minimum": 22},
+        "install_command": {"const": ["npm", "ci", "--omit=optional"]},
+        "build_command": {"const": ["node", "build"]}
+      }
+    },
+    "runtime_dependencies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version", "license", "package_file", "package_sha256", "license_file", "license_sha256", "runtime_files"],
+        "properties": {
+          "name": {"$ref": "#/$defs/id"},
+          "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+          "license": {"$ref": "#/$defs/text"},
+          "package_file": {"$ref": "#/$defs/path"},
+          "package_sha256": {"$ref": "#/$defs/sha256"},
+          "license_file": {"$ref": "#/$defs/path"},
+          "license_sha256": {"$ref": "#/$defs/sha256"},
+          "runtime_files": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {"$ref": "#/$defs/path"},
+            "additionalProperties": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/path"}
+    },
+    "formats": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {
+        "type": "object",
+        "properties": {"purpose": {"const": "battle"}},
+        "required": ["purpose"]
+      },
+      "minContains": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "mod", "purpose", "regulation", "game_type", "ruleset", "rule_table", "team_constraints"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]{1,128}$"},
+          "name": {"$ref": "#/$defs/text"},
+          "mod": {"$ref": "#/$defs/id"},
+          "purpose": {"enum": ["battle", "team_generation"]},
+          "regulation": {"$ref": "#/$defs/text"},
+          "game_type": {"const": "singles"},
+          "ruleset": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/text"}
+          },
+          "rule_table": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/text"}
+          },
+          "team_constraints": {"$ref": "#/$defs/teamConstraints"}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"purpose": {"const": "battle"}}, "required": ["purpose"]},
+            "then": {
+              "properties": {
+                "team_constraints": {
+                  "properties": {
+                    "picked_team_size": {"type": "integer", "minimum": 1},
+                    "adjust_level": {"type": "integer", "minimum": 1}
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "source_files": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"$ref": "#/$defs/path"},
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "include_roots", "closed_roots", "include_files", "extensions", "file_count", "fingerprint_sha256"],
+      "properties": {
+        "algorithm": {"const": "sha256-path-nul-sha256-lf-v3"},
+        "include_roots": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+        "closed_roots": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+        "include_files": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+        "extensions": {
+          "const": [".js", ".json"]
+        },
+        "file_count": {"type": "integer", "minimum": 1},
+        "fingerprint_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,239}$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
+    "path": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?!/)(?!.*\\.\\.)(?!.*\\\\)[A-Za-z0-9._/-]+$"},
+    "gitObject": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "teamConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_team_size", "max_team_size", "picked_team_size", "max_move_count", "min_source_gen", "min_level", "max_level", "default_level", "adjust_level", "ev_limit"],
+      "properties": {
+        "min_team_size": {"type": "integer", "minimum": 1},
+        "max_team_size": {"type": "integer", "minimum": 1},
+        "picked_team_size": {"type": ["integer", "null"], "minimum": 1},
+        "max_move_count": {"type": "integer", "minimum": 1},
+        "min_source_gen": {"type": "integer", "minimum": 1},
+        "min_level": {"type": "integer", "minimum": 1},
+        "max_level": {"type": "integer", "minimum": 1},
+        "default_level": {"type": "integer", "minimum": 1},
+        "adjust_level": {"type": ["integer", "null"], "minimum": 1},
+        "ev_limit": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}
