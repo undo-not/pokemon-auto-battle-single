@@ -27,6 +27,7 @@ Keep these paths and artifact classes outside Git:
 - `data/raw/`, `data/processed/`, `replays/`, and `runs/`;
 - checkpoints, weights, arrays, embeddings, LLM caches, and experiment-tracker output;
 - screenshots, videos, UI hierarchies, and BlueStacks capture attachments;
+- grounding denominator plans, lineage receipts, expanded traces, assessments, and holdout records;
 - generated scenario corpora, expanded evaluations, probes, and trajectories;
 - Pokemon Showdown checkouts, `node_modules`, compiled output, and package-manager caches;
 - credentials, private keys, signing tokens, actual enrollment registries, and ledgers.
@@ -76,6 +77,28 @@ Resolve the artifact from bytes at use time. A matching hash proves byte identit
 Use content-addressed storage for generated bundles. Retain an artifact when it is an active candidate, is required to reproduce an active candidate, or is a non-regenerable counterexample. Prune regenerable intermediate runs only after their inputs, generator identity, and checksums are preserved.
 
 Development and external-holdout artifacts use distinct content namespaces and access controls. Never copy holdout raw artifacts into the development store.
+
+Initialize a capture store before sealing its GroundingPlan. The default
+development capture store is
+`%LOCALAPPDATA%/pokemon-auto-battle-single/captures/development`. A configured
+development root and every holdout root must be absolute and outside the
+repository; holdout has no implicit default. Authorization and lineage files
+are external artifacts too; store only their content hashes in capture manifests.
+Canonical GroundingTrace bytes live in the capture store's `_traces` namespace
+and must be re-resolved by SHA-256 before use. The root `store.json` assigns one
+persistent random identity and partition to the physical store; do not edit,
+copy, or relabel it. A capture opens the pre-existing store without initialization
+and requires its physical identity to match the sealed plan and authorization.
+External Replay files used to derive expectations remain in the same external
+artifact regime; only their hashes and permitted locators belong in Issue or PR
+evidence.
+
+Partition independence is provenance-based. Development and holdout must use
+different physical stores, capture IDs and manifests, authorizations, plan
+seals, Replay bytes, and lineage roles. A byte-identical static screenshot or UI
+hierarchy can result from an independent deterministic capture and is not alone
+proof of copying; never use that allowance to move holdout material into the
+development namespace.
 
 ## Sensitive and restricted data
 

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:observation-authorization:1",
+  "title": "ChampionSim scoped private-match observation authorization v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "issue_url",
+    "granted_by",
+    "granted_at",
+    "expires_at",
+    "format_id",
+    "plan_id",
+    "plan_hash",
+    "lineage_receipt_sha256",
+    "plan_seal_comment_url",
+    "plan_seal_receipt_sha256",
+    "partition",
+    "instance_name",
+    "target_package",
+    "client_build",
+    "capture_store_id",
+    "capture_store_identity_sha256",
+    "allowed_actions",
+    "game_scope",
+    "ranked_match_allowed",
+    "input_automation_allowed"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "authorization_id": {"$ref": "#/$defs/stableId"},
+    "issue_url": {
+      "type": "string",
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/issues/[1-9][0-9]*$"
+    },
+    "granted_by": {"type": "string", "minLength": 1, "maxLength": 240},
+    "granted_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "format_id": {"$ref": "#/$defs/stableId"},
+    "plan_id": {"$ref": "#/$defs/stableId"},
+    "plan_hash": {"$ref": "#/$defs/sha256Prefixed"},
+    "lineage_receipt_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "plan_seal_comment_url": {
+      "type": "string",
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/issues/[1-9][0-9]*#issuecomment-[1-9][0-9]*$"
+    },
+    "plan_seal_receipt_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "partition": {"enum": ["development", "holdout"]},
+    "instance_name": {"$ref": "#/$defs/stableId"},
+    "target_package": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$"
+    },
+    "client_build": {"$ref": "#/$defs/clientBuild"},
+    "capture_store_id": {"$ref": "#/$defs/stableId"},
+    "capture_store_identity_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "allowed_actions": {
+      "type": "array",
+      "prefixItems": [
+        {"const": "client_identity"},
+        {"const": "screenshot"},
+        {"const": "ui_hierarchy"}
+      ],
+      "minItems": 3,
+      "maxItems": 3,
+      "items": false,
+      "uniqueItems": true
+    },
+    "game_scope": {"const": "private_friend_match"},
+    "ranked_match_allowed": {"const": false},
+    "input_automation_allowed": {"const": false}
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256Prefixed": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "clientBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version_code", "version_name", "apk_count", "apk_set_sha256"],
+      "properties": {
+        "version_code": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "version_name": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$"},
+        "apk_count": {"type": "integer", "minimum": 1, "maximum": 64},
+        "apk_set_sha256": {"$ref": "#/$defs/sha256Prefixed"}
+      }
+    }
+  }
+}

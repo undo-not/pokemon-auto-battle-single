@@ -26,6 +26,7 @@ from showdown_fixtures import (
     opponent_team_with_private_item,
     pixilate_team,
     sodium_seed,
+    super_fang_team,
     throat_chop_team,
 )
 
@@ -212,6 +213,64 @@ def test_choice_canonicalization_matches_replay_input_exactly(
         session.close()
 
 
+def test_replay_expectation_history_binds_direct_super_fang_rounding(
+    client: ShowdownClient,
+) -> None:
+    session = client.create_session(
+        session_id="super-fang-rounding",
+        seed=sodium_seed(200),
+        p1_name="Alpha",
+        p1_team=legal_team(),
+        p2_name="Beta",
+        p2_team=super_fang_team(),
+    )
+    try:
+        session.choose_with_replay_input("p1", "team 312")
+        session.choose_with_replay_input("p2", "team 123")
+        session.choose_with_replay_input("p1", "move 4")
+        session.choose_with_replay_input("p2", "move 1")
+        session.choose_with_replay_input("p1", "move 4")
+        session.choose_with_replay_input("p2", "move 2")
+        replay = session.replay(allow_incomplete=True)
+    finally:
+        session.close()
+
+    reproduced, values = client.resolve_replay_expectations(
+        replay.to_dict(),
+        (
+            {
+                "selector_id": "condition",
+                "player": "p1",
+                "revision": 4,
+                "pointer": "/request/side/pokemon/0/condition",
+            },
+            {
+                "selector_id": "ident",
+                "player": "p1",
+                "revision": 4,
+                "pointer": "/request/side/pokemon/0/ident",
+            },
+            {
+                "selector_id": "history",
+                "player": "p1",
+                "revision": 4,
+                "pointer": "/visible_log",
+            },
+        ),
+    )
+
+    assert reproduced.to_dict() == replay.to_dict()
+    assert values["ident"] == "p1: Garchomp"
+    current, maximum = (int(value) for value in values["condition"].split("/"))
+    assert maximum % 2 == 1
+    assert current == (maximum + 1) // 2
+    move = "|move|p2a: Dedenne|Super Fang|p1a: Garchomp"
+    move_index = values["history"].index(move)
+    assert values["history"][move_index + 1] == (
+        f"|-damage|p1a: Garchomp|{values['condition']}"
+    )
+
+
 def test_private_observation_legal_actions_damage_and_replay(client: ShowdownClient) -> None:
     session = client.create_session(
         session_id="integration-main",
@@ -266,6 +325,36 @@ def test_private_observation_legal_actions_damage_and_replay(client: ShowdownCli
         ]
         assert replay_document["replay_hash"] == replay.replay_hash
         assert "|t:|0" in replay_document["public_log"]
+        reproduced, expectations = client.resolve_replay_expectations(
+            replay_document,
+            (
+                {
+                    "selector_id": "preview-size",
+                    "player": "p1",
+                    "revision": 0,
+                    "pointer": "/request/maxChosenTeamSize",
+                },
+                {
+                    "selector_id": "move-id",
+                    "player": "p1",
+                    "revision": 2,
+                    "pointer": "/request/active/0/moves/0/id",
+                },
+                {
+                    "selector_id": "visible-history",
+                    "player": "p1",
+                    "revision": 2,
+                    "pointer": "/visible_log",
+                },
+            ),
+        )
+        assert reproduced.to_dict() == replay_document
+        assert expectations["preview-size"] == 3
+        assert expectations["move-id"] == "thunderbolt"
+        assert any(
+            line.startswith("|teampreview")
+            for line in expectations["visible-history"]
+        )
         replay_schema = json.loads(
             (ROOT / "data/schemas/showdown-replay.schema.json").read_text(
                 encoding="utf-8"

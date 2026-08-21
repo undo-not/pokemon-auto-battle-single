@@ -1,5 +1,23 @@
 """Read-only emulator diagnostics and fail-closed grounding evidence."""
 
+from .adb import (
+    AdbOwnershipError,
+    AdbProtocolError,
+    AdbServerIdentity,
+    DirectAdbServerTransport,
+    WindowsAdbOwnershipProbe,
+)
+from .authorization import (
+    ObservationAuthorization,
+    ObservationAuthorizationError,
+    ValidatedObservationAuthorization,
+    load_observation_authorization,
+)
+from .android_client import (
+    AndroidClientBuild,
+    AndroidClientIdentityError,
+    observe_android_client_build,
+)
 from .bluestacks import (
     AdbObservationCapture,
     BlueStacksDiagnostics,
@@ -9,6 +27,12 @@ from .bluestacks import (
     ExternalCaptureUnavailable,
     discover_bluestacks,
     parse_bluestacks_config,
+)
+from .catalog import (
+    MaterialBehavior,
+    MaterialBehaviorCatalog,
+    MaterialBehaviorCatalogError,
+    resolve_material_behavior_catalog,
 )
 from .models import (
     AnnotationSource,
@@ -28,7 +52,56 @@ from .models import (
     RedactionRegion,
     RedactionStatus,
 )
-from .store import CaptureStore
+from .lineage import (
+    GroundingLineageError,
+    GroundingLineageReceipt,
+    ResolvedGroundingLineageReceipt,
+    load_grounding_lineage_receipt,
+)
+from .plan import (
+    ExclusionBasis,
+    ExpectedSource,
+    GroundingCategory,
+    GroundingEvidenceMethod,
+    GroundingExpectedLocator,
+    GroundingExclusion,
+    GroundingPartition,
+    GroundingPlan,
+    GroundingPlanError,
+    GroundingRequirement,
+    ResolvedGroundingPlan,
+    ValidatedGroundingPlanPair,
+    load_grounding_plan,
+    validate_grounding_plan_pair,
+    validate_grounding_plan_lineage,
+)
+from .expectations import (
+    GroundingExpectationError,
+    ResolvedGroundingExpectation,
+    ResolvedGroundingExpectations,
+    resolve_grounding_expectations,
+)
+from .readiness import (
+    CompleteGroundingCoverage,
+    CompleteGroundingEnvironmentEvidence,
+    GroundingCoverageError,
+    ValidatedGroundingRequirementEvidence,
+    bind_grounding_trace_to_plan,
+    validate_complete_grounding_coverage,
+    validate_complete_grounding_environment,
+)
+from .seal import (
+    GroundingPlanSealError,
+    VerifiedGroundingPlanSeal,
+    grounding_plan_seal_marker,
+    verify_grounding_plan_seal,
+)
+from .store import (
+    CaptureStore,
+    CaptureStoreIdentity,
+    ResolvedGroundingTraceArtifact,
+    default_capture_store_root,
+)
 from .validation import (
     GroundingValidationError,
     ValidatedCaptureBinding,
@@ -38,7 +111,12 @@ from .validation import (
 
 __all__ = [
     "AnnotationSource",
+    "AndroidClientBuild",
+    "AndroidClientIdentityError",
     "AdbObservationCapture",
+    "AdbOwnershipError",
+    "AdbProtocolError",
+    "AdbServerIdentity",
     "ArtifactKind",
     "BlueStacksDiagnostics",
     "BlueStacksInstance",
@@ -49,21 +127,69 @@ __all__ = [
     "CapturePayload",
     "CapturePlan",
     "CaptureStore",
+    "CaptureStoreIdentity",
     "ConformanceCheck",
     "ConformanceVerdict",
+    "CompleteGroundingCoverage",
+    "CompleteGroundingEnvironmentEvidence",
+    "DirectAdbServerTransport",
     "ExternalCaptureUnavailable",
+    "ExclusionBasis",
+    "ExpectedSource",
     "GroundedField",
+    "GroundingCategory",
+    "GroundingCoverageError",
+    "GroundingEvidenceMethod",
+    "GroundingExpectationError",
+    "GroundingExpectedLocator",
+    "GroundingExclusion",
     "GroundingFrame",
+    "GroundingLineageError",
+    "GroundingLineageReceipt",
+    "GroundingPartition",
+    "GroundingPlan",
+    "GroundingPlanError",
+    "GroundingPlanSealError",
+    "GroundingRequirement",
     "GroundingSource",
     "GroundingStatus",
     "GroundingTrace",
     "GroundingTraceStatus",
     "GroundingValidationError",
+    "MaterialBehavior",
+    "MaterialBehaviorCatalog",
+    "MaterialBehaviorCatalogError",
+    "ObservationAuthorization",
+    "ObservationAuthorizationError",
     "RedactionRegion",
     "RedactionStatus",
+    "ResolvedGroundingPlan",
+    "ResolvedGroundingLineageReceipt",
+    "ResolvedGroundingExpectation",
+    "ResolvedGroundingExpectations",
+    "ResolvedGroundingTraceArtifact",
     "ValidatedCaptureBinding",
     "ValidatedGroundingTrace",
+    "ValidatedObservationAuthorization",
+    "ValidatedGroundingPlanPair",
+    "ValidatedGroundingRequirementEvidence",
+    "VerifiedGroundingPlanSeal",
+    "WindowsAdbOwnershipProbe",
+    "bind_grounding_trace_to_plan",
+    "default_capture_store_root",
     "discover_bluestacks",
     "parse_bluestacks_config",
+    "load_observation_authorization",
+    "load_grounding_lineage_receipt",
+    "load_grounding_plan",
+    "observe_android_client_build",
+    "grounding_plan_seal_marker",
+    "resolve_grounding_expectations",
+    "resolve_material_behavior_catalog",
     "validate_grounding_trace_against_store",
+    "validate_grounding_plan_pair",
+    "validate_grounding_plan_lineage",
+    "validate_complete_grounding_coverage",
+    "validate_complete_grounding_environment",
+    "verify_grounding_plan_seal",
 ]

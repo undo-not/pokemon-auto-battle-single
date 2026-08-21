@@ -20,7 +20,8 @@ A result in one layer does not upgrade another. Exact upstream bytes do not prov
 - Ranked-match automation: prohibited.
 - Unattended BlueStacks input automation: prohibited.
 - Ordinary diagnostics: read-only and must not start ADB, the emulator, capture, or input as a side effect.
-- Captures: local research only, stored outside Git, and handled as potentially sensitive.
+- Captures: local research only, stored in a canonical external store, and handled as potentially sensitive.
+- Observation authorization: short-lived, Issue-bound, plan-seal/lineage/instance/format/Android-package/exact-client-build/physical-store scoped, and limited to client identity, screenshot, and UI hierarchy reads. It never authorizes ranked use or input.
 
 ## Engine boundary
 
@@ -40,6 +41,11 @@ LLMs may propose teams, matchup plans, or actions. They cannot establish rule va
 - Node.js 22 or newer and the manifest-pinned external Showdown checkout allowed by ADR-0007.
 - Strict versioned JSON contracts with duplicate-key and non-finite-number rejection.
 - Replays, runs, models, upstream checkouts, builds, captures, and downloaded data outside Git.
+- Real capture uses a direct connection to an existing loopback ADB server and never executes an ADB client binary.
+- Before sending ADB bytes, real capture binds the exact established loopback connection to the verified BlueStacks server process; a listener or connection-owner change fails closed.
+- Real capture resolves version metadata and an exact installed base/split APK-set digest before and after the artifacts; package-only identity, build drift, and development/holdout build disagreement fail closed.
+- Grounding plans must exactly instantiate the versioned material-behavior catalog for the bound regulation/format and bind an external content-addressed lineage receipt.
+- Rule expectations are admitted only after exact external Replay re-execution by the active pinned bridge; an LLM or handwritten plan cannot establish their values.
 - At most one explicitly activated model bundle may be materialized in the ignored workspace location defined by the artifact policy.
 
 Behavioral changes update implementation, current specs, schemas, fixtures, and tests together. Backward-incompatible serialized changes receive a new schema or bridge protocol version.

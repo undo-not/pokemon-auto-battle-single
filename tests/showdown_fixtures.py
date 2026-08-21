@@ -85,5 +85,17 @@ def throat_chop_team() -> list[dict[str, object]]:
     return team
 
 
+def super_fang_team() -> list[dict[str, object]]:
+    team = legal_team()
+    team[0] = {
+        "species": "Dedenne",
+        "ability": "Cheek Pouch",
+        "moves": ["Super Fang", "Protect", "Nuzzle", "Thunderbolt"],
+        "nature": "Jolly",
+        "level": 50,
+    }
+    return team
+
+
 def sodium_seed(offset: int = 0) -> str:
     return "sodium," + "".join(f"{(offset + index) % 256:02x}" for index in range(32))

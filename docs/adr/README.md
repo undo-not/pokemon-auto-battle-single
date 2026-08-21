@@ -11,5 +11,6 @@ ADRs preserve durable decisions, their context, and their consequences. Project 
 | [ADR-0005](0005-external-production-trust-boundary.md) | Require externally enrolled asymmetric trust and anti-rollback state | Superseded by ADR-0007 |
 | [ADR-0006](0006-conservative-evidence-intake.md) | Separate semantic authority from permission and promote conservatively | Accepted |
 | [ADR-0007](0007-pinned-showdown-champions-engine.md) | Use a pinned external Showdown Champions engine | Accepted |
+| [ADR-0008](0008-scoped-observation-authorization.md) | Use scoped operator authorization and an existing-server ADB transport | Accepted |
 
 Serialized `PD-*` identifiers belong only to historical custom-engine artifacts retained in Git history. They are not part of the current Showdown bridge or Replay contract.
