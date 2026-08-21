@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from champions_sim.core import to_canonical_data
+
 from .models import DamageSample, ShowdownObservation, ShowdownReplay
 from .process import PROTOCOL_VERSION, ShowdownProcess
 from .resolver import ResolvedShowdown, resolve_showdown
@@ -277,6 +279,76 @@ class ShowdownClient:
         if actual.to_dict() != expected.to_dict():
             raise RuntimeError("Replay execution does not reproduce the canonical document")
         return actual
+
+    def resolve_replay_expectations(
+        self,
+        document: Mapping[str, Any],
+        selectors: Sequence[Mapping[str, object]],
+    ) -> tuple[ShowdownReplay, Mapping[str, Any]]:
+        """Re-execute a Replay and resolve bounded player-view JSON pointers."""
+
+        expected = ShowdownReplay.from_document(document)
+        if expected.document["engine"] != self.engine_identity():
+            raise RuntimeError("Replay engine identity does not match the active Showdown engine")
+        binding = self.resolved.manifest.format_by_id(expected.document["format_id"])
+        if binding is None or binding.purpose != "battle":
+            raise RuntimeError("Replay format is not an active battle binding")
+        converted: list[dict[str, object]] = []
+        selector_ids: set[str] = set()
+        for index, selector in enumerate(selectors):
+            if set(selector) != {"selector_id", "player", "revision", "pointer"}:
+                raise ValueError(f"Replay selector[{index}] fields are invalid")
+            selector_id = selector["selector_id"]
+            player = selector["player"]
+            revision = selector["revision"]
+            pointer = selector["pointer"]
+            if (
+                not isinstance(selector_id, str)
+                or not selector_id
+                or selector_id in selector_ids
+                or player not in {"p1", "p2"}
+                or not isinstance(revision, int)
+                or isinstance(revision, bool)
+                or revision < 0
+                or not isinstance(pointer, str)
+                or not pointer.startswith("/")
+            ):
+                raise ValueError(f"Replay selector[{index}] is invalid")
+            selector_ids.add(selector_id)
+            converted.append(dict(selector))
+        result = self.process.request(
+            "resolve_replay_expectations",
+            {"input_log": expected.document["input_log"], "selectors": converted},
+        )
+        if set(result) != {"replay", "expectations"}:
+            raise RuntimeError("Replay expectation response fields violate the protocol")
+        replay_raw = result["replay"]
+        if not isinstance(replay_raw, dict):
+            raise RuntimeError("Replay expectation response omitted the Replay")
+        actual = ShowdownReplay.from_mapping(replay_raw, engine=self.engine_identity())
+        if actual.to_dict() != expected.to_dict():
+            raise RuntimeError("Replay expectation execution did not reproduce the Replay")
+        raw_expectations = result["expectations"]
+        if not isinstance(raw_expectations, list):
+            raise RuntimeError("Replay expectations must be an array")
+        values: dict[str, Any] = {}
+        for index, item in enumerate(raw_expectations):
+            if not isinstance(item, dict) or set(item) != {"selector_id", "value"}:
+                raise RuntimeError(f"Replay expectation[{index}] fields are invalid")
+            selector_id = item["selector_id"]
+            if (
+                not isinstance(selector_id, str)
+                or selector_id not in selector_ids
+                or selector_id in values
+            ):
+                raise RuntimeError("Replay expectation selector identity is invalid")
+            try:
+                values[selector_id] = to_canonical_data(item["value"])
+            except TypeError as error:
+                raise RuntimeError("Replay expectation value is not canonical") from error
+        if set(values) != selector_ids:
+            raise RuntimeError("Replay expectation response is incomplete")
+        return actual, values
 
     def __enter__(self) -> "ShowdownClient":
         return self

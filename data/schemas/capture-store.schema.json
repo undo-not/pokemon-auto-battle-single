@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:capture-store:1",
+  "title": "ChampionSim external capture store identity v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "store_id",
+    "partition",
+    "store_nonce",
+    "local_research_only",
+    "distribution_allowed"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "store_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "partition": {"enum": ["development", "holdout"]},
+    "store_nonce": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "local_research_only": {"const": true},
+    "distribution_allowed": {"const": false}
+  }
+}

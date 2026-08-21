@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:grounding-plan:1",
+  "title": "ChampionSim external grounding denominator plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "issue_url",
+    "seal_actor",
+    "regulation_id",
+    "format_id",
+    "material_behavior_catalog_id",
+    "material_behavior_catalog_sha256",
+    "target_package",
+    "client_build",
+    "engine_manifest_sha256",
+    "partition",
+    "capture_store_id",
+    "capture_store_identity_sha256",
+    "sealed_at",
+    "lineage_receipt_sha256",
+    "requirements",
+    "exclusions",
+    "local_research_only",
+    "distribution_allowed"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "plan_id": {"$ref": "#/$defs/stableId"},
+    "issue_url": {
+      "type": "string",
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/issues/[1-9][0-9]*$"
+    },
+    "seal_actor": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"
+    },
+    "regulation_id": {"const": "champions-m-b"},
+    "format_id": {"const": "gen9championsbssregmb"},
+    "material_behavior_catalog_id": {
+      "const": "champions-m-b-gen9championsbssregmb-v1"
+    },
+    "material_behavior_catalog_sha256": {
+      "const": "sha256:3b4b6d7c138c3aca81f35fda6af0bee693e50fe9806f9a94a0440e1631774a5a"
+    },
+    "target_package": {"$ref": "#/$defs/androidPackage"},
+    "client_build": {"$ref": "#/$defs/clientBuild"},
+    "engine_manifest_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "partition": {"enum": ["development", "holdout"]},
+    "capture_store_id": {"$ref": "#/$defs/stableId"},
+    "capture_store_identity_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "sealed_at": {"type": "string", "format": "date-time"},
+    "lineage_receipt_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "requirements": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/requirement"},
+      "uniqueItems": true,
+      "allOf": [
+        {"$ref": "#/$defs/eventOrderCatalogEntry"},
+        {"$ref": "#/$defs/legalActionCatalogEntry"},
+        {"$ref": "#/$defs/megaEvolutionCatalogEntry"},
+        {"$ref": "#/$defs/rngBoundaryCatalogEntry"},
+        {"$ref": "#/$defs/roundingCatalogEntry"},
+        {"$ref": "#/$defs/simultaneousInteractionCatalogEntry"},
+        {"$ref": "#/$defs/teamPreviewCatalogEntry"},
+        {"$ref": "#/$defs/uiObservationCatalogEntry"}
+      ]
+    },
+    "exclusions": {
+      "type": "array",
+      "maxItems": 0,
+      "items": {"$ref": "#/$defs/exclusion"},
+      "uniqueItems": true
+    },
+    "local_research_only": {"const": true},
+    "distribution_allowed": {"const": false}
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256Prefixed": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "androidPackage": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_]*)+$"
+    },
+    "clientBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version_code", "version_name", "apk_count", "apk_set_sha256"],
+      "properties": {
+        "version_code": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "version_name": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001F\\u007F]+$"},
+        "apk_count": {"type": "integer", "minimum": 1, "maximum": 64},
+        "apk_set_sha256": {"$ref": "#/$defs/sha256Prefixed"}
+      }
+    },
+    "replayHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "canonicalValue": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "integer"},
+        {"type": "string"},
+        {"type": "array", "items": {"$ref": "#/$defs/canonicalValue"}},
+        {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/canonicalValue"}
+        }
+      ]
+    },
+    "category": {
+      "enum": [
+        "ui_observation",
+        "team_preview",
+        "legal_action",
+        "event_order",
+        "rounding",
+        "rng_boundary",
+        "mega_evolution",
+        "simultaneous_interaction"
+      ]
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id",
+        "category",
+        "path",
+        "evidence_method",
+        "expected_source",
+        "expected",
+        "reference_replay_hash",
+        "expected_locator",
+        "rationale"
+      ],
+      "properties": {
+        "requirement_id": {"$ref": "#/$defs/stableId"},
+        "category": {"$ref": "#/$defs/category"},
+        "path": {"type": "string", "pattern": "^/"},
+        "evidence_method": {
+          "enum": ["screenshot", "ui_hierarchy", "screenshot_and_ui_hierarchy"]
+        },
+        "expected_source": {
+          "enum": [
+            "pinned_replay",
+            "showdown_request",
+            "showdown_public_log",
+            "manual_scope"
+          ]
+        },
+        "expected": {"$ref": "#/$defs/canonicalValue"},
+        "reference_replay_hash": {
+          "oneOf": [{"$ref": "#/$defs/replayHash"}, {"type": "null"}]
+        },
+        "expected_locator": {
+          "oneOf": [{"$ref": "#/$defs/expectedLocator"}, {"type": "null"}]
+        },
+        "rationale": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["expected_source"],
+            "properties": {"expected_source": {"not": {"const": "manual_scope"}}}
+          },
+          "then": {
+            "properties": {
+              "reference_replay_hash": {"$ref": "#/$defs/replayHash"},
+              "expected_locator": {"$ref": "#/$defs/expectedLocator"}
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["expected_source"],
+            "properties": {"expected_source": {"const": "manual_scope"}}
+          },
+          "then": {
+            "properties": {
+              "category": {"const": "ui_observation"},
+              "reference_replay_hash": {"type": "null"},
+              "expected_locator": {"type": "null"}
+            }
+          }
+        }
+      ]
+    },
+    "expectedLocator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pointer", "player", "revision"],
+      "properties": {
+        "pointer": {"type": "string", "pattern": "^/", "maxLength": 1024},
+        "player": {"oneOf": [{"enum": ["p1", "p2"]}, {"type": "null"}]},
+        "revision": {
+          "oneOf": [
+            {"type": "integer", "minimum": 0, "maximum": 9999},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["behavior_id", "category", "basis", "reason"],
+      "properties": {
+        "behavior_id": {"$ref": "#/$defs/stableId"},
+        "category": {"$ref": "#/$defs/category"},
+        "basis": {"enum": ["out_of_scope", "unobservable", "not_material"]},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "eventOrderCatalogEntry": {
+      "contains": {"$ref": "#/$defs/eventOrderRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "legalActionCatalogEntry": {
+      "contains": {"$ref": "#/$defs/legalActionRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "megaEvolutionCatalogEntry": {
+      "contains": {"$ref": "#/$defs/megaEvolutionRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "rngBoundaryCatalogEntry": {
+      "contains": {"$ref": "#/$defs/rngBoundaryRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "roundingCatalogEntry": {
+      "contains": {"$ref": "#/$defs/roundingRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "simultaneousInteractionCatalogEntry": {
+      "contains": {"$ref": "#/$defs/simultaneousInteractionRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "teamPreviewCatalogEntry": {
+      "contains": {"$ref": "#/$defs/teamPreviewRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "uiObservationCatalogEntry": {
+      "contains": {"$ref": "#/$defs/uiObservationRequirement"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "eventOrderRequirement": {
+      "properties": {
+        "requirement_id": {"const": "event-order-public-sequence"},
+        "category": {"const": "event_order"},
+        "path": {"const": "/battle/event_order"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "showdown_public_log"},
+        "expected": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string"},
+          "allOf": [
+            {"contains": {"type": "string", "pattern": "^\\|turn\\|"}},
+            {"contains": {"type": "string", "pattern": "^\\|move\\|"}}
+          ]
+        },
+        "expected_locator": {"properties": {"pointer": {"const": "/public_log"}}}
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "expected_locator"]
+    },
+    "legalActionRequirement": {
+      "properties": {
+        "requirement_id": {"const": "legal-action-player-request"},
+        "category": {"const": "legal_action"},
+        "path": {"const": "/battle/legal_actions"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "showdown_request"},
+        "expected": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?:team [1-6]+|move [1-4](?: mega)?|switch [1-6]|pass)$"
+          }
+        },
+        "expected_locator": {"properties": {"pointer": {"const": "/legal_actions"}}}
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "expected_locator"]
+    },
+    "megaEvolutionRequirement": {
+      "properties": {
+        "requirement_id": {"const": "mega-evolution-order"},
+        "category": {"const": "mega_evolution"},
+        "path": {"const": "/battle/mega_evolution"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "showdown_public_log"},
+        "expected": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "string"},
+          "allOf": [
+            {"contains": {"type": "string", "pattern": "^\\|turn\\|"}},
+            {"contains": {"type": "string", "pattern": "^\\|-mega\\|"}},
+            {"contains": {"type": "string", "pattern": "^\\|move\\|"}}
+          ]
+        },
+        "expected_locator": {"properties": {"pointer": {"const": "/public_log"}}}
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "expected_locator"]
+    },
+    "rngBoundaryRequirement": {
+      "properties": {
+        "requirement_id": {"const": "rng-boundary-public-outcome"},
+        "category": {"const": "rng_boundary"},
+        "path": {"const": "/battle/rng_boundary"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "showdown_public_log"},
+        "expected": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "string"},
+          "allOf": [
+            {"contains": {"type": "string", "pattern": "^\\|move\\|[^|]+\\|Hypnosis\\|[^|]+"}},
+            {"contains": {"type": "string", "pattern": "^\\|-miss\\|[^|]+\\|[^|]+"}}
+          ]
+        },
+        "expected_locator": {"properties": {"pointer": {"const": "/public_log"}}}
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "expected_locator"]
+    },
+    "roundingRequirement": {
+      "properties": {
+        "requirement_id": {"const": "rounding-visible-hp"},
+        "category": {"const": "rounding"},
+        "path": {"const": "/battle/rounding"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "showdown_request"},
+        "expected": {
+          "type": "string",
+          "pattern": "^[0-9]+/[1-9][0-9]*(?: [^|]+)?$"
+        },
+        "expected_locator": {
+          "properties": {
+            "pointer": {"pattern": "^/request/side/pokemon/(?:0|[1-9][0-9]*)/condition$"},
+            "player": {"enum": ["p1", "p2"]},
+            "revision": {"type": "integer", "minimum": 4, "maximum": 9999}
+          }
+        }
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "expected_locator"]
+    },
+    "simultaneousInteractionRequirement": {
+      "properties": {
+        "requirement_id": {"const": "simultaneous-interaction-order"},
+        "category": {"const": "simultaneous_interaction"},
+        "path": {"const": "/battle/simultaneous_interaction"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "showdown_public_log"},
+        "expected": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "string"},
+          "allOf": [
+            {"contains": {"type": "string", "pattern": "^\\|turn\\|"}},
+            {"contains": {"type": "string", "pattern": "^\\|move\\|p1[a-z]?:"}},
+            {"contains": {"type": "string", "pattern": "^\\|move\\|p2[a-z]?:"}}
+          ]
+        },
+        "expected_locator": {"properties": {"pointer": {"const": "/public_log"}}}
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "expected_locator"]
+    },
+    "teamPreviewRequirement": {
+      "properties": {
+        "requirement_id": {"const": "team-preview-max-selected"},
+        "category": {"const": "team_preview"},
+        "path": {"const": "/battle/team_preview"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "showdown_request"},
+        "expected": {"const": 3},
+        "expected_locator": {"properties": {"pointer": {"const": "/request/maxChosenTeamSize"}}}
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "expected_locator"]
+    },
+    "uiObservationRequirement": {
+      "properties": {
+        "requirement_id": {"const": "ui-private-friend-match"},
+        "category": {"const": "ui_observation"},
+        "path": {"const": "/client/match_kind"},
+        "evidence_method": {"const": "screenshot_and_ui_hierarchy"},
+        "expected_source": {"const": "manual_scope"},
+        "expected": {"const": "private_friend_match"},
+        "reference_replay_hash": {"type": "null"},
+        "expected_locator": {"type": "null"}
+      },
+      "required": ["requirement_id", "category", "path", "evidence_method", "expected_source", "reference_replay_hash", "expected_locator"]
+    }
+  }
+}

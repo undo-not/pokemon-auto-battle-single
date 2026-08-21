@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:champions_sim:schema:grounding-lineage-receipt:1",
+  "title": "ChampionSim external grounding lineage receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "lineage_id",
+    "issue_url",
+    "regulation_id",
+    "format_id",
+    "partition",
+    "capture_store_id",
+    "capture_store_identity_sha256",
+    "source_artifact_sha256",
+    "source_store_identity_sha256",
+    "collected_at",
+    "collection_method",
+    "collector_id",
+    "author_id",
+    "executor_id",
+    "independence_attested",
+    "local_research_only",
+    "distribution_allowed"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "lineage_id": {"$ref": "#/$defs/stableId"},
+    "issue_url": {
+      "type": "string",
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/issues/[1-9][0-9]*$"
+    },
+    "regulation_id": {"$ref": "#/$defs/stableId"},
+    "format_id": {"$ref": "#/$defs/stableId"},
+    "partition": {"enum": ["development", "holdout"]},
+    "capture_store_id": {"$ref": "#/$defs/stableId"},
+    "capture_store_identity_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "source_artifact_sha256": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/sha256Prefixed"},
+      "uniqueItems": true
+    },
+    "source_store_identity_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "collected_at": {"type": "string", "format": "date-time"},
+    "collection_method": {"$ref": "#/$defs/stableId"},
+    "collector_id": {"$ref": "#/$defs/stableId"},
+    "author_id": {"$ref": "#/$defs/stableId"},
+    "executor_id": {"$ref": "#/$defs/stableId"},
+    "independence_attested": {"const": true},
+    "local_research_only": {"const": true},
+    "distribution_allowed": {"const": false}
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256Prefixed": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

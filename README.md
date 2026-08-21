@@ -33,7 +33,30 @@ python -m champions_sim damage --input data/fixtures/showdown-battle-script.json
 python -m champions_sim replay --input C:\external-artifacts\replay.json
 python -m champions_sim audit-random-battles --output C:\external-artifacts\m-b-random-10.json
 python scripts/diagnose_bluestacks.py
+python scripts/inspect_bluestacks_client_build.py --instance INSTANCE --target-package PACKAGE --confirm-read-only-inspection
+python scripts/initialize_capture_store.py --store C:\external-artifacts\captures\development
+python scripts/initialize_capture_store.py --partition holdout --store C:\external-holdout\captures
+python scripts/validate_grounding_plan.py --plan C:\external-artifacts\grounding-plan.json --lineage C:\external-artifacts\grounding-lineage.json --replay REPLAY_SHA256=C:\external-artifacts\replay.json
+python scripts/capture_bluestacks_observation.py --instance INSTANCE --store C:\external-artifacts\captures\development --plan C:\external-artifacts\grounding-plan.json --lineage C:\external-artifacts\grounding-lineage.json --plan-seal-comment COMMENT_URL --authorization C:\external-artifacts\authorization.json
 ```
+
+BlueStacks diagnosis reads installation metadata, configuration, and process
+state only. It never invokes ADB or starts the player. Real observation requires
+an initialized external store, an external plan sealed by an unedited live
+GitHub Issue comment, a content-addressed external lineage receipt, and a
+short-lived authorization document outside the repository. It connects directly
+to an existing loopback ADB server and verifies the exact accepted TCP
+connection before sending bytes; the capture path cannot start an ADB daemon
+and never performs input. It binds the sealed `versionCode`, `versionName`, and
+installed base/split APK-set digest before and after observation, so an old,
+updated, or replaced client fails closed even when the package name is unchanged.
+A screenshot is admitted only when its complete PNG
+chunk and image stream validate and target-package UI hierarchies captured
+immediately before and after it have the same projected state.
+
+Run the explicit client-build inspection before sealing a grounding plan. It
+prints only the package, version metadata, APK count, and canonical APK-set
+digest; it does not persist device APK paths or capture match UI.
 
 The Python API keeps one Node process alive for multiple isolated battles:
 
@@ -74,7 +97,7 @@ CI bootstraps and verifies the exact upstream commit and runs the integration su
 
 - `bridge/`: strict persistent Node bridge
 - `src/champions_sim/showdown/`: manifest resolver, process transport, sessions, observations, damage samples, and Replay
-- `src/champions_sim/grounding/`: read-only BlueStacks diagnostics and content-addressed capture evidence
+- `src/champions_sim/grounding/`: scoped observation authorization, read-only BlueStacks diagnostics, existing-server ADB transport, external development/holdout plans, and content-addressed capture evidence
 - `data/manifests/`: pinned external dependency identity
 - `data/schemas/`: current dependency, script, Replay, completion-audit, and grounding contracts
 - `data/fixtures/`: one small deterministic battle script

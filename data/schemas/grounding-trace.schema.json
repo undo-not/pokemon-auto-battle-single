@@ -1,12 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:champions_sim:schema:grounding-trace:1",
-  "title": "ChampionSim partial-observation grounding trace v1",
+  "$id": "urn:champions_sim:schema:grounding-trace:2",
+  "title": "ChampionSim plan-bound grounding trace v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
     "trace_id",
+    "plan_id",
+    "plan_hash",
+    "lineage_receipt_sha256",
+    "partition",
+    "requirement_id",
+    "capture_store_id",
     "format_id",
     "viewer",
     "reference_replay_hash",
@@ -17,8 +23,14 @@
     "distribution_allowed"
   ],
   "properties": {
-    "schema_version": {"const": "1.0.0"},
+    "schema_version": {"const": "2.0.0"},
     "trace_id": {"$ref": "#/$defs/stableId"},
+    "plan_id": {"$ref": "#/$defs/stableId"},
+    "plan_hash": {"$ref": "#/$defs/sha256Prefixed"},
+    "lineage_receipt_sha256": {"$ref": "#/$defs/sha256Prefixed"},
+    "partition": {"enum": ["development", "holdout"]},
+    "requirement_id": {"$ref": "#/$defs/stableId"},
+    "capture_store_id": {"$ref": "#/$defs/stableId"},
     "format_id": {"$ref": "#/$defs/stableId"},
     "viewer": {"enum": ["p1", "p2"]},
     "reference_replay_hash": {
@@ -38,6 +50,68 @@
     "local_research_only": {"const": true},
     "distribution_allowed": {"const": false}
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {"status": {"const": "conformant"}}
+      },
+      "then": {
+        "properties": {
+          "blockers": {"maxItems": 0},
+          "frames": {
+            "items": {
+              "properties": {
+                "conformance": {
+                  "items": {
+                    "properties": {
+                      "verdict": {"enum": ["match", "not_applicable"]}
+                    }
+                  }
+                }
+              }
+            },
+            "contains": {
+              "properties": {
+                "conformance": {
+                  "contains": {
+                    "required": ["verdict"],
+                    "properties": {"verdict": {"const": "match"}}
+                  },
+                  "minContains": 1
+                }
+              }
+            },
+            "minContains": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {"status": {"const": "nonconformant"}}
+      },
+      "then": {
+        "properties": {
+          "frames": {
+            "contains": {
+              "properties": {
+                "conformance": {
+                  "contains": {
+                    "required": ["verdict"],
+                    "properties": {"verdict": {"const": "mismatch"}}
+                  },
+                  "minContains": 1
+                }
+              }
+            },
+            "minContains": 1
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "stableId": {
       "type": "string",
@@ -48,6 +122,19 @@
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "sha256Prefixed": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "captureId": {"type": "string", "pattern": "^capture-[0-9a-f]{64}$"},
+    "canonicalValue": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "integer"},
+        {"type": "string"},
+        {"type": "array", "items": {"$ref": "#/$defs/canonicalValue"}},
+        {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/canonicalValue"}
+        }
+      ]
+    },
     "artifactIds": {
       "type": "array",
       "items": {"$ref": "#/$defs/stableId"},
@@ -71,7 +158,7 @@
         "source": {
           "enum": ["screen_region", "ui_metadata", "public_history", "manual", "inference"]
         },
-        "value": {},
+        "value": {"$ref": "#/$defs/canonicalValue"},
         "confidence_ppm": {"type": "integer", "minimum": 0, "maximum": 1000000},
         "artifact_ids": {"$ref": "#/$defs/artifactIds"},
         "note": {"type": ["string", "null"]}
@@ -89,6 +176,26 @@
               "confidence_ppm": {"const": 0}
             }
           }
+        },
+        {
+          "if": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {"status": {"const": "observed"}}
+          },
+          "then": {
+            "properties": {
+              "confidence_ppm": {"minimum": 1}
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {"status": {"const": "inferred"}}
+          },
+          "then": {"properties": {"source": {"const": "inference"}}},
+          "else": {"properties": {"source": {"not": {"const": "inference"}}}}
         }
       ]
     },
@@ -99,8 +206,8 @@
       "properties": {
         "path": {"type": "string", "pattern": "^/"},
         "verdict": {"enum": ["match", "mismatch", "unknown", "not_applicable"]},
-        "expected": {},
-        "observed": {},
+        "expected": {"$ref": "#/$defs/canonicalValue"},
+        "observed": {"$ref": "#/$defs/canonicalValue"},
         "artifact_ids": {"$ref": "#/$defs/artifactIds"},
         "note": {"type": ["string", "null"]}
       },
@@ -123,7 +230,7 @@
         "frame_id": {"$ref": "#/$defs/stableId"},
         "capture_id": {"$ref": "#/$defs/captureId"},
         "capture_manifest_hash": {"$ref": "#/$defs/sha256Prefixed"},
-        "observed_at": {"type": "string", "minLength": 1},
+        "observed_at": {"type": "string", "format": "date-time"},
         "fields": {"type": "array", "items": {"$ref": "#/$defs/groundedField"}},
         "conformance": {"type": "array", "items": {"$ref": "#/$defs/conformance"}}
       }

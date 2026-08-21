@@ -11,6 +11,7 @@ const MAX_LINE_BYTES = 1024 * 1024;
 const MAX_SESSIONS = 64;
 const MAX_PREVIEW_ACTIONS = 4096;
 const SESSION_ID = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/;
+const SELECTOR_ID = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,239}$/;
 const PLAYER_IDS = new Set(["p1", "p2"]);
 const SODIUM_SEED = /^sodium,[0-9a-f]{64}$/;
 const bridgeSource = fs.readFileSync(__filename, "utf8").replace(/\r\n?/g, "\n");
@@ -540,6 +541,58 @@ function validateReplayInputLog(inputLog) {
   return {format, seed};
 }
 
+function replayExpectationSelectors(value) {
+  if (!Array.isArray(value) || value.length > 256) {
+    throw new ProtocolError("INVALID_REQUEST", "selectors must contain at most 256 entries");
+  }
+  const ids = new Set();
+  return value.map((raw, index) => {
+    assertObject(raw, `selectors[${index}]`, ["selector_id", "player", "revision", "pointer"]);
+    const selectorId = assertString(raw.selector_id, `selectors[${index}].selector_id`, 240);
+    if (!SELECTOR_ID.test(selectorId) || ids.has(selectorId)) {
+      throw new ProtocolError("INVALID_REQUEST", "selector IDs must be unique stable IDs");
+    }
+    ids.add(selectorId);
+    const player = assertString(raw.player, `selectors[${index}].player`, 2);
+    if (!PLAYER_IDS.has(player)) {
+      throw new ProtocolError("INVALID_REQUEST", "selector player must be p1 or p2");
+    }
+    if (!Number.isSafeInteger(raw.revision) || raw.revision < 0 || raw.revision > 9999) {
+      throw new ProtocolError("INVALID_REQUEST", "selector revision must be between 0 and 9999");
+    }
+    const pointer = assertString(raw.pointer, `selectors[${index}].pointer`, 1024);
+    if (!pointer.startsWith("/")) {
+      throw new ProtocolError("INVALID_REQUEST", "selector pointer must be a JSON pointer");
+    }
+    return {selector_id: selectorId, player, revision: raw.revision, pointer};
+  });
+}
+
+function resolveJsonPointer(value, pointer) {
+  let current = value;
+  for (const encoded of pointer.slice(1).split("/")) {
+    const token = encoded.replace(/~1/g, "/").replace(/~0/g, "~");
+    if (/~(?![01])/u.test(encoded)) {
+      throw new ProtocolError("INVALID_REQUEST", `invalid JSON pointer escape: ${pointer}`);
+    }
+    if (Array.isArray(current)) {
+      if (!/^(?:0|[1-9][0-9]*)$/.test(token)) {
+        throw new ProtocolError("EXPECTATION_PATH_MISSING", `array path is invalid: ${pointer}`);
+      }
+      const index = Number(token);
+      if (!Number.isSafeInteger(index) || index >= current.length) {
+        throw new ProtocolError("EXPECTATION_PATH_MISSING", `array path is absent: ${pointer}`);
+      }
+      current = current[index];
+    } else if (current !== null && typeof current === "object" && Object.hasOwn(current, token)) {
+      current = current[token];
+    } else {
+      throw new ProtocolError("EXPECTATION_PATH_MISSING", `object path is absent: ${pointer}`);
+    }
+  }
+  return current;
+}
+
 function observation(session, player, since) {
   const log = session.visibleLogs[player];
   if (!Number.isInteger(since) || since < 0 || since > log.length) {
@@ -836,6 +889,75 @@ async function dispatch(method, params) {
       for (const line of inputLog.slice(1)) await stream.write(line);
       return replayDocument(session);
     } catch (error) {
+      throw new ProtocolError("INVALID_REPLAY", error.message || "Replay execution failed");
+    } finally {
+      await stream.writeEnd();
+    }
+  }
+
+  if (method === "resolve_replay_expectations") {
+    assertObject(params, "params", ["input_log", "selectors"]);
+    const inputLog = params.input_log;
+    const selectors = replayExpectationSelectors(params.selectors);
+    const {format, seed} = validateReplayInputLog(inputLog);
+    const stream = new BattleStream({noCatch: true, keepAlive: true});
+    const session = {
+      id: "replay-expectations",
+      formatId: format.id,
+      seed,
+      stream,
+      revision: 0,
+      publicLog: [],
+      visibleLogs: {p1: [], p2: []},
+      requests: {p1: null, p2: null},
+      end: null,
+      poisoned: null,
+    };
+    bindOutput(session);
+    const expectations = [];
+    try {
+      await stream.write(`>start ${JSON.stringify({formatid: format.id, seed, strictChoices: true})}`);
+      await stream.write(inputLog[1]);
+      await stream.write(inputLog[2]);
+      for (let revision = 0; revision < inputLog.length - 3; revision++) {
+        const line = inputLog[revision + 3];
+        const match = line.match(/^>(p1|p2) (.+)$/);
+        const player = match[1];
+        const choice = match[2];
+        session.revision = revision;
+        const selected = selectors.filter(selector => (
+          selector.revision === revision && selector.player === player
+        ));
+        if (selected.length) {
+          const snapshot = observation(
+            session,
+            player,
+            0,
+          );
+          for (const selector of selected) {
+            expectations.push({
+              selector_id: selector.selector_id,
+              value: resolveJsonPointer(snapshot, selector.pointer),
+            });
+          }
+        }
+        if (!session.requests[player]) {
+          throw new ProtocolError("INVALID_REPLAY", `${player} has no request at revision ${revision}`);
+        }
+        const canonical = canonicalChoiceInput(session, player, choice);
+        if (canonical !== line) {
+          throw new ProtocolError("INVALID_REPLAY", `choice is not canonical at revision ${revision}`);
+        }
+        session.requests[player] = null;
+        await stream.write(line);
+      }
+      session.revision = inputLog.length - 3;
+      if (expectations.length !== selectors.length) {
+        throw new ProtocolError("EXPECTATION_PATH_MISSING", "one or more selectors did not reach a player decision");
+      }
+      return {replay: replayDocument(session), expectations};
+    } catch (error) {
+      if (error instanceof ProtocolError) throw error;
       throw new ProtocolError("INVALID_REPLAY", error.message || "Replay execution failed");
     } finally {
       await stream.writeEnd();
